@@ -19,47 +19,87 @@ class ItemController extends Controller
     }
 
     public function store(Request $r){
-        $datosValidados = $r->validate([
-            'item_decripcion'=>'required',
-            'item_costo'=>'required',
-            'item_precio'=>'required',
-            'tipo_id'=>'required',
-            'tipo_impuesto_id'=>'required',
-            'marca_id'=>'required',
-            'modelo_id'=>'required'
-        ]);
-        $item = Item::create($datosValidados);
-        $item->save();
-        return response()->json([
-            'mensaje'=>'Registro creado con exito',
-            'tipo'=>'success',
-            'registro'=> $item
-        ],200);
-    }
-
+        // Mensajes personalizados para la validación
+        $messages = [
+            'item_costo.min' => 'El costo no puede ser negativo.',
+            'item_precio.min' => 'El precio no puede ser negativo.',
+        ];
+    
+        try {
+            // Validación de los datos
+            $datosValidados = $r->validate([
+                'item_decripcion' => 'required',
+                'item_costo' => 'required|numeric|min:0',
+                'item_precio' => 'required|numeric|min:0',
+                'tipo_id' => 'required',
+                'tipo_impuesto_id' => 'required',
+                'marca_id' => 'required',
+                'modelo_id' => 'required'
+            ], $messages);
+    
+            // Creación del item
+            $item = Item::create($datosValidados);
+            $item->save();
+    
+            // Respuesta de éxito
+            return response()->json([
+                'mensaje' => 'Registro creado con éxito',
+                'tipo' => 'success',
+                'registro' => $item
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Captura de errores de validación y respuesta
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Existen errores en los datos enviados.',
+                'errors' => $e->errors()
+            ], 422);
+        }
+    }    
     public function update(Request $r, $id){
         $item = Item::find($id);
         if(!$item){
             return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+                'mensaje' => 'Registro no encontrado',
+                'tipo' => 'error'
+            ], 404);
         }
-        $datosValidados = $r->validate([
-            'item_decripcion'=>'required',
-            'item_costo'=>'required',
-            'item_precio'=>'required',
-            'tipo_id'=>'required',
-            'tipo_impuesto_id'=>'required',
-            'marca_id'=>'required',
-            'modelo_id'=>'required'
-        ]);
-        $item->update($datosValidados);
-        return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $item
-        ],200);
+    
+        // Mensajes personalizados para la validación
+        $messages = [
+            'item_costo.min' => 'El costo no puede ser negativo.',
+            'item_precio.min' => 'El precio no puede ser negativo.',
+        ];
+    
+        try {
+            // Validación de los datos
+            $datosValidados = $r->validate([
+                'item_decripcion' => 'required',
+                'item_costo' => 'required|numeric|min:0',
+                'item_precio' => 'required|numeric|min:0',
+                'tipo_id' => 'required',
+                'tipo_impuesto_id' => 'required',
+                'marca_id' => 'required',
+                'modelo_id' => 'required'
+            ], $messages);
+    
+            // Actualización del item
+            $item->update($datosValidados);
+    
+            // Respuesta de éxito
+            return response()->json([
+                'mensaje' => 'Registro modificado con éxito',
+                'tipo' => 'success',
+                'registro' => $item
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Captura de errores de validación y respuesta
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Existen errores en los datos enviados.',
+                'errors' => $e->errors()
+            ], 422);
+        }
     }
 
     public function destroy($id){

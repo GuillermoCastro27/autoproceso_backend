@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OrdenCompraCabController;
+use App\Http\Controllers\OrdenCompraDetController;
 use App\Http\Controllers\FuncionarioController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\SucursalController;
@@ -53,7 +54,6 @@ Route::put("pedidos/anular/{id}",[PedidoController::class,"anular"]);
 Route::delete("pedidos/delete/{id}",[PedidoController::class,"eliminar"]);
 Route::put("pedidos/confirmar/{id}",[PedidoController::class,"confirmar"]);
 Route::post("pedidos/buscar",[PedidoController::class,"buscar"]);
-Route::middleware('auth:sanctum')->post('/pedidos', [PedidoController::class, 'store']);
 
 Route::post("pedidos-detalles/create",[PedidosDetalleController::class,"store"]);
 Route::get("pedidos-detalles/read/{id}",[PedidosDetalleController::class,"read"]);
@@ -66,7 +66,11 @@ Route::put("ordencompracab/update/{id}",[OrdenCompraCabController::class,"update
 Route::put("ordencompracab/anular/{id}",[OrdenCompraCabController::class,"anular"]);
 Route::delete("ordencompracab/delete/{id}",[OrdenCompraCabController::class,"eliminar"]);
 Route::put("ordencompracab/confirmar/{id}",[OrdenCompraCabController::class,"confirmar"]);
-Route::post("ordencompracab/buscar",[OrdenCompraCabController::class,"buscar"]);
+
+Route::post("ordencompradet/create",[OrdenCompraDetController::class,"store"]);
+Route::get("ordencompradet/read/{id}",[OrdenCompraDetController::class,"read"]);
+Route::put("ordencompradet/update/{orden_compra_cab_id}/{item_id}",[OrdenCompraDetController::class,"update"]);
+Route::delete("ordencompradet/delete/{orden_compra_cab_id}/{item_id}",[OrdenCompraDetController::class,"destroy"]);
 
 Route::get("paises/read",[PaisController::class,"read"]);
 Route::post("paises/create",[PaisController::class,"store"]);
@@ -106,6 +110,7 @@ Route::put("presupuesto/anular/{id}",[PresupuestoController::class,"anular"]);
 Route::put("presupuesto/confirmar/{id}",[PresupuestoController::class,"rechazar"]);
 Route::put("presupuesto/rechazar/{id}",[PresupuestoController::class,"anular"]);
 Route::put("presupuesto/aprobar/{id}",[PresupuestoController::class,"aprobar"]);
+Route::post("presupuesto/buscar",[PresupuestoController::class,"buscar"]);
 
 
 Route::get("presupuestos-detalles/read/{id}",[PresupuestosDetalleController::class,"read"]);

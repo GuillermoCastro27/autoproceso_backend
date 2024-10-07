@@ -200,4 +200,40 @@ class PresupuestoController extends Controller
             'registro'=> $presupuesto
         ],200);
     }
+    public function buscar(Request $r) {
+        $userId = $r->input('user_id'); // Obtener el valor desde la request
+        $userName = $r->input('name');  // Obtener el valor del nombre
+    
+        return DB::select("
+            SELECT 
+                p.id AS presupuesto_id,
+                TO_CHAR(p.pre_vence, 'dd/mm/yyyy HH24:mi:ss') AS pre_vence,
+                p.pre_observaciones,
+                p.pre_estado,
+                p.user_id,
+                p.created_at,
+                p.updated_at,
+                u.name, 
+                u.email,
+                p.proveedor_id,
+                prov.prov_razonsocial,
+                prov.prov_ruc,
+                prov.prov_telefono,
+                prov.prov_correo,
+                'PRESUPUESTO NRO: ' || TO_CHAR(p.id, '0000000') || ' VENCE EL: ' || TO_CHAR(p.pre_vence, 'dd/mm/yyyy HH24:mi:ss') || ' (' || p.pre_observaciones || ')' AS presupuesto
+            FROM 
+                presupuestos p
+            JOIN 
+                users u ON u.id = p.user_id
+            JOIN 
+                proveedores prov ON prov.id = p.proveedor_id
+            WHERE 
+                p.pre_estado = 'CONFIRMADO'
+            AND 
+                p.user_id = ?
+            AND 
+                u.name ILIKE ?
+        ", [$userId, '%' . $userName . '%']); // Utilizar bindings seguros
+    }
+                 
 }
