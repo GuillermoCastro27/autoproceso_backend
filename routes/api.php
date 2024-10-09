@@ -66,6 +66,8 @@ Route::put("ordencompracab/update/{id}",[OrdenCompraCabController::class,"update
 Route::put("ordencompracab/anular/{id}",[OrdenCompraCabController::class,"anular"]);
 Route::delete("ordencompracab/delete/{id}",[OrdenCompraCabController::class,"eliminar"]);
 Route::put("ordencompracab/confirmar/{id}",[OrdenCompraCabController::class,"confirmar"]);
+Route::put("ordencompracab/rechazar/{id}",[OrdenCompraCabController::class,"anular"]);
+Route::put("ordencompracab/aprobar/{id}",[OrdenCompraCabController::class,"aprobar"]);
 
 Route::post("ordencompradet/create",[OrdenCompraDetController::class,"store"]);
 Route::get("ordencompradet/read/{id}",[OrdenCompraDetController::class,"read"]);

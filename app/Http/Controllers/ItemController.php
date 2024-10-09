@@ -118,9 +118,14 @@ class ItemController extends Controller
     }
 
     public function buscar(Request $r){
-        return DB::select("select i.*, t.tipo_descripcion, i.id as item_id
-        from items i  join tipos t on t.id = i.tipo_id
-        where item_decripcion ilike '%$r->item_decripcion%'
-        and tipo_descripcion = '$r->tipo_descripcion'");
-    }
+        return DB::select("
+            SELECT i.*, ti.tip_imp_nom, ti.tipo_imp_tasa, i.item_costo, i.id as item_id
+            FROM items i
+            JOIN tipos t ON t.id = i.tipo_id
+            LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
+            WHERE i.item_decripcion ILIKE '%$r->item_decripcion%'
+            AND t.tipo_descripcion = '$r->tipo_descripcion'
+        ");
+    }    
+       
 }

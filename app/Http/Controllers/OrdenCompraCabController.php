@@ -158,6 +158,53 @@ public function anular(Request $r, $id){
     ],200);
 }
 public function confirmar(Request $r, $id) {
+    $ordenCompra = OrdenCompra::find($id);
+    
+    if (!$ordenCompra) {
+        return response()->json([
+            'mensaje' => 'Registro no encontrado',
+            'tipo' => 'error'
+        ], 404);
+    }
+
+    // Validación de los datos
+    $datosValidados = $r->validate([
+        'ord_comp_fecha' => 'required|date',
+        'ord_comp_estado' => 'required',
+        'condicion_pago' => 'required|string|max:20',
+        'user_id' => 'required|integer',
+        'presupuesto_id' => 'required|integer',
+        'proveedor_id' => 'required|integer',
+        'empresa_id' => 'required|integer',
+        'sucursal_id' => 'required|integer',
+    ]);
+
+    // Guardar datos de la orden de compra
+    $ordenCompra->update($datosValidados);
+
+    // Obtener el detalle del presupuesto y guardarlo en orden_compra_det
+    $detallePresupuesto = DB::table('presupuesto_detalle')
+                            ->where('presupuesto_id', $r->presupuesto_id)
+                            ->get();
+
+    foreach ($detallePresupuesto as $detalle) {
+        OrdenCompraDet::create([
+            'ord_comp_cab_id' => $ordenCompra->id,
+            'item_id' => $detalle->item_id,
+            'cantidad' => $detalle->cantidad,
+            'precio' => $detalle->precio,
+            'tipo_impuesto_id' => $detalle->tipo_impuesto_id
+        ]);
+    }
+
+    return response()->json([
+        'mensaje' => 'Orden confirmada y detalle guardado con éxito',
+        'tipo' => 'success',
+        'registro' => $ordenCompra
+    ], 200);
+}
+public function rechazar(Request $r, $id)
+{
     $ordencompracab = OrdenCompraCab::find($id);
     if (!$ordencompracab) {
         return response()->json([
@@ -165,29 +212,11 @@ public function confirmar(Request $r, $id) {
             'tipo' => 'error'
         ], 404);
     }
-    
-    // Validar que los IDs no sean 0 o nulos
-    $proveedor_id = $r->proveedor_id;
-    if ($proveedor_id == 0 || is_null($proveedor_id)) {
-        return response()->json([
-            'mensaje' => 'El proveedor ID es inválido',
-            'tipo' => 'error'
-        ], 422);
-    }
-    // Si la condición de pago es 'CONTADO', asignar valores específicos antes de la validación
-    if ($r->condicion_pago === 'CONTADO') {
-        $r->merge([
-            'ord_comp_intervalo_fecha_vence' => null,
-            'ord_comp_cant_cuota' => null
-        ]);
-    }
 
-    // Validar otros campos
+    // Validación de los campos requeridos
     $datosValidados = $r->validate([
-        'ord_comp_intervalo_fecha_vence' => 'nullable|date', // Cambia a nullable si es opcional
-        'ord_comp_fecha' => 'required|date',
-        'ord_comp_estado' => 'required',
-        'ord_comp_cant_cuota' => 'nullable|integer',
+        'ord_comp_estado' => 'required|string',
+        'ord_comp_intervalo_fecha_vence' => 'nullable|date', // Si es opcional
         'user_id' => 'required|integer',
         'presupuesto_id' => 'required|integer',
         'proveedor_id' => 'required|integer',
@@ -195,10 +224,54 @@ public function confirmar(Request $r, $id) {
         'sucursal_id' => 'required|integer',
         'condicion_pago' => 'required|string|max:20'
     ]);
-    
+
+    // Si la condición de pago es 'CONTADO', se ajustan los campos correspondientes
+    if ($r->condicion_pago === 'CONTADO') {
+        $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
+        $datosValidados['ord_comp_cant_cuota'] = null;
+    }
+
     $ordencompracab->update($datosValidados);
+
     return response()->json([
-        'mensaje' => 'Registro confirmado con éxito',
+        'mensaje' => 'Orden de compra rechazada con éxito',
+        'tipo' => 'success',
+        'registro' => $ordencompracab
+    ], 200);
+}
+
+public function aprobar(Request $r, $id)
+{
+    $ordencompracab = OrdenCompraCab::find($id);
+    if (!$ordencompracab) {
+        return response()->json([
+            'mensaje' => 'Registro no encontrado',
+            'tipo' => 'error'
+        ], 404);
+    }
+
+    // Validación de los campos requeridos
+    $datosValidados = $r->validate([
+        'ord_comp_estado' => 'required|string',
+        'ord_comp_intervalo_fecha_vence' => 'nullable|date', // Si es opcional
+        'user_id' => 'required|integer',
+        'presupuesto_id' => 'required|integer',
+        'proveedor_id' => 'required|integer',
+        'empresa_id' => 'required|integer',
+        'sucursal_id' => 'required|integer',
+        'condicion_pago' => 'required|string|max:20'
+    ]);
+
+    // Si la condición de pago es 'CONTADO', se ajustan los campos correspondientes
+    if ($r->condicion_pago === 'CONTADO') {
+        $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
+        $datosValidados['ord_comp_cant_cuota'] = null;
+    }
+
+    $ordencompracab->update($datosValidados);
+
+    return response()->json([
+        'mensaje' => 'Orden de compra aprobada con éxito',
         'tipo' => 'success',
         'registro' => $ordencompracab
     ], 200);
