@@ -17,6 +17,7 @@ class OrdenCompraCab extends Model
         'presupuesto_id',
         'proveedor_id',
         'empresa_id',
+        'condicion_pago',
         'sucursal_id'
     ];
     protected $table = 'orden_compra_cab';
