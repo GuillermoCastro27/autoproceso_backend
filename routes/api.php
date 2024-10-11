@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OrdenCompraCabController;
 use App\Http\Controllers\OrdenCompraDetController;
+use App\Http\Controllers\CompraCabController;
 use App\Http\Controllers\FuncionarioController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\SucursalController;
@@ -68,6 +69,15 @@ Route::delete("ordencompracab/delete/{id}",[OrdenCompraCabController::class,"eli
 Route::put("ordencompracab/confirmar/{id}",[OrdenCompraCabController::class,"confirmar"]);
 Route::put("ordencompracab/rechazar/{id}",[OrdenCompraCabController::class,"anular"]);
 Route::put("ordencompracab/aprobar/{id}",[OrdenCompraCabController::class,"aprobar"]);
+Route::post("ordencompracab/buscar",[OrdenCompraCabController::class,"buscar"]);
+
+
+Route::post("compras/create", [CompraCabController::class, "store"]);
+Route::get("compras/read", [CompraCabController::class, "read"]);
+Route::put("compras/update/{id}", [CompraCabController::class, "update"]);
+Route::put("compras/anular/{id}", [CompraCabController::class, "anular"]);
+Route::put("compras/confirmar/{id}", [CompraCabController::class, "confirmar"]);
+
 
 Route::post("ordencompradet/create",[OrdenCompraDetController::class,"store"]);
 Route::get("ordencompradet/read/{id}",[OrdenCompraDetController::class,"read"]);

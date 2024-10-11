@@ -158,7 +158,7 @@ public function anular(Request $r, $id){
     ],200);
 }
 public function confirmar(Request $r, $id) {
-    $ordenCompra = OrdenCompra::find($id);
+    $ordenCompra = OrdenCompraCab::find($id);
     
     if (!$ordenCompra) {
         return response()->json([
@@ -181,21 +181,6 @@ public function confirmar(Request $r, $id) {
 
     // Guardar datos de la orden de compra
     $ordenCompra->update($datosValidados);
-
-    // Obtener el detalle del presupuesto y guardarlo en orden_compra_det
-    $detallePresupuesto = DB::table('presupuesto_detalle')
-                            ->where('presupuesto_id', $r->presupuesto_id)
-                            ->get();
-
-    foreach ($detallePresupuesto as $detalle) {
-        OrdenCompraDet::create([
-            'ord_comp_cab_id' => $ordenCompra->id,
-            'item_id' => $detalle->item_id,
-            'cantidad' => $detalle->cantidad,
-            'precio' => $detalle->precio,
-            'tipo_impuesto_id' => $detalle->tipo_impuesto_id
-        ]);
-    }
 
     return response()->json([
         'mensaje' => 'Orden confirmada y detalle guardado con éxito',
@@ -275,5 +260,54 @@ public function aprobar(Request $r, $id)
         'tipo' => 'success',
         'registro' => $ordencompracab
     ], 200);
+}
+public function buscar(Request $r)
+{
+    // Obtener los parámetros de búsqueda desde la request
+    $searchTerm = $r->input('search'); // Término de búsqueda
+
+    // Realizar la búsqueda en la base de datos
+    return DB::select("
+        SELECT 
+            o.id,
+            COALESCE(to_char(o.ord_comp_intervalo_fecha_vence, 'dd/mm/yyyy HH24:mi:ss'), 'N/A') AS ord_comp_intervalo_fecha_vence,
+            o.ord_comp_fecha,
+            o.ord_comp_estado,
+            COALESCE(o.ord_comp_cant_cuota::varchar, '0') AS ord_comp_cant_cuota,
+            o.condicion_pago,
+            p.id AS proveedor_id,
+            p.prov_razonsocial AS prov_razonsocial,
+            p.prov_ruc AS prov_ruc,
+            p.prov_telefono AS prov_telefono,
+            p.prov_correo AS prov_correo,
+            o.sucursal_id,
+            s.suc_razon_social AS suc_razon_social,
+            o.empresa_id,
+            e.emp_razon_social AS emp_razon_social,
+            o.orde_compra_id,
+            'ORDEN DE COMPRA NRO: ' || TO_CHAR(o.id, '0000000') || 
+            ' VENCE EL: ' || TO_CHAR(o.comp_fecha_vence, 'dd/mm/yyyy HH24:mi:ss') || 
+            ' (' || o.observaciones || ')' AS orden_compra
+        FROM 
+            orden_compra_cab o
+            u.name AS encargado  
+        FROM 
+            orden_compra_cab o
+        JOIN 
+            users u ON u.id = o.user_id
+        JOIN 
+            sucursal s ON s.empresa_id = o.sucursal_id
+        JOIN 
+            empresa e ON e.id = o.empresa_id
+        JOIN 
+            presupuestos pr ON pr.id = o.presupuesto_id
+        JOIN 
+            proveedores p ON p.id = pr.proveedor_id
+        WHERE 
+            o.id::text ILIKE ? OR 
+            p.prov_razonsocial ILIKE ? OR 
+            p.prov_ruc ILIKE ?
+            AND o.ord_comp_estado = 'CONFIRMADO'
+    ", ['%' . $searchTerm . '%', '%' . $searchTerm . '%', '%' . $searchTerm . '%']);
 }
 }
