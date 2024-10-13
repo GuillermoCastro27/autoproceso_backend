@@ -228,7 +228,7 @@ class PresupuestoController extends Controller
             JOIN 
                 proveedores prov ON prov.id = p.proveedor_id
             WHERE 
-                p.pre_estado = 'CONFIRMADO'
+                p.pre_estado = 'APROBADO'
             AND 
                 p.user_id = ?
             AND 

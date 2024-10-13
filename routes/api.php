@@ -67,7 +67,7 @@ Route::put("ordencompracab/update/{id}",[OrdenCompraCabController::class,"update
 Route::put("ordencompracab/anular/{id}",[OrdenCompraCabController::class,"anular"]);
 Route::delete("ordencompracab/delete/{id}",[OrdenCompraCabController::class,"eliminar"]);
 Route::put("ordencompracab/confirmar/{id}",[OrdenCompraCabController::class,"confirmar"]);
-Route::put("ordencompracab/rechazar/{id}",[OrdenCompraCabController::class,"anular"]);
+Route::put("ordencompracab/rechazar/{id}",[OrdenCompraCabController::class,"rechazar"]);
 Route::put("ordencompracab/aprobar/{id}",[OrdenCompraCabController::class,"aprobar"]);
 Route::post("ordencompracab/buscar",[OrdenCompraCabController::class,"buscar"]);
 
@@ -76,6 +76,8 @@ Route::post("compras/create", [CompraCabController::class, "store"]);
 Route::get("compras/read", [CompraCabController::class, "read"]);
 Route::put("compras/update/{id}", [CompraCabController::class, "update"]);
 Route::put("compras/anular/{id}", [CompraCabController::class, "anular"]);
+Route::put("compras/rechazar/{id}",[CompraCabController::class,"rechazar"]);
+Route::put("compras/aprobar/{id}",[CompraCabController::class,"aprobar"]);
 Route::put("compras/confirmar/{id}", [CompraCabController::class, "confirmar"]);
 
 
@@ -119,8 +121,8 @@ Route::post("presupuesto/create",[PresupuestoController::class,"store"]);
 Route::get("presupuesto/read",[PresupuestoController::class,"read"]);
 Route::put("presupuesto/update/{id}",[PresupuestoController::class,"update"]);
 Route::put("presupuesto/anular/{id}",[PresupuestoController::class,"anular"]);
-Route::put("presupuesto/confirmar/{id}",[PresupuestoController::class,"rechazar"]);
-Route::put("presupuesto/rechazar/{id}",[PresupuestoController::class,"anular"]);
+Route::put("presupuesto/confirmar/{id}",[PresupuestoController::class,"confirmar"]);
+Route::put("presupuesto/rechazar/{id}",[PresupuestoController::class,"rechazar"]);
 Route::put("presupuesto/aprobar/{id}",[PresupuestoController::class,"aprobar"]);
 Route::post("presupuesto/buscar",[PresupuestoController::class,"buscar"]);
 
