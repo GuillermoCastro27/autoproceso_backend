@@ -10,8 +10,11 @@ class Pedido extends Model
     use HasFactory;
     protected $fillable =[
     'ped_vence',
+    'ped_fecha',
     'ped_pbservaciones',
     'ped_estado',
-    'user_id'
+    'user_id',
+    'empresa_id',
+    'sucursal_id'
     ];
 }

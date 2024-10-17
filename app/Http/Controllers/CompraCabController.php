@@ -32,11 +32,20 @@ class CompraCabController extends Controller
         ");
     }    
     public function store(Request $r){
+        // Convertir cadena vacía a null antes de la validación
+    if ($r->ord_comp_intervalo_fecha_vence === '') {
+        $r->merge(['comp_intervalo_fecha_vence' => null]);
+    }
+
+    // Establecer ord_comp_cant_cuota como null si la condición de pago es "CONTADO"
+    if ($r->condicion_pago === 'CONTADO') {
+        $r->merge(['comp_cant_cuota' => null]); // Establece null para cuotas en "CONTADO"
+    }
         $datosValidados = $r->validate([
             'comp_intervalo_fecha_vence'=>'required',
             'comp_fecha'=>'required',
             'comp_estado'=>'required',
-            'comp_cant_cuota'=>'required',
+            'comp_cant_cuota'=>'nullable|integer',
             'condicion_pago'=>'required',
             'user_id'=>'required',
             'orden_compra_cab_id'=>'required',
@@ -44,39 +53,22 @@ class CompraCabController extends Controller
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
-        $compracab = CompraCab::create($datosValidados);
-        $compracab->save();
-
-        $ordencompracab = OrdenCompraCab::find($r->orden_compra_cab_id);
-        $ordencompracab->ord_comp_estado ="PROCESADO";
-        $ordencompracab ->save();
-
-        $detalles = DB::select("select 
-        odc.*,
-        i.item_costo 
-        from orden_compra_det odc
-        join items i ON i.id = odc.item_id 
-        where orden_compra_cab_id = $r->orden_compra_cab_id;");
-
-        foreach ($detalles as $odc){
-           $compraDetalle = new CompraDetalle();
-           $compraDetalle->presupuesto_id = $presupuesto->id;
-           $compraDetalle->item_id = $dp->item_id;
-           $compraDetalle->det_costo = $dp->item_costo;
-           $compraDetalle->det_cantidad = $dp->det_cantidad;
-           $compra8Detalle->save();
+        if ($r->condicion_pago === 'CONTADO') {
+            $datosValidados['comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
+            $datosValidados['comp_cant_cuota'] = null; // Establece null si es "CONTADO"
         }
+        $compracab = CompraCab::create($datosValidados);
 
         return response()->json([
             'mensaje'=>'Registro creado con exito',
             'tipo'=>'success',
-            'registro'=> $ordencompracab
+            'registro'=> $compracab
         ],200);
     }
 
     public function update(Request $r, $id){
-        $ordencompracab = CompraCab::find($id);
-        if(!$ordencompracab){
+        $compracab = CompraCab::find($id);
+        if(!$compracab){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',
                 'tipo'=>'error'
@@ -94,22 +86,22 @@ class CompraCabController extends Controller
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
-        $ordencompracab->update($datosValidados);
+        $compracab->update($datosValidados);
         return response()->json([
             'mensaje'=>'Registro modificado con exito',
             'tipo'=>'success',
-            'registro'=> $ordencompracab
+            'registro'=> $compracab
         ],200);
     }
     public function destroy($id){
-        $ordencom8pracab = CompraCab::find($id);
-        if(!$ordencompracab){
+        $compracab = CompraCab::find($id);
+        if(!$compracab){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',
                 'tipo'=>'error'
             ],404);
         }
-        $ordencompracab->delete();
+        $compracab->delete();
         return response()->json([
             'mensaje'=>'Registro Eliminado con exito',
             'tipo'=>'success',
@@ -117,8 +109,8 @@ class CompraCabController extends Controller
     }
 
     public function anular(Request $r, $id){
-        $ordencompracab = CompraCab::find($id);
-        if(!$ordencompracab){
+        $compracab = CompraCab::find($id);
+        if(!$compracab){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',
                 'tipo'=>'error'
@@ -136,7 +128,7 @@ class CompraCabController extends Controller
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
-        $ordencompracab->update($datosValidados);
+        $compracab->update($datosValidados);
 
         $ordencompracab = OrdenCompraCab::find($r->orden_compra_cab_id);
         $ordencompracab->ord_comp_estado ="CONFIRMADO";
@@ -145,12 +137,12 @@ class CompraCabController extends Controller
         return response()->json([
             'mensaje'=>'Registro anulado con exito',
             'tipo'=>'success',
-            'registro'=> $ordencompracab
+            'registro'=> $compracab
         ],200);
     }
     public function confirmar(Request $r, $id){
-        $ordencompracab = CompraCab::find($id);
-        if(!$ordencompracab){
+        $compracab = CompraCab::find($id);
+        if(!$compracab){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',
                 'tipo'=>'error'
@@ -168,17 +160,17 @@ class CompraCabController extends Controller
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
-        $ordencompracab->update($datosValidados);
+        $compracab->update($datosValidados);
         return response()->json([
             'mensaje'=>'Registro confirmado con exito',
             'tipo'=>'success',
-            'registro'=> $ordencompracab
+            'registro'=> $compracab
         ],200);
     }
 
     public function rechazar(Request $r, $id){
-        $ordencompracab = CompraCab::find($id);
-        if(!$or8dencompracab){
+        $compracab = CompraCab::find($id);
+        if(!$compracab){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',
                 'tipo'=>'error'
@@ -196,17 +188,17 @@ class CompraCabController extends Controller
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
-        $ordencompracab->update($datosValidados);
+        $compracab->update($datosValidados);
         return response()->json([
             'mensaje'=>'Registro Rechazado con exito',
             'tipo'=>'success',
-            'registro'=> $ordencompracab
+            'registro'=> $compracab
         ],200);
     }
 
     public function aprobar(Request $r, $id){
-        $ordencompracab = CompraCab::find($id);
-        if(!$ordencompracab){
+        $compracab = CompraCab::find($id);
+        if(!$compracab){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',
                 'tipo'=>'error'
@@ -224,11 +216,11 @@ class CompraCabController extends Controller
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
-        $ordencompracab->update($datosValidados);
+        $compracab->update($datosValidados);
         return response()->json([
             'mensaje'=>'Registro Aprobado con exito',
             'tipo'=>'success',
-            'registro'=> $ordencompracab
+            'registro'=> $compracab
         ],200);
     }
 }

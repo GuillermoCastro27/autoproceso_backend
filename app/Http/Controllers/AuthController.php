@@ -2,23 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Perfil;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
+use Validator;
 use App\Models\User;
+use App\Models\Perfil;
 use \stdClass;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(),[
             'name' => 'required|string|max:255',
             'email' => 'string|email|max:255|unique:users',
-            'password' => 'required|string|min:3',
+            'password' => [
+                'required', 
+                'string', 
+                'min:8', 
+                'regex:/[a-z]/', 
+                'regex:/[A-Z]/', 
+                'regex:/[0-9]/', 
+                'regex:/[*\-\/@$!%#?&]/'
+            ],
             'login' => 'required|string'
+        ],[
+            'password.min' => 'La contraseña debe de tener al menos 8 caracteres',
+            'password.regex' => 'La contraseña debe incluir al menos una letra mayúscula, una letra minúscula, un número y un carácter especial (*, -, /, +, @, $, !, %, #, ?, &).'
         ]);
 
         if($validator->fails())
@@ -50,7 +62,7 @@ class AuthController extends Controller
         }
 
         $user = User::where('login',$request['login'])->firstOrFail();
-        $perfil = Perfil::where('id',$user->perfil_id)->firstOrfail();
+        $perfil = Perfil::where('id', $user->perfil_id)-> firstOrFail();
 
         if($user->intentos > 2){
             return response()->json(['message' => 'USUARIO BLOQUEADO POR INTENTOS FALLIDOS'],401);
@@ -65,13 +77,13 @@ class AuthController extends Controller
                 'accessToken' => $token,
                 'token_type' => 'Bearer',
                 'user' => $user,
-                'perfil'=>$perfil
+                'perfil' => $perfil
             ]);
     }
 
     public function logout()
     {
-        Auth()->user()->tokens()->delete();
+        auth()->user()->tokens()->delete();
         return ['message' => 'Usted se ha desconectado satisfactoriamente'];
     }
 }

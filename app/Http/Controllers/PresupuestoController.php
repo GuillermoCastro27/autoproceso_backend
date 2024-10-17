@@ -18,12 +18,20 @@ class PresupuestoController extends Controller
         p2.prov_ruc,
         p2.prov_telefono,
         p2.prov_correo,
+        p.sucursal_id,
+        s.suc_razon_social as suc_razon_social,
+        p.empresa_id,
+        e.emp_razon_social AS emp_razon_social,
         'PEDIDO NRO: '||to_char(p.pedido_id , '0000000')||' VENCE EL:'||to_char(p3.ped_vence, 'dd/mm/yyy HH24:mi:ss')||' ('||p3.ped_pbservaciones||')' as pedido,
         to_char(p.pedido_id , '0000000') as nro_pedido,
         u.name,
         u.login 
         from presupuestos p 
         join proveedores p2 on p2.id = p.proveedor_id 
+        JOIN 
+            sucursal s ON s.empresa_id = p.sucursal_id
+        JOIN 
+            empresa e ON e.id = p.empresa_id
         join pedidos p3 on p3.id = p.pedido_id 
         join users u on u.id = p.user_id;");
     }
@@ -35,7 +43,9 @@ class PresupuestoController extends Controller
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
             'pedido_id'=>'required',
-            'user_id'=>'required'
+            'user_id'=>'required',
+            'empresa_id'=>'required',
+            'sucursal_id'=>'required'
         ]);
         $presupuesto = Presupuesto::create($datosValidados);
         $presupuesto->save();
@@ -81,7 +91,10 @@ class PresupuestoController extends Controller
             'pre_estado'=>'required',
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
-            'user_id'=>'required'
+            'pedido_id'=>'required',
+            'user_id'=>'required',
+            'empresa_id'=>'required',
+            'sucursal_id'=>'required'
         ]);
         $presupuesto->update($datosValidados);
         return response()->json([
@@ -118,7 +131,10 @@ class PresupuestoController extends Controller
             'pre_estado'=>'required',
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
-            'user_id'=>'required'
+            'pedido_id'=>'required',
+            'user_id'=>'required',
+            'empresa_id'=>'required',
+            'sucursal_id'=>'required'
         ]);
         $presupuesto->update($datosValidados);
 
@@ -145,57 +161,14 @@ class PresupuestoController extends Controller
             'pre_estado'=>'required',
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
-            'user_id'=>'required'
+            'pedido_id'=>'required',
+            'user_id'=>'required',
+            'empresa_id'=>'required',
+            'sucursal_id'=>'required'
         ]);
         $presupuesto->update($datosValidados);
         return response()->json([
             'mensaje'=>'Registro confirmado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuesto
-        ],200);
-    }
-
-    public function rechazar(Request $r, $id){
-        $presupuesto = Presupuesto::find($id);
-        if(!$presupuesto){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'pre_observaciones'=>'required',
-            'pre_estado'=>'required',
-            'pre_vence'=>'required',
-            'proveedor_id'=>'required',
-            'user_id'=>'required'
-        ]);
-        $presupuesto->update($datosValidados);
-        return response()->json([
-            'mensaje'=>'Registro Rechazado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuesto
-        ],200);
-    }
-
-    public function aprobar(Request $r, $id){
-        $presupuesto = Presupuesto::find($id);
-        if(!$presupuesto){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'pre_observaciones'=>'required',
-            'pre_estado'=>'required',
-            'pre_vence'=>'required',
-            'proveedor_id'=>'required',
-            'user_id'=>'required'
-        ]);
-        $presupuesto->update($datosValidados);
-        return response()->json([
-            'mensaje'=>'Registro Aprobado con exito',
             'tipo'=>'success',
             'registro'=> $presupuesto
         ],200);
@@ -228,7 +201,7 @@ class PresupuestoController extends Controller
             JOIN 
                 proveedores prov ON prov.id = p.proveedor_id
             WHERE 
-                p.pre_estado = 'APROBADO'
+                p.pre_estado = 'CONFIRMADO'
             AND 
                 p.user_id = ?
             AND 

@@ -14,6 +14,8 @@ class Presupuesto extends Model
         'pre_vence',
         'proveedor_id',
         'pedido_id',
-        'user_id'
+        'user_id',
+        'empresa_id',
+        'sucursal_id'
     ];
 }
