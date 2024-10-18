@@ -11,6 +11,7 @@ class Presupuesto extends Model
     protected $fillable =[
         'pre_observaciones',
         'pre_estado',
+        'pre_fecha',
         'pre_vence',
         'proveedor_id',
         'pedido_id',

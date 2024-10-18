@@ -13,6 +13,7 @@ class PresupuestoController extends Controller
     public function read(){
         return DB::select("select 
         p.*,
+        TO_CHAR(p.pre_fecha, 'dd/mm/yyyy HH24:mi:ss') AS pre_fecha,
         to_char(p.pre_vence, ' dd/mm/yyy HH24:mi:ss ') as pre_vence,
         p2.prov_razonsocial,
         p2.prov_ruc,
@@ -40,6 +41,7 @@ class PresupuestoController extends Controller
         $datosValidados = $r->validate([
             'pre_observaciones'=>'required',
             'pre_estado'=>'required',
+            'pre_fecha'=>'required',
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
             'pedido_id'=>'required',
@@ -89,6 +91,7 @@ class PresupuestoController extends Controller
         $datosValidados = $r->validate([
             'pre_observaciones'=>'required',
             'pre_estado'=>'required',
+            'pre_fecha'=>'required',
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
             'pedido_id'=>'required',
@@ -103,20 +106,6 @@ class PresupuestoController extends Controller
             'registro'=> $presupuesto
         ],200);
     }
-    public function destroy($id){
-        $presupuesto = Presupuesto::find($id);
-        if(!$presupuesto){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $presupuesto->delete();
-        return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
-    }
 
     public function anular(Request $r, $id){
         $presupuesto = Presupuesto::find($id);
@@ -129,6 +118,7 @@ class PresupuestoController extends Controller
         $datosValidados = $r->validate([
             'pre_observaciones'=>'required',
             'pre_estado'=>'required',
+            'pre_fecha'=>'required',
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
             'pedido_id'=>'required',
@@ -159,6 +149,7 @@ class PresupuestoController extends Controller
         $datosValidados = $r->validate([
             'pre_observaciones'=>'required',
             'pre_estado'=>'required',
+            'pre_fecha'=>'required',
             'pre_vence'=>'required',
             'proveedor_id'=>'required',
             'pedido_id'=>'required',
@@ -183,7 +174,11 @@ class PresupuestoController extends Controller
                 TO_CHAR(p.pre_vence, 'dd/mm/yyyy HH24:mi:ss') AS pre_vence,
                 p.pre_observaciones,
                 p.pre_estado,
-                p.user_id,
+                p.user_id,     
+                p.sucursal_id,
+                s.suc_razon_social as suc_razon_social,
+                p.empresa_id,
+                e.emp_razon_social AS emp_razon_social,
                 p.created_at,
                 p.updated_at,
                 u.name, 
@@ -198,6 +193,10 @@ class PresupuestoController extends Controller
                 presupuestos p
             JOIN 
                 users u ON u.id = p.user_id
+            JOIN 
+            sucursal s ON s.empresa_id = p.sucursal_id
+            JOIN 
+            empresa e ON e.id = p.empresa_id
             JOIN 
                 proveedores prov ON prov.id = p.proveedor_id
             WHERE 
