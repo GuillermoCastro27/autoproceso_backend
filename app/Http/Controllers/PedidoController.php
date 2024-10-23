@@ -149,7 +149,7 @@ class PedidoController extends Controller
     u.name,
     u.login,  
     p.id AS pedido_id,
-    'PEDIDO NRO: ' || TO_CHAR(p.id, '0000000') || ' VENCE EL: ' || TO_CHAR(p.ped_vence, 'dd/mm/yyyy HH24:mi:ss') || ' (' || p.ped_pbservaciones || ')' AS pedido,
+    'PEDIDO NRO: ' || TO_CHAR(p.id, '0000000') ||' (' || p.ped_pbservaciones || ')' AS pedido,
     to_char(p.ped_vence, 'dd/mm/yyyy HH24:mi:ss') as ped_vence,
     p.sucursal_id,
     s.suc_razon_social AS suc_razon_social,

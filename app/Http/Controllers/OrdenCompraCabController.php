@@ -30,7 +30,7 @@ class OrdenCompraCabController extends Controller
             o.empresa_id,
             e.emp_razon_social AS emp_razon_social,
             pr.id AS presupuesto_id,
-            'PRESUPUESTO NRO: ' || to_char(pr.id, '0000000') || ' VENCE EL: ' || COALESCE(to_char(pr.pre_vence, 'dd/mm/yyyy HH24:mi:ss'), 'N/A') || ' (' || pr.pre_observaciones || ')' AS presupuesto,
+            'PRESUPUESTO NRO: ' || to_char(pr.id, '0000000') || ' VENCE EL: ' || COALESCE(to_char(pr.pre_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') || ' (' || pr.pre_observaciones || ')' AS presupuesto,
             u.name AS encargado  
         FROM 
             orden_compra_cab o
@@ -263,8 +263,8 @@ public function buscar(Request $r,)
     return DB::select("
         SELECT 
             o.id AS orden_compra_cab_id,
-            TO_CHAR(o.ord_comp_fecha, 'dd/mm/yyyy HH24:mi:ss') AS ord_comp_fecha,
-            COALESCE(to_char(o.ord_comp_intervalo_fecha_vence, 'dd/mm/yyyy HH24:mi:ss'), 'N/A') AS ord_comp_intervalo_fecha_vence,
+            TO_CHAR(o.ord_comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS ord_comp_fecha,
+            COALESCE(to_char(o.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') AS ord_comp_intervalo_fecha_vence,
             o.ord_comp_estado,
             o.condicion_pago,
             COALESCE(o.ord_comp_cant_cuota::varchar, '0') AS ord_comp_cant_cuota,
@@ -282,8 +282,8 @@ public function buscar(Request $r,)
             prov.prov_ruc,
             prov.prov_telefono,
             prov.prov_correo,
-            'ORDEN COMPRA NRO: ' || TO_CHAR(o.id, '0000000') || ' VENCE EL: ' || TO_CHAR(o.ord_comp_fecha, 'dd/mm/yyyy HH24:mi:ss') AS ordencompra,
-            COALESCE(to_char(o.ord_comp_intervalo_fecha_vence, 'dd/mm/yyyy HH24:mi:ss'), 'N/A') as comp_intervalo_fecha_vence,
+            'ORDEN COMPRA NRO: ' || TO_CHAR(o.id, '0000000') || ' VENCE EL: ' || TO_CHAR(o.ord_comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS ordencompra,
+            COALESCE(to_char(o.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') as comp_intervalo_fecha_vence,
             COALESCE(o.ord_comp_cant_cuota::varchar, '0') as comp_cantidad_cuota
         FROM 
             orden_compra_cab o
