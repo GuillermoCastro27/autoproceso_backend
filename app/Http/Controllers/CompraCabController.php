@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\CompraCab;
 use App\Models\OrdenCompraCab; 
 use App\Models\CompraDet;
+use App\Models\CtasPagar;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -93,7 +95,6 @@ class CompraCabController extends Controller
                 ]);
             }
         }
-    
         return response()->json([
             'mensaje' => 'Registro creado con éxito',
             'tipo' => 'success',
@@ -193,38 +194,127 @@ class CompraCabController extends Controller
             'registro' => $compracab
         ], 200);
     }
-    public function confirmar(Request $r, $id){
-        $compracab = CompraCab::find($id);
-        if ($r->comp_intervalo_fecha_vence === '') {
-            $r->merge(['comp_intervalo_fecha_vence' => null]);
-        }
-    
-        // Establecer   _comp_cant_cuota como null si la condición de pago es "CONTADO"
-        if ($r->condicion_pago === 'CONTADO') {
-            // Asegurar que estos campos sean null para pagos al contado
-            $r->merge(['comp_intervalo_fecha_vence' => null, 'comp_cant_cuota' => null]);
-        }
-            $datosValidados = $r->validate([
-                'comp_intervalo_fecha_vence'=>'nullable|date',
-                'comp_fecha'=>'nullable|date',
-                'comp_estado'=>'required',
-                'comp_cant_cuota'=>'nullable|integer',
-                'condicion_pago'=>'required',
-                'user_id'=>'required',
-                'orden_compra_cab_id'=>'required',
-                'proveedor_id'=>'required',
-                'empresa_id'=>'required',
-                'sucursal_id'=>'required'
-            ]);
-            if ($r->condicion_pago === 'CONTADO') {
-                $datosValidados['comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-                $datosValidados['comp_cant_cuota'] = null; // Establece null si es "CONTADO"
-            }
-        $compracab->update($datosValidados);
-        return response()->json([
-            'mensaje'=>'Registro confirmado con exito',
-            'tipo'=>'success',
-            'registro'=> $compracab
-        ],200);
+    public function calcularTotal(Request $r, $id)
+{
+    // Verificar si la compra existe
+    $compracab = CompraCab::find($id);
+    if (!$compracab) {
+        return response()->json(['error' => 'Compra no encontrada.'], 404);
     }
+
+    $compraCabId = $id;  // Aquí tomamos el ID de la compra
+
+    // Modificar la consulta para usar bindings y evitar errores de sintaxis
+    $detalles = DB::select("
+        SELECT 
+            cd.comp_det_cantidad AS comp_det_cantidad,
+            i.item_costo AS comp_det_costo,
+            ti.tip_imp_nom AS tip_imp_nom,
+            (cd.comp_det_cantidad * i.item_costo) AS subtotal,
+            CASE 
+                WHEN ti.tip_imp_nom = 'IVA10' THEN (cd.comp_det_cantidad * i.item_costo) / 11
+                WHEN ti.tip_imp_nom = 'IVA5' THEN (cd.comp_det_cantidad * i.item_costo) / 21
+                ELSE (cd.comp_det_cantidad * i.item_costo) -- Si no es IVA10 o IVA5, se usa el subtotal sin cambios
+            END AS totalConImpuesto
+        FROM 
+            compra_det cd
+        JOIN 
+            items i ON cd.item_id = i.id
+        JOIN 
+            tipo_impuesto ti ON cd.tipo_impuesto_id = ti.id
+        WHERE 
+            cd.compra_cab_id = :compra_cab_id;", ['compra_cab_id' => $compraCabId]);
+
+    // Variables para almacenar el total general y el total con impuesto
+    $totalGral = 0;
+    $totalConImpuesto = 0;
+
+    // Recorrer cada detalle y calcular el subtotal e impuestos
+    foreach ($detalles as $detalle) {
+        $subtotal = $detalle->subtotal; // Subtotal ya calculado
+        $totalConImpuestoDetalle = $detalle->totalconimpuesto; // Total con impuestos ya calculado
+
+        // Sumar al total general y total con impuestos
+        $totalGral += $subtotal;
+        $totalConImpuesto += $totalConImpuestoDetalle;
+    }
+
+    // Devolver los resultados como JSON
+    return response()->json([
+        'totalGral' => number_format($totalGral, 2),
+        'totalConImpuesto' => number_format($totalConImpuesto, 2)
+    ]);
+}
+
+public function confirmar(Request $r, $id) {
+    $compracab = CompraCab::find($id);
+
+    if (!$compracab) {
+        return response()->json(['error' => 'Compra no encontrada.'], 404);
+    }
+
+    // Ajustar valores en función de la condición de pago
+    if ($r->condicion_pago === 'CONTADO') {
+        $r->merge([
+            'comp_intervalo_fecha_vence' => null,
+            'comp_cant_cuota' => null
+        ]);
+    } elseif ($r->comp_intervalo_fecha_vence === '') {
+        $r->merge(['comp_intervalo_fecha_vence' => null]);
+    }
+
+    // Validaciones y preparación de datos
+    $datosValidados = $r->validate([
+        'comp_intervalo_fecha_vence' => 'nullable|date',
+        'comp_fecha' => 'nullable|date',
+        'comp_estado' => 'required',
+        'comp_cant_cuota' => 'nullable|integer',
+        'condicion_pago' => 'required',
+        'user_id' => 'required',
+        'orden_compra_cab_id' => 'required',
+        'proveedor_id' => 'required',
+        'empresa_id' => 'required',
+        'sucursal_id' => 'required'
+    ]);
+
+    // Actualizar estado de la compra a "RECIBIDO"
+    $compracab->update($datosValidados);
+    $compracab->comp_estado = "RECIBIDO";
+    $compracab->save();
+
+    // Calcular el total con impuestos
+    $resultadoCalculo = $this->calcularTotal($r, $id);
+    $totalConImpuesto = str_replace(',', '', $resultadoCalculo->getData()->totalConImpuesto);
+
+    // Definir estado y fecha de la siguiente cuota
+    $estado = 'Pendiente';
+    $fechaCuota = now();
+
+    if ($r->condicion_pago === 'CONTADO') {
+        $estado = 'Pagada'; // Establece el estado a "Pagada" si es contado
+    } elseif ($r->condicion_pago === 'CREDITO' && $r->comp_intervalo_fecha_vence) {
+        $fechaCuota = now()->addDays($r->comp_intervalo_fecha_vence);
+    }
+
+    // Registrar los datos clave
+    Log::info("Fecha de la siguiente cuota calculada:", ['fechaCuota' => $fechaCuota]);
+    Log::info("Estado de la cuenta:", ['estado' => $estado]);
+    Log::info("Monto total con impuesto:", ['totalConImpuesto' => $totalConImpuesto]);
+
+    // Crear registro en CtasPagar
+    CtasPagar::create([
+        'compra_cab_id' => $compracab->id,
+        'cta_pag_monto' => $totalConImpuesto,
+        'cta_pag_fecha' => $fechaCuota,
+        'cta_pag_cuota' => $r->comp_cant_cuota ?? 1,
+        'cta_pag_estado' => $estado,
+        'condicion_pago' => $r->condicion_pago
+    ]);
+
+    return response()->json([
+        'mensaje' => 'Registro de compra exitoso. Cuenta por pagar generada correctamente.',
+        'tipo' => 'success',
+        'registro' => $compracab
+    ], 200);
+}
 }
