@@ -117,15 +117,25 @@ class ItemController extends Controller
         ],200);
     }
 
-    public function buscar(Request $r){
-        return DB::select("
-            SELECT i.*, ti.tip_imp_nom, ti.tipo_imp_tasa, i.item_costo, i.id as item_id
+    public function buscar(Request $r) {
+        $productos = DB::select("
+            SELECT 
+                i.*, 
+                ti.tip_imp_nom, 
+                ti.tipo_imp_tasa, 
+                i.item_costo, 
+                i.id as item_id,
+                COALESCE(SUM(s.cantidad), 0) AS cantidad_disponible
             FROM items i
             JOIN tipos t ON t.id = i.tipo_id
             LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
+            LEFT JOIN stock s ON s.item_id = i.id
             WHERE i.item_decripcion ILIKE '%$r->item_decripcion%'
             AND t.tipo_descripcion = '$r->tipo_descripcion'
+            GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
         ");
-    }    
+        
+        return response()->json($productos);
+    }      
        
 }

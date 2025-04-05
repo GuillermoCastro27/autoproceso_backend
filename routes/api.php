@@ -27,6 +27,10 @@ use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\PresupuestoController;
 use App\Http\Controllers\PresupuestosDetalleController;
+use App\Http\Controllers\NotaRemiCompController;
+use App\Http\Controllers\NotaRemiComDetController;
+use App\Http\Controllers\MotivoAjusteController;
+use App\Http\Controllers\AjusteCabController;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,7 +63,7 @@ Route::post("pedidos/buscar",[PedidoController::class,"buscar"]);
 
 Route::post("pedidos-detalles/create",[PedidosDetalleController::class,"store"]);
 Route::get("pedidos-detalles/read/{id}",[PedidosDetalleController::class,"read"]);
-Route::put("pedidos-detalles/update/{pedido_id}/{item_id}",[PedidosDetalleController::class,"update"]);
+Route::put("pedidos-detalles/update/{pedido_id}",[PedidosDetalleController::class,"update"]);
 Route::delete("pedidos-detalles/delete/{pedido_id}/{item_id}",[PedidosDetalleController::class,"destroy"]);
 
 Route::post("ordencompracab/create",[OrdenCompraCabController::class,"store"]);
@@ -86,6 +90,16 @@ Route::get("compradet/read/{id}",[CompraDetController::class,"read"]);
 Route::put("compradet/update/{compra_cab_id}/{item_id}",[CompraDetController::class,"update"]);
 Route::delete("compradet/delete/{compra_cab_id}/{item_id}",[CompraDetController::class,"destroy"]);
 
+Route::get("notaremicomp/read",[NotaRemiCompController::class,"read"]);
+Route::post("notaremicomp/create",[NotaRemiCompController::class,"store"]);
+Route::put("notaremicomp/update/{id}",[NotaRemiCompController::class,"update"]);
+Route::put("notaremicomp/anular/{id}",[NotaRemiCompController::class,"anular"]);
+Route::put("notaremicomp/confirmar/{id}", [NotaRemiCompController::class, "confirmar"]);
+
+Route::post("notaremicomdet/create",[NotaRemiComDetController::class,"store"]);
+Route::get("notaremicomdet/read/{id}",[NotaRemiComDetController::class,"read"]);
+Route::put("notaremicomdet/update/{nota_remi_comp_id}",[NotaRemiComDetController::class,"update"]);
+Route::delete("notaremicomdet/delete/{nota_remi_comp_id}/{item_id}",[NotaRemiComDetController::class,"destroy"]);
 
 Route::post("ordencompradet/create",[OrdenCompraDetController::class,"store"]);
 Route::get("ordencompradet/read/{id}",[OrdenCompraDetController::class,"read"]);
@@ -138,6 +152,12 @@ Route::post("presupuestos-detalles/create",[PresupuestosDetalleController::class
 Route::put("presupuestos-detalles/update/{presupuesto_id}/{item_id}",[PresupuestosDetalleController::class,"update"]);
 Route::delete("presupuestos-detalles/delete/{presupuesto_id}/{item_id}",[PresupuestosDetalleController::class,"destroy"]);
 
+Route::post("ajus_cab/create",[AjusteCabController::class,"store"]);
+Route::get("ajus_cab/read",[AjusteCabController::class,"read"]);
+Route::put("ajus_cab/update/{id}",[AjusteCabController::class,"update"]);
+Route::put("ajus_cab/anular/{id}",[AjusteCabController::class,"anular"]);
+Route::put("ajus_cab/confirmar/{id}",[AjusteCabController::class,"confirmar"]);
+
 Route::get("perfiles/read",[PerfilController::class,"read"]);
 Route::post("perfiles/create",[PerfilController::class,"store"]);
 
@@ -182,6 +202,11 @@ Route::get("sucursal/read",[SucursalController::class,"read"]);
 Route::post("sucursal/create",[SucursalController::class,"store"]);
 Route::put("sucursal/update/{empresa_id}",[SucursalController::class,"update"]);
 Route::delete("sucursal/delete/{empresa_id}",[SucursalController::class,"destroy"]);
+
+Route::get("motivo_ajuste/read",[MotivoAjusteController::class,"read"]);
+Route::post("motivo_ajuste/create",[MotivoAjusteController::class,"store"]);
+Route::put("motivo_ajuste/update/{id}",[MotivoAjusteController::class,"update"]);
+Route::delete("motivo_ajuste/delete/{id}",[MotivoAjusteController::class,"destroy"]);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

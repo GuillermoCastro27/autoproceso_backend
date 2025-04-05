@@ -6,6 +6,11 @@ use App\Models\CompraCab;
 use App\Models\OrdenCompraCab; 
 use App\Models\CompraDet;
 use App\Models\CtasPagar;
+use App\Models\LibroCompras;
+use App\Models\Stock;
+use App\Models\Proveedor;
+use App\Models\TipoImpuesto;
+use App\Models\Deposito;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -291,15 +296,10 @@ public function confirmar(Request $r, $id) {
     $fechaCuota = now();
 
     if ($r->condicion_pago === 'CONTADO') {
-        $estado = 'Pagada'; // Establece el estado a "Pagada" si es contado
+        $estado = 'Pagada';
     } elseif ($r->condicion_pago === 'CREDITO' && $r->comp_intervalo_fecha_vence) {
         $fechaCuota = now()->addDays($r->comp_intervalo_fecha_vence);
     }
-
-    // Registrar los datos clave
-    Log::info("Fecha de la siguiente cuota calculada:", ['fechaCuota' => $fechaCuota]);
-    Log::info("Estado de la cuenta:", ['estado' => $estado]);
-    Log::info("Monto total con impuesto:", ['totalConImpuesto' => $totalConImpuesto]);
 
     // Crear registro en CtasPagar
     CtasPagar::create([
@@ -311,8 +311,107 @@ public function confirmar(Request $r, $id) {
         'condicion_pago' => $r->condicion_pago
     ]);
 
+    // Obtener los detalles de compra y actualizar stock y depósito
+    $detallesCompra = CompraDet::where('compra_cab_id', $compracab->id)->get();
+
+    foreach ($detallesCompra as $detalle) {
+        $stock = Stock::where('item_id', $detalle->item_id)->first();
+        $cantidadNueva = $detalle->comp_det_cantidad;
+
+        if ($stock) {
+            // Calcular espacio disponible en stock
+            $espacioDisponible = 30 - $stock->cantidad;
+
+            if ($cantidadNueva <= $espacioDisponible) {
+                // Si cabe en stock, solo sumamos
+                $stock->cantidad += $cantidadNueva;
+                $stock->save();
+            } else {
+                // Si supera 30, guardar el excedente en depósito
+                $stock->cantidad = 30;
+                $stock->save();
+
+                $cantidadExcedente = $cantidadNueva - $espacioDisponible;
+                $deposito = Deposito::where('item_id', $detalle->item_id)->first();
+
+                if ($deposito) {
+                    // Si el item ya está en depósito, solo actualizamos la cantidad
+                    $deposito->cantidad += $cantidadExcedente;
+                    $deposito->save();
+                } else {
+                    // Si no existe en depósito, creamos el registro
+                    Deposito::create([
+                        'item_id' => $detalle->item_id,
+                        'cantidad' => $cantidadExcedente
+                    ]);
+                }
+            }
+        } else {
+            // Si no hay stock registrado, se crea
+            if ($cantidadNueva <= 30) {
+                Stock::create([
+                    'item_id' => $detalle->item_id,
+                    'cantidad' => $cantidadNueva
+                ]);
+            } else {
+                // Si la cantidad supera 30, guardar en stock y el excedente en depósito
+                Stock::create([
+                    'item_id' => $detalle->item_id,
+                    'cantidad' => 30
+                ]);
+
+                $cantidadExcedente = $cantidadNueva - 30;
+                $deposito = Deposito::where('item_id', $detalle->item_id)->first();
+
+                if ($deposito) {
+                    // Si el item ya está en depósito, sumamos la cantidad
+                    $deposito->cantidad += $cantidadExcedente;
+                    $deposito->save();
+                } else {
+                    // Si no existe en depósito, lo creamos
+                    Deposito::create([
+                        'item_id' => $detalle->item_id,
+                        'cantidad' => $cantidadExcedente
+                    ]);
+                }
+            }
+        }
+    }
+
+    // Obtener el tipo de impuesto desde el detalle de compra
+    $compraDet = CompraDet::where('compra_cab_id', $compracab->id)->first();
+
+    if (!$compraDet) {
+        return response()->json(['error' => 'Detalle de compra no encontrado.'], 404);
+    }
+
+    // Obtener datos adicionales del proveedor
+    $proveedor = Proveedor::find($r->proveedor_id);
+    $provRazonSocial = $proveedor ? $proveedor->prov_razonsocial : null;
+    $provRuc = $proveedor ? $proveedor->prov_ruc : null;
+
+    // Obtener nombre del tipo de impuesto
+    $tipoImpuestoObj = TipoImpuesto::find($compraDet->tipo_impuesto_id);
+    $tipoImpuestoNombre = $tipoImpuestoObj ? $tipoImpuestoObj->tip_imp_nom : null;
+
+    // Insertar el registro en libro_compras con los nuevos campos
+    LibroCompras::create([
+        'compra_cab_id' => $compracab->id,
+        'libC_monto' => $totalConImpuesto,
+        'libC_fecha' => now(),
+        'libC_cuota' => $r->comp_cant_cuota ?? 1,
+        'proveedor_id' => $r->proveedor_id,
+        'prov_razonsocial' => $provRazonSocial,
+        'prov_ruc' => $provRuc,
+        'tipo_impuesto_id' => $compraDet->tipo_impuesto_id,
+        'tip_imp_nom' => $tipoImpuestoNombre,
+        'condicion_pago' => $r->condicion_pago,
+        'updated_at' => now(),
+        'created_at' => now()
+    ]);
+
     return response()->json([
-        'mensaje' => 'Registro de compra exitoso. Cuenta por pagar generada correctamente.',
+        'mensaje' => 'Compra registrada con éxito. Cuenta por pagar, Libro de Compras, Stock y Depósito actualizados',
         'tipo' => 'success',
         'registro' => $compracab
     ], 200);
