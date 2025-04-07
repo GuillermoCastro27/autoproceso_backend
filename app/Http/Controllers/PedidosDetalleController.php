@@ -47,6 +47,7 @@ public function store(Request $r) {
     ]);
 }
 
+
 public function update(Request $r, $pedidos_id) {
     // Actualizar el registro
     DB::table('pedidos_detalles') // Cambio de 'pedidos-detalles' a 'pedidos_detalles'

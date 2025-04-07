@@ -57,12 +57,5 @@ class MotivoAjusteController extends Controller
             'tipo'=>'success',
         ],200);
     }
-    public function buscar(Request $r){
-        return DB::select("select im.*, m.marc_nom, i.id AS item_id
-        FROM items i
-        JOIN item_marca im ON im.item_id = i.id
-        JOIN marca m ON m.id = im.marca_id
-        WHERE i.item_decripcion ILIKE '%$r->item_decripcion%'
-        AND m.marc_nom = '$r->marc_nom'");
-    }
+    
 }

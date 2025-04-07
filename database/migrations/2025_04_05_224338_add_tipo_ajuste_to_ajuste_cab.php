@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('ajuste_det', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+        Schema::table('ajuste_cab', function (Blueprint $table) {
+            $table->string('tipo_ajuste')->nullable();
         });
     }
 
@@ -22,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('ajuste_det');
+        Schema::table('ajuste_cab', function (Blueprint $table) {
+            //
+        });
     }
 };

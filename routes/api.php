@@ -31,6 +31,7 @@ use App\Http\Controllers\NotaRemiCompController;
 use App\Http\Controllers\NotaRemiComDetController;
 use App\Http\Controllers\MotivoAjusteController;
 use App\Http\Controllers\AjusteCabController;
+use App\Http\Controllers\AjusteDetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -157,6 +158,11 @@ Route::get("ajus_cab/read",[AjusteCabController::class,"read"]);
 Route::put("ajus_cab/update/{id}",[AjusteCabController::class,"update"]);
 Route::put("ajus_cab/anular/{id}",[AjusteCabController::class,"anular"]);
 Route::put("ajus_cab/confirmar/{id}",[AjusteCabController::class,"confirmar"]);
+
+Route::post("ajus_det/create",[AjusteDetController::class,"store"]);
+Route::get("ajus_det/read/{id}",[AjusteDetController::class,"read"]);
+Route::put("ajus_det/update/{pedido_id}",[AjusteDetController::class,"update"]);
+Route::delete("ajus_det/delete/{pedido_id}/{item_id}",[AjusteDetController::class,"destroy"]);
 
 Route::get("perfiles/read",[PerfilController::class,"read"]);
 Route::post("perfiles/create",[PerfilController::class,"store"]);

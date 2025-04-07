@@ -12,6 +12,7 @@ class AjusteCab extends Model
     protected $fillable = [
         'ajus_cab_fecha',
         'ajus_cab_estado', 
+        'tipo_ajuste',
         'user_id', 
         'empresa_id', 
         'sucursal_id', 
