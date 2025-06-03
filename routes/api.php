@@ -32,6 +32,8 @@ use App\Http\Controllers\NotaRemiComDetController;
 use App\Http\Controllers\MotivoAjusteController;
 use App\Http\Controllers\AjusteCabController;
 use App\Http\Controllers\AjusteDetController;
+use App\Http\Controllers\NotasComCabController;
+use App\Http\Controllers\NotasComDetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -73,8 +75,6 @@ Route::put("ordencompracab/update/{id}",[OrdenCompraCabController::class,"update
 Route::put("ordencompracab/anular/{id}",[OrdenCompraCabController::class,"anular"]);
 Route::delete("ordencompracab/delete/{id}",[OrdenCompraCabController::class,"eliminar"]);
 Route::put("ordencompracab/confirmar/{id}",[OrdenCompraCabController::class,"confirmar"]);
-Route::put("ordencompracab/rechazar/{id}",[OrdenCompraCabController::class,"rechazar"]);
-Route::put("ordencompracab/aprobar/{id}",[OrdenCompraCabController::class,"aprobar"]);
 Route::post("ordencompracab/buscar",[OrdenCompraCabController::class,"buscar"]);
 
 
@@ -82,9 +82,8 @@ Route::post("compras/create", [CompraCabController::class, "store"]);
 Route::get("compras/read", [CompraCabController::class, "read"]);
 Route::put("compras/update/{id}", [CompraCabController::class, "update"]);
 Route::put("compras/anular/{id}", [CompraCabController::class, "anular"]);
-Route::put("compras/rechazar/{id}",[CompraCabController::class,"rechazar"]);
-Route::put("compras/aprobar/{id}",[CompraCabController::class,"aprobar"]);
 Route::put("compras/confirmar/{id}", [CompraCabController::class, "confirmar"]);
+Route::post("compras/buscar", [CompraCabController::class, "buscar"]);
 
 Route::post("compradet/create",[CompraDetController::class,"store"]);
 Route::get("compradet/read/{id}",[CompraDetController::class,"read"]);
@@ -163,6 +162,18 @@ Route::post("ajus_det/create",[AjusteDetController::class,"store"]);
 Route::get("ajus_det/read/{id}",[AjusteDetController::class,"read"]);
 Route::put("ajus_det/update/{pedido_id}",[AjusteDetController::class,"update"]);
 Route::delete("ajus_det/delete/{pedido_id}/{item_id}",[AjusteDetController::class,"destroy"]);
+
+Route::post("notacompcab/create",[NotasComCabController::class,"store"]);
+Route::get("notacompcab/read",[NotasComCabController::class,"read"]);
+Route::put("notacompcab/update/{id}",[NotasComCabController::class,"update"]);
+Route::put("notacompcab/anular/{id}",[NotasComCabController::class,"anular"]);
+Route::delete("notacompcab/delete/{id}",[NotasComCabController::class,"eliminar"]);
+Route::put("notacompcab/confirmar/{id}",[NotasComCabController::class,"confirmar"]);
+
+Route::post("notacompdet/create",[NotasComDetController::class,"store"]);
+Route::get("notacompdet/read/{id}",[NotasComDetController::class,"read"]);
+Route::put("notacompdet/update/{notas_comp_cab_id}/{item_id}",[NotasComDetController::class,"update"]);
+Route::delete("notacompdet/delete/{notas_comp_cab_id}/{item_id}",[NotasComDetController::class,"destroy"]);
 
 Route::get("perfiles/read",[PerfilController::class,"read"]);
 Route::post("perfiles/create",[PerfilController::class,"store"]);

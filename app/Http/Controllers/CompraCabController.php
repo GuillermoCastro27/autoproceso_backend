@@ -416,4 +416,53 @@ public function confirmar(Request $r, $id) {
         'registro' => $compracab
     ], 200);
 }
+public function buscar(Request $r)
+{
+    $userId = $r->input('user_id'); // Obtener el valor desde la request
+    $userName = $r->input('name');  // Obtener el valor del nombre
+
+    return DB::select("
+        SELECT 
+            cc.id AS compra_cab_id,
+            TO_CHAR(cc.comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS comp_fecha,
+            COALESCE(to_char(cc.comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') AS comp_intervalo_fecha_vence,
+            cc.comp_estado,
+            cc.condicion_pago,
+            COALESCE(cc.comp_cant_cuota::varchar, '0') AS comp_cant_cuota,
+            cc.sucursal_id,
+            s.suc_razon_social AS suc_razon_social,
+            cc.empresa_id,
+            e.emp_razon_social AS emp_razon_social,
+            cc.user_id,
+            cc.created_at,
+            cc.updated_at,
+            u.name,
+            u.email,
+            cc.proveedor_id,
+            prov.prov_razonsocial,
+            prov.prov_ruc,
+            prov.prov_telefono,
+            prov.prov_correo,
+            'COMPRA NRO: ' || TO_CHAR(cc.id, '0000000') || ' VENCE EL: ' || TO_CHAR(cc.comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS compra,
+            COALESCE(to_char(cc.comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') as nota_comp_intervalo_fecha_vence,
+            COALESCE(cc.comp_cant_cuota::varchar, '0') as nota_comp_cantidad_cuota,
+            cc.condicion_pago
+        FROM 
+            compra_cab cc
+        JOIN 
+            users u ON u.id = cc.user_id
+        JOIN 
+            sucursal s ON s.empresa_id = cc.sucursal_id
+        JOIN 
+            empresa e ON e.id = cc.empresa_id
+        JOIN 
+            proveedores prov ON prov.id = cc.proveedor_id
+        WHERE 
+            cc.comp_estado = 'RECIBIDO'
+        AND 
+            cc.user_id = ?
+        AND 
+            u.name ILIKE ?
+    ", [$userId, '%' . $userName . '%']);
+}
 }
