@@ -400,6 +400,7 @@ public function confirmar(Request $r, $id) {
         'libC_monto' => $totalConImpuesto,
         'libC_fecha' => now(),
         'libC_cuota' => $r->comp_cant_cuota ?? 1,
+        'libC_tipo_nota' => $r->libC_tipo_nota,
         'proveedor_id' => $r->proveedor_id,
         'prov_razonsocial' => $provRazonSocial,
         'prov_ruc' => $provRuc,

@@ -12,6 +12,7 @@ use App\Models\LibroCompras;
 use App\Models\Proveedor;
 use App\Models\TipoImpuesto;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 
 class NotasComCabController extends Controller
@@ -205,7 +206,7 @@ public function anular(Request $r, $id){
         'registro'=> $notacompcab
     ],200);
 }
-    public function confirmar(Request $r, $id)
+    public function confirmar(Request $r, $id) 
 {
     $notacompcab = NotaCompCab::find($id);
 
@@ -244,42 +245,78 @@ public function anular(Request $r, $id){
     DB::beginTransaction();
 
     try {
-        // Actualizar nota de compra
         $notacompcab->nota_comp_estado = 'CONFIRMADO';
         $notacompcab->update($datosValidados);
         $notacompcab->save();
 
-        // Si la condición de pago NO es contado, crear ctas_pagar
-        if ($r->nota_comp_condicion_pago !== 'CONTADO') {
-            $detalles = NotaCompDet::where('nota_comp_cab_id', $notacompcab->id)->get();
+        \Log::info('confirmar(): compra_cab_id y nota_comp_tipo', [
+            'compra_cab_id' => $notacompcab->compra_cab_id,
+            'nota_comp_tipo' => $notacompcab->nota_comp_tipo
+        ]);
 
-            $totalConImpuesto = 0;
+        $tipoNota = trim($notacompcab->nota_comp_tipo); // "Crédito" o "Debito"
+
+        if (in_array($tipoNota, ['Crédito', 'Debito'])) {
+            $LibroCompras = LibroCompras::where('compra_cab_id', $notacompcab->compra_cab_id)->first();
+            $CtasPagar = CtasPagar::where('compra_cab_id', $notacompcab->compra_cab_id)->first();
+
+            if (!$LibroCompras || !$CtasPagar) {
+                return response()->json([
+                    'mensaje' => 'Faltan registros relacionados: Libro de compras o Cuenta por pagar no encontrados',
+                    'tipo' => 'error'
+                ], 404);
+            }
+
+            $detalles = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->with('tipo_impuesto')->get();
+            $totalNota = 0;
 
             foreach ($detalles as $detalle) {
-                $subtotal = $detalle->not_compd_cant * $detalle->not_compd_costo;
-                $impuesto = $subtotal * ($detalle->tipo_impuesto->tasa / 100);
-                $totalConImpuesto += $subtotal + $impuesto;
+                $subtotal = $detalle->notas_comp_det_cantidad * $detalle->notas_comp_det_costo;
+                $impuesto = 0;
+
+                if ($detalle->tipo_impuesto) {
+                    $impuesto = $subtotal * ($detalle->tipo_impuesto->tasa / 100);
+                }
+
+                $totalNota += $subtotal + $impuesto;
+
+                // ✅ Stock y Depósito
+                if ($tipoNota === 'Debito') {
+                    $this->agregarAlStockYDeposito($detalle->item_id, $detalle->notas_comp_det_cantidad);
+                } elseif ($tipoNota === 'Crédito') {
+                    $this->restarDeStockYDeposito($detalle->item_id, $detalle->notas_comp_det_cantidad);
+                }
             }
 
-            $cantidadCuotas = $r->nota_comp_cant_cuota ?? 1;
-            $intervaloDias = $r->nota_comp_intervalo_fecha_vence ?? 30;
+            \Log::info('Total nota calculado: ' . $totalNota);
 
-            $montoPorCuota = round($totalConImpuesto / $cantidadCuotas, 2);
-            $fechaBase = new \DateTime($r->nota_comp_fecha);
+            // Actualizar libro de compras
+            $LibroCompras->libC_tipo_nota = $tipoNota === 'Crédito' ? 'NC' : 'ND';
+            $LibroCompras->libC_monto = $tipoNota === 'Crédito'
+                ? max(0, $LibroCompras->libC_monto - $totalNota)
+                : $LibroCompras->libC_monto + $totalNota;
 
-            for ($i = 0; $i < $cantidadCuotas; $i++) {
-                $fechaCuota = clone $fechaBase;
-                $fechaCuota->modify("+".($intervaloDias * $i)." days");
-
-                CtasPagar::create([
-                    'compra_cab_id' => $notacompcab->compra_cab_id,
-                    'cta_pag_monto' => $montoPorCuota,
-                    'cta_pag_fecha' => $fechaCuota->format('Y-m-d'),
-                    'cta_pag_cuota' => $i + 1,
-                    'cta_pag_estado' => 'PENDIENTE',
-                    'condicion_pago' => $r->nota_comp_condicion_pago
-                ]);
+            if ($notacompcab->proveedor) {
+                $LibroCompras->prov_razonsocial = $notacompcab->proveedor->prov_razonsocial ?? null;
+                $LibroCompras->prov_ruc = $notacompcab->proveedor->prov_ruc ?? null;
             }
+
+            $detalleEjemplo = $detalles->first();
+            if ($detalleEjemplo && $detalleEjemplo->tipo_impuesto) {
+                $LibroCompras->tip_imp_nom = $detalleEjemplo->tipo_impuesto->tip_imp_nom;
+            }
+
+            $LibroCompras->save();
+
+            // Actualizar cuentas a pagar
+            $montoAntes = $CtasPagar->cta_pag_monto;
+            $CtasPagar->cta_pag_monto = $tipoNota === 'Crédito'
+                ? $CtasPagar->cta_pag_monto + $totalNota
+                : max(0, $CtasPagar->cta_pag_monto - $totalNota);
+
+            $CtasPagar->save();
+
+            \Log::info('CtasPagar actualizada. Antes: ' . $montoAntes . ', Después: ' . $CtasPagar->cta_pag_monto);
         }
 
         DB::commit();
@@ -296,6 +333,50 @@ public function anular(Request $r, $id){
             'mensaje' => 'Error al confirmar nota de compra: ' . $e->getMessage(),
             'tipo' => 'error'
         ], 500);
+    }
+}
+protected function agregarAlStockYDeposito($itemId, $cantidad)
+{
+    $stock = Stock::firstOrCreate(['item_id' => $itemId], ['cantidad' => 0]);
+    $deposito = Deposito::firstOrCreate(['item_id' => $itemId], ['cantidad' => 0]);
+
+    $limite = 30;
+    $espacio = $limite - $stock->cantidad;
+
+    $aStock = min($cantidad, $espacio);
+    $stock->cantidad += $aStock;
+    $stock->save();
+
+    $resto = $cantidad - $aStock;
+    if ($resto > 0) {
+        $deposito->cantidad += $resto;
+        $deposito->save();
+    }
+}
+
+protected function restarDeStockYDeposito($itemId, $cantidad)
+{
+    $stock = Stock::where('item_id', $itemId)->first();
+    $deposito = Deposito::where('item_id', $itemId)->first();
+
+    $restante = $cantidad;
+
+    if ($deposito && $deposito->cantidad > 0) {
+        $aRestar = min($deposito->cantidad, $restante);
+        $deposito->cantidad -= $aRestar;
+        $deposito->save();
+        $restante -= $aRestar;
+    }
+
+    if ($restante > 0 && $stock && $stock->cantidad > 0) {
+        $aRestar = min($stock->cantidad, $restante);
+        $stock->cantidad -= $aRestar;
+        $stock->save();
+        $restante -= $aRestar;
+    }
+
+    if ($restante > 0) {
+        throw new \Exception("No hay suficiente stock ni en depósito para restar $cantidad unidades del item ID $itemId.");
     }
 }
 

@@ -22,4 +22,9 @@ class NotaCompCab extends Model
         'sucursal_id'
     ];
     protected $table = 'notas_comp_cab';
+
+    public function compra()
+{
+    return $this->belongsTo(CompraCab::class, 'compra_cab_id');
+}
 }

@@ -23,4 +23,8 @@ class CompraCab extends Model
         'empresa_id',
         'sucursal_id'
     ];
+    public function proveedor()
+{
+    return $this->belongsTo(Proveedor::class, 'proveedor_id');
+}
 }
