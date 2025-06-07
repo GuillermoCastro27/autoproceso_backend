@@ -18,8 +18,6 @@ class NotaCompDet extends Model
         'notas_comp_det_cantidad',
         'notas_comp_det_costo'
     ];
-
-    protected $primaryKey = ['notas_comp_cab_id', 'item_id'];
     public $incrementing = false;
 
     public function tipo_impuesto()

@@ -48,23 +48,22 @@ public function update(Request $request, $notas_comp_cab_id, $item_id)
         'notas_comp_det_costo' => 'required|numeric',
     ]);
 
-    $detalle = NotaCompDet::where('notas_comp_cab_id', $notas_comp_cab_id)
+    // Usar query builder directamente en lugar del modelo
+    $actualizado = DB::table('notas_comp_det')
+        ->where('notas_comp_cab_id', $notas_comp_cab_id)
         ->where('item_id', $item_id)
-        ->first();
+        ->update(array_merge($datosValidados, ['updated_at' => now()]));
 
-    if (!$detalle) {
+    if ($actualizado === 0) {
         return response()->json([
             'mensaje' => 'Detalle no encontrado',
             'tipo' => 'error'
         ], 404);
     }
 
-    $detalle->update($datosValidados);
-
     return response()->json([
         'mensaje' => 'Registro modificado con éxito',
-        'tipo' => 'success',
-        'registro' => $detalle
+        'tipo' => 'success'
     ], 200);
 }
 

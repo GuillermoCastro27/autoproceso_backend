@@ -249,11 +249,6 @@ public function anular(Request $r, $id){
         $notacompcab->update($datosValidados);
         $notacompcab->save();
 
-        \Log::info('confirmar(): compra_cab_id y nota_comp_tipo', [
-            'compra_cab_id' => $notacompcab->compra_cab_id,
-            'nota_comp_tipo' => $notacompcab->nota_comp_tipo
-        ]);
-
         $tipoNota = trim($notacompcab->nota_comp_tipo); // "Crédito" o "Debito"
 
         if (in_array($tipoNota, ['Crédito', 'Debito'])) {
@@ -268,19 +263,20 @@ public function anular(Request $r, $id){
             }
 
             $detalles = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->with('tipo_impuesto')->get();
-            $totalNota = 0;
+            $totalImpuesto = 0;
 
             foreach ($detalles as $detalle) {
                 $subtotal = $detalle->notas_comp_det_cantidad * $detalle->notas_comp_det_costo;
-                $impuesto = 0;
 
                 if ($detalle->tipo_impuesto) {
-                    $impuesto = $subtotal * ($detalle->tipo_impuesto->tasa / 100);
+                    if ($detalle->tipo_impuesto->tip_imp_nom === 'IVA10') {
+                        $totalImpuesto += $subtotal / 11;
+                    } elseif ($detalle->tipo_impuesto->tip_imp_nom === 'IVA5') {
+                        $totalImpuesto += $subtotal / 21;
+                    }
                 }
 
-                $totalNota += $subtotal + $impuesto;
-
-                // ✅ Stock y Depósito
+                // Actualiza stock o depósito según tipo de nota
                 if ($tipoNota === 'Debito') {
                     $this->agregarAlStockYDeposito($detalle->item_id, $detalle->notas_comp_det_cantidad);
                 } elseif ($tipoNota === 'Crédito') {
@@ -288,13 +284,9 @@ public function anular(Request $r, $id){
                 }
             }
 
-            \Log::info('Total nota calculado: ' . $totalNota);
-
-            // Actualizar libro de compras
+            // Asigna valores directamente calculados desde detalle
             $LibroCompras->libC_tipo_nota = $tipoNota === 'Crédito' ? 'NC' : 'ND';
-            $LibroCompras->libC_monto = $tipoNota === 'Crédito'
-                ? max(0, $LibroCompras->libC_monto - $totalNota)
-                : $LibroCompras->libC_monto + $totalNota;
+            $LibroCompras->libC_monto = $totalImpuesto;
 
             if ($notacompcab->proveedor) {
                 $LibroCompras->prov_razonsocial = $notacompcab->proveedor->prov_razonsocial ?? null;
@@ -308,15 +300,12 @@ public function anular(Request $r, $id){
 
             $LibroCompras->save();
 
-            // Actualizar cuentas a pagar
-            $montoAntes = $CtasPagar->cta_pag_monto;
+            // Ajuste a cuentas a pagar
             $CtasPagar->cta_pag_monto = $tipoNota === 'Crédito'
-                ? $CtasPagar->cta_pag_monto + $totalNota
-                : max(0, $CtasPagar->cta_pag_monto - $totalNota);
+                ? $CtasPagar->cta_pag_monto + $totalImpuesto
+                : max(0, $CtasPagar->cta_pag_monto - $totalImpuesto);
 
             $CtasPagar->save();
-
-            \Log::info('CtasPagar actualizada. Antes: ' . $montoAntes . ', Después: ' . $CtasPagar->cta_pag_monto);
         }
 
         DB::commit();
@@ -328,7 +317,6 @@ public function anular(Request $r, $id){
         ], 200);
     } catch (\Exception $e) {
         DB::rollBack();
-
         return response()->json([
             'mensaje' => 'Error al confirmar nota de compra: ' . $e->getMessage(),
             'tipo' => 'error'
