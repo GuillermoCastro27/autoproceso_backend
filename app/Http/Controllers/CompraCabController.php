@@ -466,4 +466,45 @@ public function buscar(Request $r)
             u.name ILIKE ?
     ", [$userId, '%' . $userName . '%']);
 }
+public function buscarInforme(Request $r)
+{
+    $desde = $r->query('desde');
+    $hasta = $r->query('hasta');
+
+    return DB::select("
+        SELECT 
+            cc.id,
+            TO_CHAR(cc.comp_fecha, 'dd/mm/yyyy') AS fecha,
+            CASE 
+                WHEN cc.comp_intervalo_fecha_vence IS NOT NULL 
+                THEN TO_CHAR(cc.comp_intervalo_fecha_vence, 'dd/mm/yyyy')
+                ELSE 'N/A'
+            END AS entrega,
+            cc.comp_estado AS estado,
+            cc.condicion_pago,
+            COALESCE(cc.comp_cant_cuota::varchar, '0') AS cuotas,
+            u.name AS encargado,
+            s.suc_razon_social AS sucursal,
+            e.emp_razon_social AS empresa,
+            prov.prov_razonsocial AS proveedor,
+            prov.prov_ruc AS ruc,
+            'ORDEN DE COMPRA NRO: ' || TO_CHAR(occ.id, '0000000') || 
+            CASE 
+                WHEN occ.ord_comp_intervalo_fecha_vence IS NOT NULL 
+                THEN ' VENCE EL: ' || TO_CHAR(occ.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS') 
+                ELSE ' N/A' 
+            END AS ordencompra
+        FROM compra_cab cc
+        JOIN users u ON u.id = cc.user_id
+        JOIN sucursal s ON s.empresa_id = cc.sucursal_id
+        JOIN empresa e ON e.id = cc.empresa_id
+        LEFT JOIN orden_compra_cab occ ON occ.id = cc.orden_compra_cab_id
+        LEFT JOIN presupuestos p ON p.id = occ.presupuesto_id
+        LEFT JOIN proveedores prov ON prov.id = p.proveedor_id
+        WHERE cc.comp_estado = 'PROCESADO'
+            AND cc.comp_fecha BETWEEN ? AND ?
+        ORDER BY cc.comp_fecha ASC
+    ", [$desde, $hasta]);
+}
+
 }

@@ -178,5 +178,29 @@ class AjusteCabController extends Controller
             'registro' => $ajustecab
         ], 200);
     }        
-    
+    public function buscarInforme(Request $r)
+{
+    $desde = $r->query('desde');
+    $hasta = $r->query('hasta');
+
+    return DB::select("
+        SELECT 
+            ac.id,
+            TO_CHAR(ac.ajus_cab_fecha, 'dd/mm/yyyy') AS fecha,
+            ac.ajus_cab_estado AS estado,
+            ac.tipo_ajuste AS tipo,
+            u.name AS encargado,
+            s.suc_razon_social AS sucursal,
+            e.emp_razon_social AS empresa,
+            ma.descripcion AS motivo
+        FROM ajuste_cab ac
+        JOIN users u ON u.id = ac.user_id
+        JOIN sucursal s ON s.empresa_id = ac.sucursal_id
+        JOIN empresa e ON e.id = ac.empresa_id
+        JOIN motivo_ajuste ma ON ma.id = ac.motivo_ajuste_id
+        WHERE ac.ajus_cab_estado = 'CONFIRMADO'
+        AND ac.ajus_cab_fecha BETWEEN ? AND ?
+        ORDER BY ac.ajus_cab_fecha ASC
+    ", [$desde, $hasta]);
+}
 }

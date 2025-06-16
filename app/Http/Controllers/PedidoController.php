@@ -167,4 +167,30 @@ WHERE
     p.ped_estado = 'CONFIRMADO'
     and p.user_id = {$r->user_id} and u.name ilike'%{$r->name}%'");
     }
+    public function buscarInforme(Request $request)
+{
+    $desde = $request->query('desde');
+    $hasta = $request->query('hasta');
+
+    return DB::select("
+        SELECT 
+            p.id,
+            to_char(p.ped_fecha, 'dd/mm/yyyy') AS fecha,
+            to_char(p.ped_vence, 'dd/mm/yyyy') AS entrega,
+            p.ped_pbservaciones AS observaciones,
+            p.ped_estado AS estado,
+            u.name AS encargado,
+            s.suc_razon_social AS sucursal,
+            e.emp_razon_social AS empresa
+        FROM pedidos p
+        JOIN users u ON u.id = p.user_id
+        JOIN sucursal s ON s.empresa_id = p.sucursal_id
+        JOIN empresa e ON e.id = p.empresa_id
+        WHERE p.ped_estado = 'PROCESADO'
+            AND p.ped_fecha BETWEEN ? AND ?
+        ORDER BY p.ped_fecha ASC
+    ", [$desde, $hasta]);
 }
+
+}
+

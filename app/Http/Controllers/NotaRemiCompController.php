@@ -116,4 +116,27 @@ class NotaRemiCompController extends Controller
             'registro'=> $notaremicomp
         ],200);
     }
+    public function buscarInforme(Request $r)
+{
+    $desde = $r->query('desde');
+    $hasta = $r->query('hasta');
+
+    return DB::select("
+        SELECT 
+            nrc.id,
+            TO_CHAR(nrc.nota_remi_fecha, 'dd/mm/yyyy') AS fecha,
+            nrc.nota_remi_observaciones AS observaciones,
+            nrc.nota_remi_estado AS estado,
+            u.name AS encargado,
+            s.suc_razon_social AS sucursal,
+            e.emp_razon_social AS empresa
+        FROM nota_remi_comp nrc
+        JOIN users u ON u.id = nrc.user_id
+        JOIN sucursal s ON s.empresa_id = nrc.sucursal_id
+        JOIN empresa e ON e.id = nrc.empresa_id
+        WHERE nrc.nota_remi_estado = 'CONFIRMADO'
+        AND nrc.nota_remi_fecha BETWEEN ? AND ?
+        ORDER BY nrc.nota_remi_fecha ASC
+    ", [$desde, $hasta]);
+}
 }

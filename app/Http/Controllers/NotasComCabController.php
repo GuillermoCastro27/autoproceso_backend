@@ -367,6 +367,38 @@ protected function restarDeStockYDeposito($itemId, $cantidad)
         throw new \Exception("No hay suficiente stock ni en depósito para restar $cantidad unidades del item ID $itemId.");
     }
 }
+public function buscarInforme(Request $r)
+{
+    $desde = $r->query('desde');
+    $hasta = $r->query('hasta');
+
+    return DB::select("
+        SELECT 
+            ncc.id,
+            TO_CHAR(ncc.nota_comp_fecha, 'dd/mm/yyyy') AS fecha,
+            COALESCE(TO_CHAR(ncc.nota_comp_intervalo_fecha_vence, 'dd/mm/yyyy'), 'N/A') AS entrega,
+            ncc.nota_comp_tipo AS tipo,
+            ncc.nota_comp_observaciones AS observaciones,
+            ncc.nota_comp_estado AS estado,
+            ncc.nota_comp_condicion_pago AS condicion_pago,
+            COALESCE(ncc.nota_comp_cant_cuota::varchar, '0') AS cuotas,
+            u.name AS encargado,
+            s.suc_razon_social AS sucursal,
+            e.emp_razon_social AS empresa,
+            COALESCE(p.prov_razonsocial, 'SIN PROVEEDOR') AS proveedor,
+            COALESCE(p.prov_ruc, 'SIN RUC') AS ruc,
+            COALESCE('COMPRA NRO: ' || TO_CHAR(cc.id, '0000000'), 'SIN COMPRA') AS compra
+        FROM notas_comp_cab ncc
+        JOIN users u ON u.id = ncc.user_id
+        JOIN sucursal s ON s.empresa_id = ncc.sucursal_id
+        JOIN empresa e ON e.id = ncc.empresa_id
+        LEFT JOIN compra_cab cc ON cc.id = ncc.compra_cab_id
+        LEFT JOIN proveedores p ON p.id = cc.proveedor_id
+        WHERE ncc.nota_comp_estado = 'CONFIRMADO'
+            AND ncc.nota_comp_fecha BETWEEN ? AND ?
+        ORDER BY ncc.nota_comp_fecha ASC
+    ", [$desde, $hasta]);
+}
 
 
 }

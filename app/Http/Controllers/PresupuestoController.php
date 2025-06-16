@@ -207,5 +207,35 @@ class PresupuestoController extends Controller
                 u.name ILIKE ?
         ", [$userId, '%' . $userName . '%']); // Utilizar bindings seguros
     }
-                 
+    public function buscarInforme(Request $r)
+{
+    $desde = $r->query('desde');
+    $hasta = $r->query('hasta');
+
+    return DB::select("
+        SELECT 
+            p.id,
+            TO_CHAR(p.pre_fecha, 'dd/mm/yyyy') AS fecha,
+            TO_CHAR(p.pre_vence, 'dd/mm/yyyy') AS entrega,
+            p.pre_observaciones AS observaciones,
+            p.pre_estado AS estado,
+            u.name AS encargado,
+            s.suc_razon_social AS sucursal,
+            e.emp_razon_social AS empresa,
+            prov.prov_razonsocial AS proveedor,
+            prov.prov_ruc AS ruc,
+            'PRESUPUESTO DE PEDIDO NRO: ' || TO_CHAR(p.pedido_id, '0000000') || 
+            ' VENCE EL: ' || TO_CHAR(p3.ped_vence, 'dd/mm/yyyy') || 
+            ' (' || p3.ped_pbservaciones || ')' AS pedido
+        FROM presupuestos p
+        JOIN users u ON u.id = p.user_id
+        JOIN pedidos p3 ON p3.id = p.pedido_id
+        JOIN sucursal s ON s.empresa_id = p.sucursal_id
+        JOIN empresa e ON e.id = p.empresa_id
+        JOIN proveedores prov ON prov.id = p.proveedor_id
+        WHERE p.pre_estado = 'PROCESADO'
+            AND p.pre_fecha BETWEEN ? AND ?
+        ORDER BY p.pre_fecha ASC
+    ", [$desde, $hasta]);
+}            
 }

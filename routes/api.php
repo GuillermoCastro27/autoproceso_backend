@@ -6,6 +6,7 @@ use App\Http\Controllers\OrdenCompraCabController;
 use App\Http\Controllers\OrdenCompraDetController;
 use App\Http\Controllers\CompraCabController;
 use App\Http\Controllers\CompraDetController;
+use App\Http\Controllers\LibroComprasController;
 use App\Http\Controllers\FuncionarioController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\SucursalController;
@@ -63,6 +64,7 @@ Route::put("pedidos/anular/{id}",[PedidoController::class,"anular"]);
 Route::delete("pedidos/delete/{id}",[PedidoController::class,"eliminar"]);
 Route::put("pedidos/confirmar/{id}",[PedidoController::class,"confirmar"]);
 Route::post("pedidos/buscar",[PedidoController::class,"buscar"]);
+Route::get("pedidos/buscar-informe", [PedidoController::class, "buscarInforme"]);
 
 Route::post("pedidos-detalles/create",[PedidosDetalleController::class,"store"]);
 Route::get("pedidos-detalles/read/{id}",[PedidosDetalleController::class,"read"]);
@@ -76,6 +78,8 @@ Route::put("ordencompracab/anular/{id}",[OrdenCompraCabController::class,"anular
 Route::delete("ordencompracab/delete/{id}",[OrdenCompraCabController::class,"eliminar"]);
 Route::put("ordencompracab/confirmar/{id}",[OrdenCompraCabController::class,"confirmar"]);
 Route::post("ordencompracab/buscar",[OrdenCompraCabController::class,"buscar"]);
+Route::get("ordenes_compras/buscar-informe", [OrdenCompraCabController::class, "buscarInforme"]);
+
 
 
 Route::post("compras/create", [CompraCabController::class, "store"]);
@@ -84,6 +88,7 @@ Route::put("compras/update/{id}", [CompraCabController::class, "update"]);
 Route::put("compras/anular/{id}", [CompraCabController::class, "anular"]);
 Route::put("compras/confirmar/{id}", [CompraCabController::class, "confirmar"]);
 Route::post("compras/buscar", [CompraCabController::class, "buscar"]);
+Route::get("compras/buscar-informe", [CompraCabController::class, "buscarInforme"]);
 
 Route::post("compradet/create",[CompraDetController::class,"store"]);
 Route::get("compradet/read/{id}",[CompraDetController::class,"read"]);
@@ -95,6 +100,7 @@ Route::post("notaremicomp/create",[NotaRemiCompController::class,"store"]);
 Route::put("notaremicomp/update/{id}",[NotaRemiCompController::class,"update"]);
 Route::put("notaremicomp/anular/{id}",[NotaRemiCompController::class,"anular"]);
 Route::put("notaremicomp/confirmar/{id}", [NotaRemiCompController::class, "confirmar"]);
+Route::get("notaremicomp/buscar-informe", [NotaRemiCompController::class, "buscarInforme"]);
 
 Route::post("notaremicomdet/create",[NotaRemiComDetController::class,"store"]);
 Route::get("notaremicomdet/read/{id}",[NotaRemiComDetController::class,"read"]);
@@ -145,6 +151,8 @@ Route::put("presupuesto/confirmar/{id}",[PresupuestoController::class,"confirmar
 Route::put("presupuesto/rechazar/{id}",[PresupuestoController::class,"rechazar"]);
 Route::put("presupuesto/aprobar/{id}",[PresupuestoController::class,"aprobar"]);
 Route::post("presupuesto/buscar",[PresupuestoController::class,"buscar"]);
+Route::get("presupuestos/buscar-informe", [PresupuestoController::class, "buscarInforme"]);
+
 
 
 Route::get("presupuestos-detalles/read/{id}",[PresupuestosDetalleController::class,"read"]);
@@ -157,6 +165,7 @@ Route::get("ajus_cab/read",[AjusteCabController::class,"read"]);
 Route::put("ajus_cab/update/{id}",[AjusteCabController::class,"update"]);
 Route::put("ajus_cab/anular/{id}",[AjusteCabController::class,"anular"]);
 Route::put("ajus_cab/confirmar/{id}",[AjusteCabController::class,"confirmar"]);
+Route::get("ajus_cab/buscar-informe", [AjusteCabController::class, "buscarInforme"]);
 
 Route::post("ajus_det/create",[AjusteDetController::class,"store"]);
 Route::get("ajus_det/read/{id}",[AjusteDetController::class,"read"]);
@@ -169,6 +178,7 @@ Route::put("notacompcab/update/{id}",[NotasComCabController::class,"update"]);
 Route::put("notacompcab/anular/{id}",[NotasComCabController::class,"anular"]);
 Route::delete("notacompcab/delete/{id}",[NotasComCabController::class,"eliminar"]);
 Route::put("notacompcab/confirmar/{id}",[NotasComCabController::class,"confirmar"]);
+Route::get("notacompcab/buscar-informe", [NotasComCabController::class, "buscarInforme"]);
 
 Route::post("notacompdet/create",[NotasComDetController::class,"store"]);
 Route::get("notacompdet/read/{id}",[NotasComDetController::class,"read"]);
@@ -224,6 +234,9 @@ Route::get("motivo_ajuste/read",[MotivoAjusteController::class,"read"]);
 Route::post("motivo_ajuste/create",[MotivoAjusteController::class,"store"]);
 Route::put("motivo_ajuste/update/{id}",[MotivoAjusteController::class,"update"]);
 Route::delete("motivo_ajuste/delete/{id}",[MotivoAjusteController::class,"destroy"]);
+
+
+Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

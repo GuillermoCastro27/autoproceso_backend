@@ -303,4 +303,37 @@ public function buscar(Request $r,)
             u.name ILIKE ?
     ", [$userId, '%' . $userName . '%']); // Utilizar bindings para evitar SQL Injection
 }
+public function buscarInforme(Request $r)
+{
+    $desde = $r->query('desde');
+    $hasta = $r->query('hasta');
+
+    return DB::select("
+        SELECT 
+            o.id,
+            TO_CHAR(o.ord_comp_fecha, 'dd/mm/yyyy') AS fecha,
+            COALESCE(TO_CHAR(o.ord_comp_intervalo_fecha_vence, 'dd/mm/yyyy'), 'N/A') AS entrega,
+            o.ord_comp_estado AS estado,
+            o.condicion_pago,
+            COALESCE(o.ord_comp_cant_cuota::varchar, '0') AS cuotas,
+            u.name AS encargado,
+            s.suc_razon_social AS sucursal,
+            e.emp_razon_social AS empresa,
+            prov.prov_razonsocial AS proveedor,
+            prov.prov_ruc AS ruc,
+            'PRESUPUESTO NRO: ' || TO_CHAR(pr.id, '0000000') || 
+            ' VENCE EL: ' || COALESCE(TO_CHAR(pr.pre_vence, 'dd/mm/yyyy'), 'N/A') || 
+            ' (' || pr.pre_observaciones || ')' AS presupuesto
+        FROM orden_compra_cab o
+        JOIN users u ON u.id = o.user_id
+        JOIN sucursal s ON s.empresa_id = o.sucursal_id
+        JOIN empresa e ON e.id = o.empresa_id
+        JOIN presupuestos pr ON pr.id = o.presupuesto_id
+        JOIN proveedores prov ON prov.id = pr.proveedor_id
+        WHERE o.ord_comp_estado = 'PROCESADO'
+        AND o.ord_comp_fecha BETWEEN ? AND ?
+        ORDER BY o.ord_comp_fecha ASC
+    ", [$desde, $hasta]);
+}
+
 }
