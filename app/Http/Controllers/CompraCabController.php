@@ -144,62 +144,130 @@ class CompraCabController extends Controller
     }
 
     public function anular(Request $r, $id) {
-        // Buscar el registro por el ID
-        $compracab = CompraCab::find($id);
-        
-        if ($r->comp_intervalo_fecha_vence === '') {
-            $r->merge(['comp_intervalo_fecha_vence' => null]);
-        }
-    
-        // Establecer   _comp_cant_cuota como null si la condición de pago es "CONTADO"
-        if ($r->condicion_pago === 'CONTADO') {
-            // Asegurar que estos campos sean null para pagos al contado
-            $r->merge(['comp_intervalo_fecha_vence' => null, 'comp_cant_cuota' => null]);
-        }
-    
-        // Validar los datos de la solicitud
-        $datosValidados = $r->validate([
-            'comp_intervalo_fecha_vence' => 'nullable|date',
-            'comp_fecha' => 'nullable|date',
-            'comp_estado' => 'required',
-            'comp_cant_cuota' => 'nullable|integer',
-            'condicion_pago' => 'required',
-            'user_id' => 'required',
-            'orden_compra_cab_id' => 'required',
-            'proveedor_id' => 'required',
-            'empresa_id' => 'required',
-            'sucursal_id' => 'required'
-        ]);
-        
-        if ($r->condicion_pago === 'CONTADO') {
-            $datosValidados['comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-            $datosValidados['comp_cant_cuota'] = null; // Establece null si es "CONTADO"
-        }
-    
-        // Actualizar los datos validados
-        $compracab->update($datosValidados);
-    
-        // Cambiar el estado a "CONFIRMADO"
-        $compracab->comp_estado = "ANULADO";
-        $compracab->save();
-        $ordencompracab = OrdenCompraCab::find($r->orden_compra_cab_id); // Cambiado a presupuestos_id
+    // Buscar el registro por el ID
+    $compracab = CompraCab::find($id);
 
-        // Verificar si el presupuesto existe
-        if (!$ordencompracab) {
-            return response()->json([
-                'mensaje' => 'Presupuesto no encontrado',
-                'tipo' => 'error',
-            ], 404);
-        }
-    
-        // Devolver la respuesta exitosa
+    if (!$compracab) {
         return response()->json([
-            'mensaje' => 'Registro anulado con éxito',
-            'tipo' => 'success',
-            'registro' => $compracab
-        ], 200);
+            'mensaje' => 'Compra no encontrada',
+            'tipo'    => 'error',
+        ], 404);
     }
-    public function calcularTotal(Request $r, $id)
+
+    if ($r->comp_intervalo_fecha_vence === '') {
+        $r->merge(['comp_intervalo_fecha_vence' => null]);
+    }
+
+    // Si la condición de pago es "CONTADO", limpiar campos
+    if ($r->condicion_pago === 'CONTADO') {
+        $r->merge([
+            'comp_intervalo_fecha_vence' => null,
+            'comp_cant_cuota'            => null
+        ]);
+    }
+
+    // Validar datos
+    $datosValidados = $r->validate([
+        'comp_intervalo_fecha_vence' => 'nullable|date',
+        'comp_fecha'                 => 'nullable|date',
+        'comp_estado'                => 'required',
+        'comp_cant_cuota'            => 'nullable|integer',
+        'condicion_pago'             => 'required',
+        'user_id'                    => 'required',
+        'orden_compra_cab_id'        => 'required',
+        'proveedor_id'               => 'required',
+        'empresa_id'                 => 'required',
+        'sucursal_id'                => 'required'
+    ]);
+
+    if ($r->condicion_pago === 'CONTADO') {
+        $datosValidados['comp_intervalo_fecha_vence'] = null;
+        $datosValidados['comp_cant_cuota']            = null;
+    }
+
+    // Guardar estado anterior
+    $estadoAnterior = $compracab->comp_estado;
+
+    // Actualizar compra a ANULADO
+    $compracab->update($datosValidados);
+    $compracab->comp_estado = "ANULADO";
+    $compracab->save();
+
+    // Inicializar mensaje según estado anterior
+    if ($estadoAnterior === 'RECIBIDO') {
+
+        // Libro de compras
+        $libro = LibroCompras::where('compra_cab_id', $compracab->id)->first();
+        if ($libro) {
+            $libro->update([
+                'libC_estado' => 'ANULADO',
+                'updated_at'  => now()
+            ]);
+        }
+
+        // Cuentas por pagar
+        $ctasPagar = CtasPagar::where('compra_cab_id', $compracab->id)->get();
+        foreach ($ctasPagar as $cuota) {
+            $cuota->update([
+                'cta_pag_estado' => 'Anulado',
+                'updated_at'     => now()
+            ]);
+        }
+
+        // Stock y Depósito
+        $detallesCompra = CompraDet::where('compra_cab_id', $compracab->id)->get();
+        foreach ($detallesCompra as $detalle) {
+            $cantidadAnular = $detalle->comp_det_cantidad;
+            $stock = Stock::where('item_id', $detalle->item_id)->first();
+
+            if ($stock) {
+                if ($stock->cantidad >= $cantidadAnular) {
+                    $stock->cantidad -= $cantidadAnular;
+                    $stock->save();
+                } else {
+                    $restante = $cantidadAnular - $stock->cantidad;
+                    $stock->cantidad = 0;
+                    $stock->save();
+
+                    $deposito = Deposito::where('item_id', $detalle->item_id)->first();
+                    if ($deposito) {
+                        $deposito->cantidad = max(0, $deposito->cantidad - $restante);
+                        $deposito->save();
+                    }
+                }
+            } else {
+                $deposito = Deposito::where('item_id', $detalle->item_id)->first();
+                if ($deposito) {
+                    $deposito->cantidad = max(0, $deposito->cantidad - $cantidadAnular);
+                    $deposito->save();
+                }
+            }
+        }
+
+        $mensaje = 'Registro anulado con éxito. Stock, Depósito, Libro de Compras y Cuentas por Pagar actualizados.';
+
+    } else {
+        // Si estaba PENDIENTE
+        $mensaje = 'Registro anulado correctamente. La compra estaba pendiente, no se generaron movimientos de Stock, Libro de Compras ni Ctas por Pagar.';
+    }
+
+    // Verificar si existe la orden de compra relacionada
+    $ordencompracab = OrdenCompraCab::find($r->orden_compra_cab_id);
+    if (!$ordencompracab) {
+        return response()->json([
+            'mensaje' => 'Orden de compra no encontrada',
+            'tipo'    => 'error',
+        ], 404);
+    }
+
+    return response()->json([
+        'mensaje' => $mensaje,
+        'tipo'    => 'success',
+        'registro'=> $compracab
+    ], 200);
+}
+
+public function calcularTotal(Request $r, $id)
 {
     // Verificar si la compra existe
     $compracab = CompraCab::find($id);
@@ -395,21 +463,23 @@ public function confirmar(Request $r, $id) {
     $tipoImpuestoNombre = $tipoImpuestoObj ? $tipoImpuestoObj->tip_imp_nom : null;
 
     // Insertar el registro en libro_compras con los nuevos campos
-    LibroCompras::create([
-        'compra_cab_id' => $compracab->id,
-        'libC_monto' => $totalConImpuesto,
-        'libC_fecha' => now(),
-        'libC_cuota' => $r->comp_cant_cuota ?? 1,
-        'libC_tipo_nota' => $r->libC_tipo_nota,
-        'proveedor_id' => $r->proveedor_id,
-        'prov_razonsocial' => $provRazonSocial,
-        'prov_ruc' => $provRuc,
-        'tipo_impuesto_id' => $compraDet->tipo_impuesto_id,
-        'tip_imp_nom' => $tipoImpuestoNombre,
-        'condicion_pago' => $r->condicion_pago,
-        'updated_at' => now(),
-        'created_at' => now()
+        LibroCompras::create([
+        'compra_cab_id'   => $compracab->id,
+        'libC_monto'      => $totalConImpuesto,
+        'libC_fecha'      => now(),
+        'libC_cuota'      => $r->comp_cant_cuota ?? 1,
+        'libC_tipo_nota'  => $r->libC_tipo_nota,
+        'proveedor_id'    => $r->proveedor_id,
+        'prov_razonsocial'=> $provRazonSocial,
+        'prov_ruc'        => $provRuc,
+        'tipo_impuesto_id'=> $compraDet->tipo_impuesto_id,
+        'tip_imp_nom'     => $tipoImpuestoNombre,
+        'condicion_pago'  => $r->condicion_pago,
+        'libC_estado'     => 'ACTIVO',   
+        'updated_at'      => now(),
+        'created_at'      => now(),
     ]);
+
 
     return response()->json([
         'mensaje' => 'Compra registrada con éxito. Cuenta por pagar, Libro de Compras, Stock y Depósito actualizados',

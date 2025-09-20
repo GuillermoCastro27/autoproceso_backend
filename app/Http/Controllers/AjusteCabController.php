@@ -82,35 +82,76 @@ class AjusteCabController extends Controller
         ], 200);
     }
 
-    public function anular(Request $r, $id){
-        $ajustecab = AjusteCab::find($id);
-        if (!$ajustecab) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
-            ], 404);
-        }
-
-        $datosValidados = $r->validate([
-            'ajus_cab_fecha' => 'required',
-            'ajus_cab_estado' => 'required',
-            'tipo_ajuste' => 'required',
-            'user_id' => 'required',
-            'empresa_id' => 'required',
-            'sucursal_id' => 'required',
-            'motivo_ajuste_id' => 'required'
-        ]);
-
-        $ajustecab->update($datosValidados);
-
+    public function anular(Request $r, $id)
+{
+    $ajustecab = AjusteCab::find($id);
+    if (!$ajustecab) {
         return response()->json([
-            'mensaje' => 'Registro anulado con éxito',
-            'tipo' => 'success',
-            'registro' => $ajustecab
-        ], 200);
+            'mensaje' => 'Registro no encontrado',
+            'tipo' => 'error'
+        ], 404);
     }
 
+    $datosValidados = $r->validate([
+        'ajus_cab_fecha' => 'required',
+        'ajus_cab_estado' => 'required',
+        'tipo_ajuste' => 'required',
+        'user_id' => 'required',
+        'empresa_id' => 'required',
+        'sucursal_id' => 'required',
+        'motivo_ajuste_id' => 'required'
+    ]);
+
+    // Guardar estado anterior
+    $estadoAnterior = $ajustecab->ajus_cab_estado;
+
+    // Actualizamos el registro con los datos
+    $ajustecab->update($datosValidados);
+
+    // Marcamos como ANULADO
+    $ajustecab->ajus_cab_estado = 'ANULADO';
+    $ajustecab->save();
+
+    // Si el ajuste estaba CONFIRMADO → revertimos el stock
+    if ($estadoAnterior === 'CONFIRMADO') {
+        $ajusteDetalles = AjusteDet::where('ajuste_cab_id', $ajustecab->id)->get();
+
+        foreach ($ajusteDetalles as $detalle) {
+            $stock = Stock::where('item_id', $detalle->item_id)->first();
+
+            if ($stock) {
+                if ($ajustecab->tipo_ajuste === 'Entrada') {
+                    // Revertir una entrada → restar
+                    if ($stock->cantidad < $detalle->ajus_det_cantidad) {
+                        return response()->json([
+                            'mensaje' => "No se puede anular. El stock del item {$detalle->item_id} es insuficiente para revertir la entrada.",
+                            'tipo' => 'error'
+                        ], 400);
+                    }
+                    $stock->cantidad -= $detalle->ajus_det_cantidad;
+                } elseif ($ajustecab->tipo_ajuste === 'Salida') {
+                    // Revertir una salida → sumar
+                    $stock->cantidad += $detalle->ajus_det_cantidad;
+                }
+                $stock->save();
+            }
+        }
+    }
+
+    return response()->json([
+        'mensaje' => $estadoAnterior === 'CONFIRMADO'
+            ? 'Ajuste confirmado anulado con éxito y stock revertido.'
+            : 'Ajuste pendiente anulado con éxito.',
+        'tipo' => 'success',
+        'registro' => $ajustecab
+    ], 200);
+}
+
+
     public function confirmar(Request $r, $id) {
+    \DB::beginTransaction();
+    try {
+        // Buscar cabecera
         $ajustecab = AjusteCab::find($id);
         if (!$ajustecab) {
             return response()->json([
@@ -118,66 +159,113 @@ class AjusteCabController extends Controller
                 'tipo' => 'error'
             ], 404);
         }
-    
+
+        // Validar entrada (igual que antes)
         $datosValidados = $r->validate([
-            'ajus_cab_fecha' => 'required',
-            'ajus_cab_estado' => 'required',
-            'tipo_ajuste' => 'required',
-            'user_id' => 'required',
-            'empresa_id' => 'required',
-            'sucursal_id' => 'required',
-            'motivo_ajuste_id' => 'required'
+            'ajus_cab_fecha'     => 'required',
+            'ajus_cab_estado'    => 'required',
+            'tipo_ajuste'        => 'required', // valores esperados: 'Entrada' o 'Salida'
+            'user_id'            => 'required',
+            'empresa_id'         => 'required',
+            'sucursal_id'        => 'required',
+            'motivo_ajuste_id'   => 'required'
         ]);
-    
+
+        // Si ya está confirmado, no hacer nada
+        if ($ajustecab->ajus_cab_estado === 'CONFIRMADO') {
+            return response()->json([
+                'mensaje' => 'El ajuste ya fue confirmado anteriormente.',
+                'tipo'    => 'warning'
+            ], 400);
+        }
+
+        // Actualizamos la cabecera con los datos enviados (opcional)
         $ajustecab->update($datosValidados);
-    
-        // Obtener el detalle del ajuste usando el nombre correcto de la columna
+
+        // Obtener los detalles del ajuste (si no definiste relación, usamos el modelo)
         $ajusteDetalles = AjusteDet::where('ajuste_cab_id', $ajustecab->id)->get();
-    
+
+        if ($ajusteDetalles->isEmpty()) {
+            return response()->json([
+                'mensaje' => 'No se encontraron detalles para este ajuste.',
+                'tipo' => 'error'
+            ], 400);
+        }
+
+        // Recorremos y aplicamos los cambios al stock según tipo_ajuste
         foreach ($ajusteDetalles as $detalle) {
-            // Obtener el stock actual del item
+            // cantidad en detalle se espera positiva
+            $cantidad = (float) $detalle->ajus_det_cantidad;
+            if ($cantidad <= 0) {
+                return response()->json([
+                    'mensaje' => 'Cantidad inválida en detalle para el item: ' . $detalle->item_id,
+                    'tipo' => 'error'
+                ], 400);
+            }
+
             $stock = Stock::where('item_id', $detalle->item_id)->first();
-    
-            if ($stock) {
-                // Validación según el tipo de ajuste
-                if ($ajustecab->tipo_ajuste === 'Entrada') {
-                    // Verificar si la cantidad no supera el máximo permitido (30 en este caso)
-                    $nuevaCantidad = $stock->cantidad + $detalle->ajus_det_cantidad;
-                    if ($nuevaCantidad > 30) {
-                        return response()->json([
-                            'mensaje' => 'La cantidad en stock no puede superar el límite máximo de 30.',
-                            'tipo' => 'error'
-                        ], 400);
-                    }
-                    // Si es entrada y no supera el máximo, actualizamos el stock
-                    $stock->cantidad = $nuevaCantidad;
-                    $stock->save();
-                } elseif ($ajustecab->tipo_ajuste === 'Salida') {
-                    // Si es salida, verificamos si hay suficiente stock para la salida (no podemos tener menos de 0)
-                    if ($stock->cantidad + $detalle->ajus_det_cantidad < 0) {
-                        return response()->json([
-                            'mensaje' => 'No hay suficiente stock para realizar la salida del item: ' . $detalle->item_id,
-                            'tipo' => 'error'
-                        ], 400);
-                    }
-                    // Si hay suficiente stock, restamos la cantidad
-                    $stock->cantidad += $detalle->ajus_det_cantidad; // Ajus_det_cantidad es negativo en este caso
-                    $stock->save();
-                }
-            } else {
+            if (!$stock) {
                 return response()->json([
                     'mensaje' => 'El item ' . $detalle->item_id . ' no tiene stock registrado.',
                     'tipo' => 'error'
                 ], 400);
             }
+
+            if ($ajustecab->tipo_ajuste === 'Entrada') {
+                // Sumar siempre
+                $nuevaCantidad = $stock->cantidad + $cantidad;
+
+                // Validación de tope (mantengo tu regla: máximo 30)
+                if ($nuevaCantidad > 30) {
+                    return response()->json([
+                        'mensaje' => 'La cantidad en stock no puede superar el límite máximo de 30 para el item: ' . $detalle->item_id,
+                        'tipo' => 'error'
+                    ], 400);
+                }
+
+                $stock->cantidad = $nuevaCantidad;
+                $stock->save();
+            }
+            elseif ($ajustecab->tipo_ajuste === 'Salida') {
+                // Restar siempre
+                if ($stock->cantidad < $cantidad) {
+                    return response()->json([
+                        'mensaje' => 'No hay suficiente stock para realizar la salida del item: ' . $detalle->item_id,
+                        'tipo' => 'error'
+                    ], 400);
+                }
+
+                $stock->cantidad = $stock->cantidad - $cantidad;
+                $stock->save();
+            }
+            else {
+                return response()->json([
+                    'mensaje' => 'Tipo de ajuste desconocido: ' . $ajustecab->tipo_ajuste,
+                    'tipo' => 'error'
+                ], 400);
+            }
         }
-    
+
+        // Finalmente marcamos la cabecera como CONFIRMADO (independientemente de lo que vino en la request)
+        $ajustecab->ajus_cab_estado = 'CONFIRMADO';
+        $ajustecab->save();
+
+        \DB::commit();
         return response()->json([
             'mensaje' => 'Ajuste confirmado con éxito y stock actualizado.',
             'tipo' => 'success',
             'registro' => $ajustecab
         ], 200);
-    }        
+
+    } catch (\Exception $e) {
+        \DB::rollBack();
+        return response()->json([
+            'mensaje' => 'Error al confirmar el ajuste de inventario: ' . $e->getMessage(),
+            'tipo' => 'error'
+        ], 500);
+    }
+}
+        
     public function buscarInforme(Request $r)
 {
     $desde = $r->query('desde');

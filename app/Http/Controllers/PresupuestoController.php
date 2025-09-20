@@ -107,36 +107,41 @@ class PresupuestoController extends Controller
         ],200);
     }
 
-    public function anular(Request $r, $id){
+    public function anular(Request $r, $id)
+    {
         $presupuesto = Presupuesto::find($id);
-        if(!$presupuesto){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'pre_observaciones'=>'required',
-            'pre_estado'=>'required',
-            'pre_fecha'=>'required',
-            'pre_vence'=>'required',
-            'proveedor_id'=>'required',
-            'pedido_id'=>'required',
-            'user_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
-        ]);
-        $presupuesto->update($datosValidados);
 
-        $pedido = Pedido::find($r->pedido_id);
-        $pedido->ped_estado ="CONFIRMADO";
-        $pedido ->save();
+        if (!$presupuesto) {
+            return response()->json([
+                'mensaje' => 'Registro no encontrado',
+                'tipo' => 'error'
+            ], 404);
+        }
+
+        // Solo validamos lo que realmente necesitamos al anular
+        $datosValidados = $r->validate([
+            'pre_observaciones' => 'required',
+        ]);
+
+        // Cambiar estado del presupuesto a ANULADO
+        $presupuesto->pre_estado = 'ANULADO';
+        $presupuesto->pre_observaciones = $datosValidados['pre_observaciones'];
+        $presupuesto->save();
+
+        // Volver el pedido a CONFIRMADO
+        if ($presupuesto->pedido_id) {
+            $pedido = Pedido::find($presupuesto->pedido_id);
+            if ($pedido) {
+                $pedido->ped_estado = "CONFIRMADO";
+                $pedido->save();
+            }
+        }
 
         return response()->json([
-            'mensaje'=>'Registro anulado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuesto
-        ],200);
+            'mensaje' => 'Presupuesto anulado con éxito',
+            'tipo' => 'success',
+            'registro' => $presupuesto
+        ], 200);
     }
     public function confirmar(Request $r, $id){
         $presupuesto = Presupuesto::find($id);

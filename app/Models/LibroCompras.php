@@ -18,6 +18,7 @@ class LibroCompras extends Model
         'libC_fecha',
         'libC_cuota',
         'libC_tipo_nota',
+        'libC_estado',
         'proveedor_id',
         'prov_razonsocial',  // Agregado
         'prov_ruc',           // Agregado

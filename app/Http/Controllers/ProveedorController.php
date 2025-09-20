@@ -12,7 +12,8 @@ class ProveedorController extends Controller
         return DB::table('proveedores')
         ->join('ciudades', 'proveedores.ciudad_id', '=', 'ciudades.id')
         ->join('nacionalidad', 'proveedores.nacionalidad_id', '=', 'nacionalidad.id')
-        ->select('proveedores.*', 'ciudades.ciu_descripcion as ciu_descripcion', 'nacionalidad.nacio_descripcion as nacio_descripcion')
+        ->join('paises', 'proveedores.pais_id', '=', 'paises.id')
+        ->select('proveedores.*', 'paises.pais_descrpcion as pais_descrpcion','ciudades.ciu_descripcion as ciu_descripcion', 'nacionalidad.nacio_descripcion as nacio_descripcion')
         ->get();
     }
     public function store(Request $r) {
@@ -23,6 +24,7 @@ class ProveedorController extends Controller
             'prov_direccion' => 'required',
             'prov_telefono' => 'required',
             'prov_correo' => 'required',
+            'pais_id' => 'required',
             'ciudad_id' => 'required',
             'nacionalidad_id' => 'required'
         ]);
@@ -67,6 +69,7 @@ class ProveedorController extends Controller
             'prov_direccion'=>'required',
             'prov_telefono'=>'required',
             'prov_correo'=>'required',
+            'pais_id' => 'required',
             'ciudad_id'=>'required',
             'nacionalidad_id'=>'required'
         ]);

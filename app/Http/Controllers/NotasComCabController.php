@@ -161,51 +161,99 @@ public function update(Request $r, $id)
         'registro' => $notacompcab
     ], 200);
 }
-public function anular(Request $r, $id){
+public function anular(Request $r, $id)
+{
     $notacompcab = NotaCompCab::find($id);
-    if(!$notacompcab){
+
+    if (!$notacompcab) {
         return response()->json([
-            'mensaje'=>'Registro no encontrado',
-            'tipo'=>'error'
-        ],404);
-    }
-    // Convertir cadena vacía a null antes de la validación
-    if ($r->nota_comp_intervalo_fecha_vence === '') {
-        $r->merge(['nota_comp_intervalo_fecha_vence' => null]);
+            'mensaje' => 'Nota de compra no encontrada',
+            'tipo'    => 'error',
+        ], 404);
     }
 
-    // Establecer ord_comp_cant_cuota como null si la condición de pago es "CONTADO"
-    if ($r->nota_comp_condicion_pago === 'CONTADO') {
-        $r->merge(['nota_comp_intervalo_fecha_vence' => null, 'nota_comp_cant_cuota' => null]);
-    }
+    // Guardamos estado previo
+    $estadoAnterior = $notacompcab->nota_comp_estado;
 
-
+    // Validar datos
     $datosValidados = $r->validate([
         'nota_comp_intervalo_fecha_vence' => 'nullable|date',
-        'nota_comp_fecha' => 'required|date',
-        'nota_comp_estado' => 'required',
-        'nota_comp_cant_cuota' => 'nullable|integer',
-        'nota_comp_tipo' => 'required',
-        'nota_comp_observaciones' => 'required',
-        'user_id' => 'required|integer',
-        'compra_cab_id' => 'required|integer', // Cambiado a presupuestos_id
-        'empresa_id' => 'required|integer',
-        'sucursal_id' => 'required|integer',
-        'nota_comp_condicion_pago' => 'required|string|max:20'
+        'nota_comp_fecha'                 => 'required|date',
+        'nota_comp_estado'                => 'required',
+        'nota_comp_cant_cuota'            => 'nullable|integer',
+        'nota_comp_tipo'                  => 'required',
+        'nota_comp_observaciones'         => 'required',
+        'user_id'                         => 'required|integer',
+        'compra_cab_id'                   => 'required|integer',
+        'empresa_id'                      => 'required|integer',
+        'sucursal_id'                     => 'required|integer',
+        'nota_comp_condicion_pago'        => 'required|string|max:20'
     ]);
 
-    if ($r->nota_comp_condicion_pago === 'CONTADO') {
-        $datosValidados['nota_comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-        $datosValidados['nota_comp_cant_cuota'] = null; // Establece null si es "CONTADO"
+    // Actualizamos cabecera
+    $notacompcab->update($datosValidados);
+    $notacompcab->nota_comp_estado = "ANULADO";
+    $notacompcab->save();
+
+    // Solo revertimos si estaba CONFIRMADO
+    if ($estadoAnterior === 'CONFIRMADO') {
+        $tipoNota = trim($notacompcab->nota_comp_tipo); // Crédito o Débito
+
+        // Libro de compras
+        $libro = LibroCompras::where('compra_cab_id', $notacompcab->compra_cab_id)->first();
+        if ($libro) {
+            $libro->update([
+                'libC_estado' => 'ANULADO',
+                'updated_at'  => now()
+            ]);
+        }
+
+        // Cuentas por pagar
+        $ctasPagar = CtasPagar::where('compra_cab_id', $notacompcab->compra_cab_id)->get();
+        foreach ($ctasPagar as $cuota) {
+            $cuota->update([
+                'cta_pag_estado' => 'Anulado',
+                'updated_at'     => now()
+            ]);
+        }
+
+        // Revertir stock y depósito
+        $detallesNota = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->get();
+        foreach ($detallesNota as $detalle) {
+            $cantidad = $detalle->notas_comp_det_cantidad;
+            $stock    = Stock::where('item_id', $detalle->item_id)->first();
+            $deposito = Deposito::where('item_id', $detalle->item_id)->first();
+
+            if ($tipoNota === 'Debito') {
+                // En confirmación sumaba → al anular debe restar
+                if ($stock && $stock->cantidad >= $cantidad) {
+                    $stock->cantidad -= $cantidad;
+                    $stock->save();
+                } elseif ($deposito && $deposito->cantidad >= $cantidad) {
+                    $deposito->cantidad -= $cantidad;
+                    $deposito->save();
+                }
+            } elseif ($tipoNota === 'Crédito') {
+                // En confirmación restaba → al anular debe sumar
+                if ($stock) {
+                    $stock->cantidad += $cantidad;
+                    $stock->save();
+                } else {
+                    Stock::create(['item_id' => $detalle->item_id, 'cantidad' => $cantidad]);
+                }
+            }
+        }
     }
 
-    $notacompcab->update($datosValidados);
     return response()->json([
-        'mensaje'=>'Registro anulado con exito',
-        'tipo'=>'success',
+        'mensaje' => $estadoAnterior === 'CONFIRMADO'
+            ? 'Nota de compra confirmada fue anulada y los cambios revertidos.'
+            : 'Nota de compra anulada con éxito.',
+        'tipo'    => 'success',
         'registro'=> $notacompcab
-    ],200);
+    ], 200);
 }
+
     public function confirmar(Request $r, $id) 
 {
     $notacompcab = NotaCompCab::find($id);

@@ -174,6 +174,7 @@ public function anular(Request $r, $id){
             'tipo'=>'error'
         ],404);
     }
+
     // Convertir cadena vacía a null antes de la validación
     if ($r->ord_comp_intervalo_fecha_vence === '') {
         $r->merge(['ord_comp_intervalo_fecha_vence' => null]);
@@ -181,7 +182,7 @@ public function anular(Request $r, $id){
 
     // Establecer ord_comp_cant_cuota como null si la condición de pago es "CONTADO"
     if ($r->condicion_pago === 'CONTADO') {
-        $r->merge(['ord_comp_cant_cuota' => null]); // Establece null para cuotas en "CONTADO"
+        $r->merge(['ord_comp_cant_cuota' => null]); 
     }
 
     $datosValidados = $r->validate([
@@ -190,7 +191,7 @@ public function anular(Request $r, $id){
         'ord_comp_estado' => 'required',
         'ord_comp_cant_cuota' => 'nullable|integer',
         'user_id' => 'required|integer',
-        'presupuesto_id' => 'required|integer', // Cambiado a presupuestos_id
+        'presupuesto_id' => 'required|integer',
         'proveedor_id' => 'required|integer',
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
@@ -198,17 +199,30 @@ public function anular(Request $r, $id){
     ]);
 
     if ($r->condicion_pago === 'CONTADO') {
-        $datosValidados['ord_comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-        $datosValidados['ord_comp_cant_cuota'] = null; // Establece null si es "CONTADO"
+        $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
+        $datosValidados['ord_comp_cant_cuota'] = null;
     }
 
+    // 🔄 Cambiar estado de la Orden de Compra a ANULADO
+    $datosValidados['ord_comp_estado'] = "ANULADO";
     $ordencompracab->update($datosValidados);
+
+    // 🔄 Recuperar el presupuesto asociado y cambiar su estado a CONFIRMADO
+    if ($ordencompracab->presupuesto_id) {
+        $presupuesto = Presupuesto::find($ordencompracab->presupuesto_id);
+        if ($presupuesto) {
+            $presupuesto->pre_estado = "CONFIRMADO";
+            $presupuesto->save();
+        }
+    }
+
     return response()->json([
-        'mensaje'=>'Registro anulado con exito',
+        'mensaje'=>'Orden de compra anulada con éxito, presupuesto asociado vuelto a CONFIRMADO',
         'tipo'=>'success',
         'registro'=> $ordencompracab
     ],200);
 }
+
 public function confirmar(Request $r, $id) {
     $ordencompracab = OrdenCompraCab::find($id);
     
