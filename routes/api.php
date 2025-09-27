@@ -35,6 +35,10 @@ use App\Http\Controllers\AjusteCabController;
 use App\Http\Controllers\AjusteDetController;
 use App\Http\Controllers\NotasComCabController;
 use App\Http\Controllers\NotasComDetController;
+use App\Http\Controllers\TipoServicioController;
+use App\Http\Controllers\TipoDiagnosticoController;
+use App\Http\Controllers\TipoPromocionesController;
+use App\Http\Controllers\TipoDescuentosController;
 
 /*
 |--------------------------------------------------------------------------
@@ -235,6 +239,29 @@ Route::post("motivo_ajuste/create",[MotivoAjusteController::class,"store"]);
 Route::put("motivo_ajuste/update/{id}",[MotivoAjusteController::class,"update"]);
 Route::delete("motivo_ajuste/delete/{id}",[MotivoAjusteController::class,"destroy"]);
 
+Route::get("tipo-servicio/read",[TipoServicioController::class,"read"]);
+Route::post("tipo-servicio/create",[TipoServicioController::class,"store"]);
+Route::put("tipo-servicio/update/{id}",[TipoServicioController::class,"update"]);
+Route::delete("tipo-servicio/delete/{id}",[TipoServicioController::class,"destroy"]);
+Route::get("tipo-servicio/buscar",[TipoServicioController::class,"buscar"]);
+
+Route::get("tipo-diagnostico/read",[TipoDiagnosticoController::class,"read"]);
+Route::post("tipo-diagnostico/create",[TipoDiagnosticoController::class,"store"]);
+Route::put("tipo-diagnostico/update/{id}",[TipoDiagnosticoController::class,"update"]);
+Route::delete("tipo-diagnostico/delete/{id}",[TipoDiagnosticoController::class,"destroy"]);
+Route::get("tipo-diagnostico/buscar",[TipoDiagnosticoController::class,"buscar"]);
+
+Route::get("tipo-promociones/read",[TipoPromocionesController::class,"read"]);
+Route::post("tipo-promociones/create",[TipoPromocionesController::class,"store"]);
+Route::put("tipo-promociones/update/{id}",[TipoPromocionesController::class,"update"]);
+Route::delete("tipo-promociones/delete/{id}",[TipoPromocionesController::class,"destroy"]);
+Route::get("tipo-promociones/buscar",[TipoPromocionesController::class,"buscar"]);
+
+Route::get("tipo-descuentos/read",[TipoDescuentosController::class,"read"]);
+Route::post("tipo-descuentos/create",[TipoDescuentosController::class,"store"]);
+Route::put("tipo-descuentos/update/{id}",[TipoDescuentosController::class,"update"]);
+Route::delete("tipo-descuentos/delete/{id}",[TipoDescuentosController::class,"destroy"]);
+Route::get("tipo-descuentos/buscar",[TipoDescuentosController::class,"buscar"]);
 
 Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
 
