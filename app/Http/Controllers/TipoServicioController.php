@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\TipoServicio;
+use Illuminate\Support\Facades\DB;
 
 use Illuminate\Http\Request;
 
 class TipoServicioController extends Controller
 {
     public function read(){
-        return tiposervicio::all();
-    }
+    return response()->json(
+        TipoServicio::select('id as tipo_servicio_id','tipo_serv_nombre as tipo_serv_nombre')->get()
+    );
+}
 
     public function store(Request $r){
         $datosValidados = $r->validate([

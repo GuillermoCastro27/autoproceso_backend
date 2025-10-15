@@ -14,7 +14,9 @@ class ClienteController extends Controller
              ->join('paises', 'clientes.pais_id', '=', 'paises.id')
              ->join('ciudades', 'clientes.ciudad_id', '=', 'ciudades.id')
              ->join('nacionalidad', 'clientes.nacionalidad_id', '=', 'nacionalidad.id')
-             ->select('clientes.*', 'ciudades.ciu_descripcion as ciu_descripcion', 'nacionalidad.nacio_descripcion as nacio_descripcion', 'paises.pais_descrpcion as pais_descrpcion')
+             ->select('clientes.*', 'ciudades.ciu_descripcion as ciu_descripcion',
+            'nacionalidad.nacio_descripcion as nacio_descripcion',
+            'paises.pais_descrpcion as pais_descrpcion')
              ->get();
     }
     public function store(Request $r){
@@ -78,6 +80,6 @@ class ClienteController extends Controller
     public function buscar(Request $r){
         return DB::select(
         "select c.*,c.*,
-        c.id as cliente_id from clientes c where cli_nombre ilike '%{$r->cli_nombre}%' or cli_ruc ilike '%{$r->cli_nombre}%'");
+        c.id as clientes_id from clientes c where cli_nombre ilike '%{$r->cli_nombre}%' or cli_ruc ilike '%{$r->cli_nombre}%'");
     }
 }

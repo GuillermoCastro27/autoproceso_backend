@@ -13,7 +13,9 @@ class ProveedorController extends Controller
         ->join('ciudades', 'proveedores.ciudad_id', '=', 'ciudades.id')
         ->join('nacionalidad', 'proveedores.nacionalidad_id', '=', 'nacionalidad.id')
         ->join('paises', 'proveedores.pais_id', '=', 'paises.id')
-        ->select('proveedores.*', 'paises.pais_descrpcion as pais_descrpcion','ciudades.ciu_descripcion as ciu_descripcion', 'nacionalidad.nacio_descripcion as nacio_descripcion')
+        ->select('proveedores.*', 'paises.pais_descrpcion as pais_descrpcion',
+        'ciudades.ciu_descripcion as ciu_descripcion',
+        'nacionalidad.nacio_descripcion as nacio_descripcion')
         ->get();
     }
     public function store(Request $r) {

@@ -39,6 +39,12 @@ use App\Http\Controllers\TipoServicioController;
 use App\Http\Controllers\TipoDiagnosticoController;
 use App\Http\Controllers\TipoPromocionesController;
 use App\Http\Controllers\TipoDescuentosController;
+use App\Http\Controllers\SolicitudCabController;
+use App\Http\Controllers\SolicitudDetController;
+use App\Http\Controllers\RecepcionCabController;
+use App\Http\Controllers\RecepcionDetController;
+use App\Http\Controllers\DiagnosticoCabController;
+use App\Http\Controllers\DiagnosticoDetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -158,7 +164,6 @@ Route::post("presupuesto/buscar",[PresupuestoController::class,"buscar"]);
 Route::get("presupuestos/buscar-informe", [PresupuestoController::class, "buscarInforme"]);
 
 
-
 Route::get("presupuestos-detalles/read/{id}",[PresupuestosDetalleController::class,"read"]);
 Route::post("presupuestos-detalles/create",[PresupuestosDetalleController::class,"store"]);
 Route::put("presupuestos-detalles/update/{presupuesto_id}/{item_id}",[PresupuestosDetalleController::class,"update"]);
@@ -262,6 +267,45 @@ Route::post("tipo-descuentos/create",[TipoDescuentosController::class,"store"]);
 Route::put("tipo-descuentos/update/{id}",[TipoDescuentosController::class,"update"]);
 Route::delete("tipo-descuentos/delete/{id}",[TipoDescuentosController::class,"destroy"]);
 Route::get("tipo-descuentos/buscar",[TipoDescuentosController::class,"buscar"]);
+
+Route::post("solicitudcad/create",[SolicitudCabController::class,"store"]);
+Route::get("solicitudcad/read",[SolicitudCabController::class,"read"]);
+Route::put("solicitudcad/update/{id}",[SolicitudCabController::class,"update"]);
+Route::put("solicitudcad/anular/{id}",[SolicitudCabController::class,"anular"]);
+Route::put("solicitudcad/confirmar/{id}",[SolicitudCabController::class,"confirmar"]);
+Route::post("solicitudcad/buscar",[SolicitudCabController::class,"buscar"]);
+Route::get("solicitudcad/buscar-informe", [SolicitudCabController::class, "buscarInforme"]);
+
+Route::post("solicitud_det/create",[SolicitudDetController::class,"store"]);
+Route::get("solicitud_det/read/{id}",[SolicitudDetController::class,"read"]);
+Route::put("solicitud_det/update/{solicitudes_cab_id}",[SolicitudDetController::class,"update"]);
+Route::delete("solicitud_det/delete/{solicitudes_cab_id}/{item_id}",[SolicitudDetController::class,"destroy"]);
+
+Route::post("recepcab/create",[RecepcionCabController::class,"store"]);
+Route::get("recepcab/read",[RecepcionCabController::class,"read"]);
+Route::put("recepcab/update/{id}",[RecepcionCabController::class,"update"]);
+Route::put("recepcab/anular/{id}",[RecepcionCabController::class,"anular"]);
+Route::put("recepcab/confirmar/{id}",[RecepcionCabController::class,"confirmar"]);
+Route::post("recepcab/buscar",[RecepcionCabController::class,"buscar"]);
+Route::get("recepcab/buscar-informe", [RecepcionCabController::class, "buscarInforme"]);
+
+Route::post("recepcion_det/create",[RecepcionDetController::class,"store"]);
+Route::get("recepcion_det/read/{id}",[RecepcionDetController::class,"read"]);
+Route::put("recepcion_det/update/{solicitudes_cab_id}",[RecepcionDetController::class,"update"]);
+Route::delete("recepcion_det/delete/{solicitudes_cab_id}/{item_id}",[RecepcionDetController::class,"destroy"]);
+
+Route::post("diagnosticocab/create",[DiagnosticoCabController::class,"store"]);
+Route::get("diagnosticocab/read",[DiagnosticoCabController::class,"read"]);
+Route::put("diagnosticocab/update/{id}",[DiagnosticoCabController::class,"update"]);
+Route::put("diagnosticocab/anular/{id}",[DiagnosticoCabController::class,"anular"]);
+Route::put("diagnosticocab/confirmar/{id}",[DiagnosticoCabController::class,"confirmar"]);
+Route::post("diagnosticocab/buscar",[DiagnosticoCabController::class,"buscar"]);
+Route::get("diagnosticocab/buscar-informe", [DiagnosticoCabController::class, "buscarInforme"]);
+
+Route::post("diagnostico_det/create",[DiagnosticoDetController::class,"store"]);
+Route::get("diagnostico_det/read/{id}",[DiagnosticoDetController::class,"read"]);
+Route::put("diagnostico_det/update/{solicitudes_cab_id}",[DiagnosticoDetController::class,"update"]);
+Route::delete("diagnostico_det/delete/{solicitudes_cab_id}/{item_id}",[DiagnosticoDetController::class,"destroy"]);
 
 Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
 
