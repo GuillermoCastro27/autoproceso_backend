@@ -8,7 +8,9 @@ use Illuminate\Http\Request;
 class TipoPromocionesController extends Controller
 {
     public function read(){
-        return TipoPromociones::all();
+       return response()->json(
+        TipoPromociones::select('id as tipo_promociones_id','tipo_prom_nombre as tipo_prom_nombre')->get()
+    );
     }
 
     public function store(Request $r){

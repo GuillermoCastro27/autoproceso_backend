@@ -45,6 +45,8 @@ use App\Http\Controllers\RecepcionCabController;
 use App\Http\Controllers\RecepcionDetController;
 use App\Http\Controllers\DiagnosticoCabController;
 use App\Http\Controllers\DiagnosticoDetController;
+use App\Http\Controllers\PromocionesCabController;
+use App\Http\Controllers\PromocionesDetController;
 
 /*
 |--------------------------------------------------------------------------
@@ -306,6 +308,20 @@ Route::post("diagnostico_det/create",[DiagnosticoDetController::class,"store"]);
 Route::get("diagnostico_det/read/{id}",[DiagnosticoDetController::class,"read"]);
 Route::put("diagnostico_det/update/{solicitudes_cab_id}",[DiagnosticoDetController::class,"update"]);
 Route::delete("diagnostico_det/delete/{solicitudes_cab_id}/{item_id}",[DiagnosticoDetController::class,"destroy"]);
+
+Route::post("promocionescab/create",[PromocionesCabController::class,"store"]);
+Route::get("promocionescab/read",[PromocionesCabController::class,"read"]);
+Route::put("promocionescab/update/{id}",[PromocionesCabController::class,"update"]);
+Route::put("promocionescab/anular/{id}",[PromocionesCabController::class,"anular"]);
+Route::put("promocionescab/confirmar/{id}",[PromocionesCabController::class,"confirmar"]);
+Route::post("promocionescab/buscar",[PromocionesCabController::class,"buscar"]);
+Route::get("promocionescab/buscar-informe", [PromocionesCabController::class, "buscarInforme"]);
+
+
+Route::post("promociones_det/create",[PromocionesDetController::class,"store"]);
+Route::get("promociones_det/read/{id}",[PromocionesDetController::class,"read"]);
+Route::put("promociones_det/update/{promociones_cab_id}",[PromocionesDetController::class,"update"]);
+Route::delete("promociones_det/delete/{promociones_cab_id}/{item_id}",[PromocionesDetController::class,"destroy"]);
 
 Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
 
