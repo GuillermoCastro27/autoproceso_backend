@@ -50,15 +50,5 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(10)->by($throttleKey);
         });
-
-        // Limitar intentos de autenticación de 2FA a 5 por minuto
-        RateLimiter::for('two-factor', function (Request $request) {
-            return Limit::perMinute(5)->by($request->session()->get('login.id'));
-        });
-
-        // Vista personalizada para el desafío de 2FA
-        Fortify::twoFactorChallengeView(function () {
-            return view('auth.two-factor-challenge'); // Asegúrate de tener esta vista
-        });
     }
 }

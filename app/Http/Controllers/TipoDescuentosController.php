@@ -8,7 +8,13 @@ use Illuminate\Http\Request;
 class TipoDescuentosController extends Controller
 {
     public function read(){
-        return TipoDescuentos::all();
+       return response()->json(
+        TipoDescuentos::select('id as tipo_descuentos_id',
+        'tipo_desc_nombre',
+        'tipo_desc_descrip',
+        'tipo_desc_fechaInicio',
+        'tipo_desc_fechaFin')->get()
+    );
     }
 
     public function store(Request $r){

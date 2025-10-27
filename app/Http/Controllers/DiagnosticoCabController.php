@@ -208,4 +208,69 @@ public function store(Request $r){
             'registro'=> $diagnosticocab
         ],200);
     }
+    public function buscar(Request $r)
+{
+    $texto = $r->input('texto');
+    $userId = $r->input('user_id');
+
+    return DB::select("
+        SELECT 
+            dc.id AS diagnostico_cab_id,
+            TO_CHAR(dc.diag_cab_fecha, 'DD/MM/YYYY HH24:MI:SS') AS diag_cab_fecha,
+            dc.diag_cab_prioridad,
+            dc.diag_cab_estado,
+            dc.diag_cab_observaciones,
+            dc.diag_cab_kilometraje,
+            dc.diag_cab_nivel_combustible,
+
+            -- Cliente
+            c.id AS clientes_id,
+            c.cli_nombre,
+            c.cli_apellido,
+            c.cli_ruc,
+            c.cli_direccion,
+            c.cli_telefono,
+            c.cli_correo,
+
+            -- Tipo de servicio
+            ts.id AS tipo_servicio_id,
+            ts.tipo_serv_nombre AS tipo_servicio,
+
+            -- Empresa y Sucursal
+            dc.empresa_id,
+            e.emp_razon_social,
+            dc.sucursal_id,
+            s.suc_razon_social,
+
+            -- Encargado
+            u.id AS user_id,
+            u.name AS encargado,
+
+            -- Texto descriptivo
+            'DIAGNOSTICO NRO: ' || TO_CHAR(dc.id, '0000000') ||
+            ' - Cliente: ' || c.cli_nombre || ' ' || c.cli_apellido ||
+            ' (' || ts.tipo_serv_nombre || ')' AS diagnostico
+
+        FROM diagnostico_cab dc
+        JOIN users u ON u.id = dc.user_id
+        JOIN empresa e ON e.id = dc.empresa_id
+        JOIN sucursal s ON s.empresa_id = dc.sucursal_id
+        JOIN recep_cab rc ON rc.id = dc.recep_cab_id
+        JOIN clientes c ON c.id = rc.clientes_id
+        LEFT JOIN tipo_servicio ts ON ts.id = dc.tipo_servicio_id
+        WHERE 
+            dc.diag_cab_estado IN ('CONFIRMADO')
+            AND u.id = {$userId}
+            AND (
+                c.cli_nombre ILIKE '%{$texto}%'
+                OR c.cli_apellido ILIKE '%{$texto}%'
+                OR c.cli_ruc ILIKE '%{$texto}%'
+                OR ts.tipo_serv_nombre ILIKE '%{$texto}%'
+                OR TO_CHAR(dc.id, '0000000') ILIKE '%{$texto}%'
+            )
+        ORDER BY dc.id DESC
+    ");
+}
+
+
 }

@@ -23,8 +23,6 @@ class User extends Authenticatable
         'password',
         'login',
         'intentos',
-        'two_factor_secret', // Agrega este campo
-        'two_factor_recovery_codes', // Agrega este campo
     ];
 
     /**
@@ -35,18 +33,5 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
-        'two_factor_secret', // Oculta este campo
-        'two_factor_recovery_codes', // Oculta este campo
-    ];
-
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'two_factor_secret' => 'string', // Define el tipo de este campo
-        'two_factor_recovery_codes' => 'string', // Define el tipo de este campo
     ];
 }

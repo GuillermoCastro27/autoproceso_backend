@@ -47,6 +47,11 @@ use App\Http\Controllers\DiagnosticoCabController;
 use App\Http\Controllers\DiagnosticoDetController;
 use App\Http\Controllers\PromocionesCabController;
 use App\Http\Controllers\PromocionesDetController;
+use App\Http\Controllers\DescuentosCabController;
+use App\Http\Controllers\DescuentosDetController;
+use App\Http\Controllers\PresupuestoServCabController;
+use App\Http\Controllers\PresupuestoServDetController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -322,6 +327,32 @@ Route::post("promociones_det/create",[PromocionesDetController::class,"store"]);
 Route::get("promociones_det/read/{id}",[PromocionesDetController::class,"read"]);
 Route::put("promociones_det/update/{promociones_cab_id}",[PromocionesDetController::class,"update"]);
 Route::delete("promociones_det/delete/{promociones_cab_id}/{item_id}",[PromocionesDetController::class,"destroy"]);
+
+Route::post("descuentoscab/create",[DescuentosCabController::class,"store"]);
+Route::get("descuentoscab/read",[DescuentosCabController::class,"read"]);
+Route::put("descuentoscab/update/{id}",[DescuentosCabController::class,"update"]);
+Route::put("descuentoscab/anular/{id}",[DescuentosCabController::class,"anular"]);
+Route::put("descuentoscab/confirmar/{id}",[DescuentosCabController::class,"confirmar"]);
+Route::post("descuentoscab/buscar",[DescuentosCabController::class,"buscar"]);
+Route::get("descuentoscab/buscar-informe", [DescuentosCabController::class, "buscarInforme"]);
+
+Route::post("descuentos_det/create",[DescuentosDetController::class,"store"]);
+Route::get("descuentos_det/read/{id}",[DescuentosDetController::class,"read"]);
+Route::put("descuentos_det/update/{promociones_cab_id}",[DescuentosDetController::class,"update"]);
+Route::delete("descuentos_det/delete/{promociones_cab_id}/{item_id}",[DescuentosDetController::class,"destroy"]);
+
+Route::post("presupuestoservcab/create",[PresupuestoServCabController::class,"store"]);
+Route::get("presupuestoservcab/read",[PresupuestoServCabController::class,"read"]);
+Route::put("presupuestoservcab/update/{id}",[PresupuestoServCabController::class,"update"]);
+Route::put("presupuestoservcab/anular/{id}",[PresupuestoServCabController::class,"anular"]);
+Route::put("presupuestoservcab/confirmar/{id}",[PresupuestoServCabController::class,"confirmar"]);
+Route::post("presupuestoservcab/buscar",[PresupuestoServCabController::class,"buscar"]);
+Route::get("presupuestoservcab/buscar-informe", [PresupuestoServCabController::class, "buscarInforme"]);
+
+Route::post("presupuesto_serv_det/create",[PresupuestoServDetController::class,"store"]);
+Route::get("presupuesto_serv_det/read/{id}",[PresupuestoServDetController::class,"read"]);
+Route::put("presupuesto_serv_det/update/{presupuesto_serv_cab_id}",[PresupuestoServDetController::class,"update"]);
+Route::delete("presupuesto_serv_det/delete/{presupuesto_serv_cab_id}/{item_id}",[PresupuestoServDetController::class,"destroy"]);
 
 Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
 

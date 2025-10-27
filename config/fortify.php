@@ -116,7 +116,6 @@ return [
 
     'limiters' => [
         'login' => 'login',
-        'two-factor' => 'two-factor',
     ],
 
     /*
@@ -142,19 +141,5 @@ return [
     | these features or you can even remove all of these if you need to.
     |
     */
-
-    'features' => [
-    Features::resetPasswords(),
-    Features::registration(),
-    Features::resetPasswords(),
-    // Features::emailVerification(),
-    Features::updateProfileInformation(),
-    Features::updatePasswords(),
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-        // 'window' => 0,
-    ]),
-],
 
 ];
