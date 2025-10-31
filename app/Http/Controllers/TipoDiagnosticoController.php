@@ -13,6 +13,15 @@ class TipoDiagnosticoController extends Controller
 
     public function store(Request $r){
         $datosValidados = $r->validate([
+            'tipo_diag_nombre' => 'required|string|max:100|unique:tipo_diagnostico,tipo_diag_nombre',
+            'tipo_diag_descrip' => 'required|string|max:255',
+        ], [
+            'tipo_diag_nombre.required' => 'El campo nombre es obligatorio.',
+            'tipo_diag_nombre.unique' => 'El tipo de diagnóstico ya existe.',
+            'tipo_diag_descrip.required' => 'El campo descripción es obligatorio.',
+            'tipo_diag_descrip.unique' => 'El campo descripción ya existe.',
+        ]);
+        $datosValidados = $r->validate([
             'tipo_diag_nombre'=>'required',
             'tipo_diag_descrip'=>'required'
         ]);
@@ -33,6 +42,15 @@ class TipoDiagnosticoController extends Controller
                 'tipo'=>'error'
             ],404);
         }
+        $datosValidados = $r->validate([
+            'tipo_diag_nombre' => 'required|string|max:100|unique:tipo_diagnostico,tipo_diag_nombre,' . $id,
+            'tipo_diag_descrip' => 'required|string|max:255|unique:tipo_diagnostico,tipo_diag_descrip,' . $id
+        ], [
+            'tipo_diag_nombre.required' => 'El campo nombre es obligatorio.',
+            'tipo_diag_nombre.unique' => 'El tipo de diagnóstico ya existe.',
+            'tipo_diag_descrip.required' => 'El campo descripción es obligatorio.',
+            'tipo_diag_descrip.unique' => 'El campo descripción ya existe.',
+        ]);
         $datosValidados = $r->validate([
             'tipo_diag_nombre'=>'required',
             'tipo_diag_descrip'=>'required'

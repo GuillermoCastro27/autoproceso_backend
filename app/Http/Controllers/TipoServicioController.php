@@ -3,62 +3,81 @@
 namespace App\Http\Controllers;
 
 use App\Models\TipoServicio;
-use Illuminate\Support\Facades\DB;
-
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TipoServicioController extends Controller
 {
-    public function read(){
-    return response()->json(
-        TipoServicio::select('id as tipo_servicio_id','tipo_serv_nombre as tipo_serv_nombre')->get()
-    );
-}
+    // 📋 Listar todos
+    public function read()
+    {
+        return response()->json(
+            TipoServicio::select('id as tipo_servicio_id', 'tipo_serv_nombre as tipo_serv_nombre')->get()
+        );
+    }
 
-    public function store(Request $r){
+    // 🆕 Crear nuevo tipo de servicio
+    public function store(Request $r)
+    {
         $datosValidados = $r->validate([
-            'tipo_serv_nombre'=>'required'
+            'tipo_serv_nombre' => 'required|string|max:100|unique:tipo_servicio,tipo_serv_nombre'
+        ], [
+            'tipo_serv_nombre.required' => 'El campo nombre es obligatorio.',
+            'tipo_serv_nombre.unique' => 'El tipo de servicio ya existe.',
         ]);
+
         $tiposervicio = TipoServicio::create($datosValidados);
-        $tiposervicio->save();
+
         return response()->json([
-            'mensaje'=>'Registro creado con exito',
-            'tipo'=>'success',
-            'registro'=> $tiposervicio
-        ],200);
+            'mensaje' => 'Registro creado con éxito',
+            'tipo' => 'success',
+            'registro' => $tiposervicio
+        ], 200);
     }
 
-    public function update(Request $r, $id){
+    // ✏️ Actualizar tipo de servicio
+    public function update(Request $r, $id)
+    {
         $tiposervicio = TipoServicio::find($id);
-        if(!$tiposervicio){
+        if (!$tiposervicio) {
             return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+                'mensaje' => 'Registro no encontrado',
+                'tipo' => 'error'
+            ], 404);
         }
+
         $datosValidados = $r->validate([
-            'tipo_serv_nombre'=>'required'
+            'tipo_serv_nombre' => 'required|string|max:100|unique:tipo_servicio,tipo_serv_nombre,' . $id
+        ], [
+            'tipo_serv_nombre.required' => 'El campo nombre es obligatorio.',
+            'tipo_serv_nombre.unique' => 'El tipo de servicio ya existe.',
         ]);
+
         $tiposervicio->update($datosValidados);
+
         return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $tiposervicio
-        ],200);
+            'mensaje' => 'Registro modificado con éxito',
+            'tipo' => 'success',
+            'registro' => $tiposervicio
+        ], 200);
     }
 
-    public function destroy($id){
+    // 🗑️ Eliminar tipo de servicio
+    public function destroy($id)
+    {
         $tiposervicio = TipoServicio::find($id);
-        if(!$tiposervicio){
+        if (!$tiposervicio) {
             return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+                'mensaje' => 'Registro no encontrado',
+                'tipo' => 'error'
+            ], 404);
         }
+
         $tiposervicio->delete();
+
         return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
+            'mensaje' => 'Registro eliminado con éxito',
+            'tipo' => 'success',
+        ], 200);
     }
 }

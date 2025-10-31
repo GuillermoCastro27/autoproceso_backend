@@ -131,7 +131,6 @@ class ItemController extends Controller
             LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
             LEFT JOIN stock s ON s.item_id = i.id
             WHERE i.item_decripcion ILIKE '%$r->item_decripcion%'
-            AND t.tipo_descripcion = '$r->tipo_descripcion'
             GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
         ");
         

@@ -168,33 +168,43 @@ public function store(Request $r){
             'registro'=> $presupuestoservcab
         ],200);
     }
-    public function anular(Request $r, $id){
+    public function anular(Request $r, $id)
+    {
         $presupuestoservcab = PresupuestoServCab::find($id);
-        if(!$presupuestoservcab){
+        if (!$presupuestoservcab) {
             return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+                'mensaje' => 'Registro no encontrado',
+                'tipo' => 'error'
+            ], 404);
         }
+
+        // ⚠️ Solo validamos los campos realmente necesarios
         $datosValidados = $r->validate([
-            'pres_serv_cab_observaciones'=>'required',
-            'pres_serv_cab_fecha'=>'required',
-            'pres_serv_cab_fecha_vence'=>'required',
-            'pres_serv_cab_estado'=>'required',
-            'user_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required',
-            'diagnostico_cab_id'=>'required',
-            'promociones_cab_id'=>'required',
-            'descuentos_cab_id'=>'required',
-            'clientes_id'=>'required'
+            'pres_serv_cab_observaciones' => 'required',
+            'pres_serv_cab_fecha' => 'required',
+            'pres_serv_cab_fecha_vence' => 'required',
+            'pres_serv_cab_estado' => 'required',
+            'user_id' => 'required',
+            'empresa_id' => 'required',
+            'sucursal_id' => 'required',
+            'diagnostico_cab_id' => 'required',
+            'clientes_id' => 'required'
         ]);
-        $presupuestoservcab->update($datosValidados);
+
+        // 💡 Asignamos NULL a los campos de FK opcionales (evita error FK)
+        $presupuestoservcab->update([
+            ...$datosValidados,
+            'promociones_cab_id' => $r->input('promociones_cab_id') ?: null,
+            'descuentos_cab_id'  => $r->input('descuentos_cab_id') ?: null,
+            'pres_serv_cab_estado' => 'ANULADO',
+            'updated_at' => now(),
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro anulado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuestoservcab
-        ],200);
+            'mensaje' => 'Presupuesto anulado con éxito',
+            'tipo' => 'success',
+            'registro' => $presupuestoservcab
+        ], 200);
     }
     public function confirmar(Request $r, $id){
         $presupuestoservcab = PresupuestoServCab::find($id);
@@ -213,8 +223,8 @@ public function store(Request $r){
             'empresa_id'=>'required',
             'sucursal_id'=>'required',
             'diagnostico_cab_id'=>'required',
-            'promociones_cab_id'=>'required',
-            'descuentos_cab_id'=>'required',
+            'promociones_cab_id'=>'nullable|integer',
+            'descuentos_cab_id'=>'nullable|integer',
             'clientes_id'=>'required'
         ]);
         $presupuestoservcab->update($datosValidados);
@@ -224,21 +234,20 @@ public function store(Request $r){
             'registro'=> $presupuestoservcab
         ],200);
     }
-    public function buscar(Request $r){
-        return DB::select("SELECT 
-            rc.id AS recep_cab_id,
-            rc.recep_cab_observaciones,
-            rc.recep_cab_estado,
-            rc.recep_cab_prioridad,
-            rc.recep_cab_kilometraje,
-            rc.recep_cab_nivel_combustible,
-            rc.user_id,
+    public function buscar(Request $r)
+{
+    return DB::select("
+        SELECT 
+            psc.id AS presupuestos_serv_cab_id,
+            psc.pres_serv_cab_observaciones,
+            psc.pres_serv_cab_fecha,
+            psc.pres_serv_cab_fecha_vence,
+            psc.pres_serv_cab_estado,
+            psc.user_id,
             u.name AS encargado,
             u.login,
-            rc.created_at,
-            rc.updated_at,
 
-            -- Cliente
+            -- 🧾 Cliente
             c.id AS clientes_id,
             c.cli_nombre,
             c.cli_apellido,
@@ -247,29 +256,43 @@ public function store(Request $r){
             c.cli_telefono,
             c.cli_correo,
 
-            -- Tipo de servicio
+            -- 🧰 Diagnóstico
+            dg.id AS diagnostico_cab_id,
+            dg.diag_cab_fecha,
+            dg.diag_cab_kilometraje,
+            dg.diag_cab_prioridad,
+            dg.diag_cab_observaciones,
+            dg.diag_cab_nivel_combustible,
+
+            -- 🧩 Tipo de diagnóstico / servicio
             ts.id AS tipo_servicio_id,
-            ts.tipo_serv_nombre AS tipo_servicio,
+            ts.tipo_serv_nombre AS tipo_serv_nombre,
 
-            -- Empresa y sucursal
-            rc.sucursal_id,
-            s.suc_razon_social,
-            rc.empresa_id,
+            -- 🏢 Empresa y sucursal
+            psc.empresa_id,
             e.emp_razon_social,
+            psc.sucursal_id,
+            s.suc_razon_social,
 
-            -- Texto descriptivo de la solicitud
-            'RECEPCION NRO: ' || TO_CHAR(rc.id, '0000000') || 
-            ' (' || rc.recep_cab_observaciones || ')' AS recepcion
+            -- 🔢 Texto descriptivo para mostrar en lista
+            'PRESUPUESTO NRO: ' || TO_CHAR(psc.id, '0000000') || 
+            ' (' || c.cli_nombre || ' ' || c.cli_apellido || ')' AS presupuesto_serv
 
         FROM 
-            recep_cab rc 
-        JOIN users u ON u.id = rc.user_id
-        JOIN clientes c ON c.id = rc.clientes_id
-        JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
-        JOIN sucursal s ON s.empresa_id = rc.sucursal_id
-        JOIN empresa e ON e.id = rc.empresa_id
+            presupuesto_serv_cab psc
+        JOIN users u ON u.id = psc.user_id
+        JOIN empresa e ON e.id = psc.empresa_id
+        JOIN sucursal s ON s.empresa_id = psc.sucursal_id
+        JOIN diagnostico_cab dg ON dg.id = psc.diagnostico_cab_id
+        JOIN clientes c ON c.id = dg.clientes_id
+        JOIN tipo_servicio ts ON ts.id = dg.tipo_servicio_id
+
         WHERE 
-            rc.recep_cab_estado = 'CONFIRMADO'
-    and rc.user_id = {$r->user_id} and u.name ilike'%{$r->name}%'");
-    }
+            psc.pres_serv_cab_estado = 'CONFIRMADO'
+        AND psc.user_id = {$r->user_id}
+        AND u.name ILIKE '%{$r->name}%'
+
+        ORDER BY psc.id DESC
+    ");
+}
 }

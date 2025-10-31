@@ -24,20 +24,28 @@ class TipoPromocionesController extends Controller
 
     public function store(Request $r)
     {
+        // ✅ ÚNICA VALIDACIÓN
         $datosValidados = $r->validate([
-            'tipo_prom_descrip' => 'required',
-            'tipo_prom_nombre' => 'required',
-            'tipo_prom_fechaInicio' => 'required',
-            'tipo_prom_fechaFin' => 'required',
-            'tipo_prom_modo' => 'required',
-            'tipo_prom_valor' => 'required'
+            'tipo_prom_nombre'       => 'required|string|max:100|unique:tipo_promociones,tipo_prom_nombre',
+            'tipo_prom_descrip'      => 'required|string|max:255',
+            'tipo_prom_fechaInicio'  => 'required',
+            'tipo_prom_fechaFin'     => 'required',
+            'tipo_prom_modo'         => 'required',
+            'tipo_prom_valor'        => 'required'
+        ], [
+            'tipo_prom_nombre.required' => 'El nombre de la promoción es obligatorio.',
+            'tipo_prom_nombre.unique'   => 'Ya existe un tipo de promoción con ese nombre.',
+            'tipo_prom_descrip.required' => 'La descripción es obligatoria.',
+            'tipo_prom_fechaInicio.required' => 'Debe indicar la fecha de inicio.',
+            'tipo_prom_fechaFin.required'    => 'Debe indicar la fecha de finalización.',
+            'tipo_prom_modo.required'        => 'Debe seleccionar el modo de promoción.',
+            'tipo_prom_valor.required'       => 'Debe ingresar un valor.'
         ]);
 
         $tipopromociones = TipoPromociones::create($datosValidados);
-        $tipopromociones->save();
 
         return response()->json([
-            'mensaje' => 'Registro creado con exito',
+            'mensaje' => 'Registro creado con éxito',
             'tipo' => 'success',
             'registro' => $tipopromociones
         ], 200);
@@ -53,19 +61,28 @@ class TipoPromocionesController extends Controller
             ], 404);
         }
 
+        // ✅ ÚNICA VALIDACIÓN
         $datosValidados = $r->validate([
-            'tipo_prom_descrip' => 'required',
-            'tipo_prom_nombre' => 'required',
-            'tipo_prom_fechaInicio' => 'required',
-            'tipo_prom_fechaFin' => 'required',
-            'tipo_prom_modo' => 'required',
-            'tipo_prom_valor' => 'required'
+            'tipo_prom_nombre'       => 'required|string|max:100|unique:tipo_promociones,tipo_prom_nombre,' . $id,
+            'tipo_prom_descrip'      => 'required|string|max:255',
+            'tipo_prom_fechaInicio'  => 'required',
+            'tipo_prom_fechaFin'     => 'required',
+            'tipo_prom_modo'         => 'required',
+            'tipo_prom_valor'        => 'required'
+        ], [
+            'tipo_prom_nombre.required' => 'El nombre de la promoción es obligatorio.',
+            'tipo_prom_nombre.unique'   => 'Ya existe un tipo de promoción con ese nombre.',
+            'tipo_prom_descrip.required' => 'La descripción es obligatoria.',
+            'tipo_prom_fechaInicio.required' => 'Debe indicar la fecha de inicio.',
+            'tipo_prom_fechaFin.required'    => 'Debe indicar la fecha de finalización.',
+            'tipo_prom_modo.required'        => 'Debe seleccionar el modo de promoción.',
+            'tipo_prom_valor.required'       => 'Debe ingresar un valor.'
         ]);
 
         $tipopromociones->update($datosValidados);
 
         return response()->json([
-            'mensaje' => 'Registro modificado con exito',
+            'mensaje' => 'Registro modificado con éxito',
             'tipo' => 'success',
             'registro' => $tipopromociones
         ], 200);
@@ -84,7 +101,7 @@ class TipoPromocionesController extends Controller
         $tipopromociones->delete();
 
         return response()->json([
-            'mensaje' => 'Registro Eliminado con exito',
+            'mensaje' => 'Registro eliminado con éxito',
             'tipo' => 'success',
         ], 200);
     }
