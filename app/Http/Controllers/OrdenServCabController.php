@@ -20,6 +20,8 @@ class OrdenServCabController extends Controller
             osc.ord_serv_observaciones,
             osc.ord_serv_estado,
             osc.ord_serv_tipo,
+
+            -- 🧾 Cliente
             c.id AS clientes_id,
             c.cli_nombre,
             c.cli_apellido,       
@@ -27,24 +29,38 @@ class OrdenServCabController extends Controller
             c.cli_direccion,
             c.cli_telefono,
             c.cli_correo,
-            s.suc_razon_social AS suc_razon_social,
+
+            -- 🏢 Empresa y sucursal
             osc.empresa_id,
             e.emp_razon_social AS emp_razon_social,
+            s.suc_razon_social AS suc_razon_social,
+
+            -- 🧩 Presupuesto relacionado
             psc.id AS presupuesto_serv_cab_id,
-            'PRESUPUESTO SERV NRO: ' || to_char(psc.id, '0000000') || ' VENCE EL: ' || COALESCE(to_char(psc.pres_serv_cab_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') || ' (' || psc.pres_serv_cab_observaciones || ')' AS presupuesto_serv,
+            'PRESUPUESTO SERV NRO: ' || to_char(psc.id, '0000000') ||
+            ' VENCE EL: ' || COALESCE(to_char(psc.pres_serv_cab_fecha_vence, 'YYYY-MM-DD HH24:MI:SS'), 'N/A') ||
+            ' (' || psc.pres_serv_cab_observaciones || ')' AS presupuesto_serv,
+
+            -- 🧠 Diagnóstico y tipo de servicio (🔹 NUEVOS CAMPOS)
+            dg.id AS diagnostico_cab_id,
+            dg.diag_cab_observaciones AS diagnostico,
+            ts.id AS tipo_servicio_id,
+            ts.tipo_serv_nombre,
+
+            -- 👤 Encargado
             u.name AS encargado  
+
         FROM 
-            orden_serv_cab osc 
-        JOIN 
-            users u ON u.id = osc.user_id
-        JOIN 
-            sucursal s ON s.empresa_id = osc.sucursal_id
-        JOIN 
-            empresa e ON e.id = osc.empresa_id
-        JOIN 
-            presupuesto_serv_cab psc  ON psc.id = osc.presupuesto_serv_cab_id 
-        JOIN 
-            clientes c  ON c.id = psc.clientes_id
+            orden_serv_cab osc
+            JOIN users u ON u.id = osc.user_id
+            JOIN empresa e ON e.id = osc.empresa_id
+            JOIN sucursal s ON s.empresa_id = osc.sucursal_id
+            JOIN presupuesto_serv_cab psc ON psc.id = osc.presupuesto_serv_cab_id
+            JOIN diagnostico_cab dg ON dg.id = psc.diagnostico_cab_id
+            JOIN tipo_servicio ts ON ts.id = dg.tipo_servicio_id
+            JOIN clientes c ON c.id = dg.clientes_id
+
+        ORDER BY osc.id DESC
     ");
 }
 public function store(Request $r) {

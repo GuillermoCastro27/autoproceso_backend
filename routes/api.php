@@ -52,6 +52,9 @@ use App\Http\Controllers\DescuentosDetController;
 use App\Http\Controllers\PresupuestoServCabController;
 use App\Http\Controllers\PresupuestoServDetController;
 use App\Http\Controllers\OrdenServCabController;
+use App\Http\Controllers\OrdenServDetController;
+use App\Http\Controllers\ContratoServCabController;
+use App\Http\Controllers\ContratoServDetController;
 
 
 /*
@@ -362,6 +365,24 @@ Route::put("presupuestosordenserviciocabervcab/anular/{id}",[OrdenServCabControl
 Route::put("ordenserviciocab/confirmar/{id}",[OrdenServCabController::class,"confirmar"]);
 Route::post("ordenserviciocab/buscar",[OrdenServCabController::class,"buscar"]);
 Route::get("ordenserviciocab/buscar-informe", [OrdenServCabController::class, "buscarInforme"]);
+
+Route::post("ordenservicodet/create",[OrdenServDetController::class,"store"]);
+Route::get("ordenserviciodet/read/{id}",[OrdenServDetController::class,"read"]);
+Route::put("ordenserviciodet/update/{orden_serv_cab_id}",[OrdenServDetController::class,"update"]);
+Route::delete("ordenserviciodet/delete/{orden_serv_cab_id}/{item_id}",[OrdenServDetController::class,"destroy"]);
+
+Route::post("contratoservcab/create",[ContratoServCabController::class,"store"]);
+Route::get("contratoservcab/read",[ContratoServCabController::class,"read"]);
+Route::put("contratoservcab/update/{id}",[ContratoServCabController::class,"update"]);
+Route::put("contratoservcab/anular/{id}",[ContratoServCabController::class,"anular"]);
+Route::put("contratoservcab/confirmar/{id}",[ContratoServCabController::class,"confirmar"]);
+Route::post("contratoservcab/buscar",[ContratoServCabController::class,"buscar"]);
+Route::get("contratoservcab/buscar-informe", [ContratoServCabController::class, "buscarInforme"]);
+
+Route::post("contratoservdet/create",[ContratoServDetController::class,"store"]);
+Route::get("contratoservdet/read/{id}",[ContratoServDetController::class,"read"]);
+Route::put("contratoservdet/update/{contrato_serv_cab_id}",[ContratoServDetController::class,"update"]);
+Route::delete("contratoservdet/delete/{contrato_serv_cab_id}/{item_id}",[ContratoServDetController::class,"destroy"]);
 
 Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
 
