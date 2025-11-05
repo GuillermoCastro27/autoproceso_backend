@@ -11,6 +11,9 @@ class PromocionesDet extends Model
     protected $fillable =[
         'promociones_cab_id',
         'item_id',
+        'tipo_impuesto_id',
+        'prom_det_cantidad',
+        'prom_det_costo',
     ];
     protected $primaryKey =[
         'promociones_cab_id',

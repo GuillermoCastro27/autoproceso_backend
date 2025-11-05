@@ -7,8 +7,11 @@ use Illuminate\Http\Request;
 
 class TipoDiagnosticoController extends Controller
 {
-    public function read(){
-        return TipoDiagnostico::all();
+     public function read()
+    {
+        return response()->json(
+            TipoDiagnostico::select('id as tipo_diagnostico_id', 'tipo_diag_nombre as tipo_diag_nombre', 'tipo_diag_descrip as tipo_diag_descrip')->get()
+        );
     }
 
     public function store(Request $r){

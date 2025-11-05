@@ -31,7 +31,7 @@ class DiagnosticoCabController extends Controller
             c.cli_telefono,
             c.cli_correo,
 
-            -- Sucursal y Empresa (según tu modelo)
+            -- Sucursal y Empresa
             rc.sucursal_id,
             s.suc_razon_social,
             rc.empresa_id,
@@ -43,24 +43,24 @@ class DiagnosticoCabController extends Controller
             rc.recep_cab_prioridad AS recep_cab_prioridad,
             rc.recep_cab_observaciones AS recep_cab_observaciones,
 
-            -- Tipo de servicio
-            ts.id AS tipo_servicio_id,
-            ts.tipo_serv_nombre AS tipo_servicio,
+            -- Tipo de diagnóstico
+            td.id AS tipo_diagnostico_id,
+            td.tipo_diag_nombre AS tipo_diag_nombre,
 
-            -- Texto para mostrar solicitud
-           'RECEPCION NRO: ' || to_char(rc.id, '0000000') AS recepcion,
+            -- Texto para mostrar recepción
+            'RECEPCION NRO: ' || to_char(rc.id, '0000000') AS recepcion,
 
             -- Encargado
             u.name AS encargado
 
         FROM diagnostico_cab dc 
         JOIN users u ON u.id = dc.user_id
-        JOIN sucursal s ON s.empresa_id = dc.sucursal_id  -- 🔹 Mantenido según tu modelo
+        JOIN sucursal s ON s.empresa_id = dc.sucursal_id
         JOIN empresa e ON e.id = dc.empresa_id
         JOIN recep_cab rc ON rc.id = dc.recep_cab_id
         JOIN clientes c ON c.id = rc.clientes_id
-        LEFT JOIN tipo_servicio ts ON ts.id = dc.tipo_servicio_id
-        ORDER BY dc.id desc
+        LEFT JOIN tipo_diagnostico td ON td.id = dc.tipo_diagnostico_id
+        ORDER BY dc.id DESC
     ");
 }
 public function store(Request $r){
@@ -73,7 +73,7 @@ public function store(Request $r){
             'diag_cab_estado'=>'required',
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
-            'tipo_servicio_id'=>'required',
+            'tipo_diagnostico_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -138,7 +138,7 @@ public function store(Request $r){
             'diag_cab_estado'=>'required',
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
-            'tipo_servicio_id'=>'required',
+            'tipo_diagnostico_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -167,7 +167,7 @@ public function store(Request $r){
             'diag_cab_estado'=>'required',
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
-            'tipo_servicio_id'=>'required',
+            'tipo_diagnostico_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -196,7 +196,7 @@ public function store(Request $r){
             'diag_cab_estado'=>'required',
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
-            'tipo_servicio_id'=>'required',
+            'tipo_diagnostico_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -232,9 +232,13 @@ public function store(Request $r){
             c.cli_telefono,
             c.cli_correo,
 
-            -- Tipo de servicio
+            -- Tipo de diagnóstico
+            td.id AS tipo_diagnostico_id,
+            td.tipo_diag_nombre AS tipo_diag_nombre,
+
+            -- Tipo de servicio (heredado desde recepción)
             ts.id AS tipo_servicio_id,
-            ts.tipo_serv_nombre AS tipo_servicio,
+            ts.tipo_serv_nombre AS tipo_serv_nombre,
 
             -- Empresa y Sucursal
             dc.empresa_id,
@@ -249,7 +253,7 @@ public function store(Request $r){
             -- Texto descriptivo
             'DIAGNOSTICO NRO: ' || TO_CHAR(dc.id, '0000000') ||
             ' - Cliente: ' || c.cli_nombre || ' ' || c.cli_apellido ||
-            ' (' || ts.tipo_serv_nombre || ')' AS diagnostico
+            ' (' || td.tipo_diag_nombre || ')' AS diagnostico
 
         FROM diagnostico_cab dc
         JOIN users u ON u.id = dc.user_id
@@ -257,7 +261,8 @@ public function store(Request $r){
         JOIN sucursal s ON s.empresa_id = dc.sucursal_id
         JOIN recep_cab rc ON rc.id = dc.recep_cab_id
         JOIN clientes c ON c.id = rc.clientes_id
-        LEFT JOIN tipo_servicio ts ON ts.id = dc.tipo_servicio_id
+        LEFT JOIN tipo_diagnostico td ON td.id = dc.tipo_diagnostico_id
+        LEFT JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
         WHERE 
             dc.diag_cab_estado IN ('CONFIRMADO')
             AND u.id = {$userId}
@@ -265,12 +270,14 @@ public function store(Request $r){
                 c.cli_nombre ILIKE '%{$texto}%'
                 OR c.cli_apellido ILIKE '%{$texto}%'
                 OR c.cli_ruc ILIKE '%{$texto}%'
+                OR td.tipo_diag_nombre ILIKE '%{$texto}%'
                 OR ts.tipo_serv_nombre ILIKE '%{$texto}%'
                 OR TO_CHAR(dc.id, '0000000') ILIKE '%{$texto}%'
             )
         ORDER BY dc.id DESC
     ");
 }
+
 
 
 }

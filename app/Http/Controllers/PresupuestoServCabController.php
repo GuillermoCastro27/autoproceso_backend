@@ -57,8 +57,8 @@ class PresupuestoServCabController extends Controller
             COALESCE(tp.tipo_prom_valor, 0) AS tipo_prom_valor,
 
             -- 🧩 Tipo de servicio
-            ts.id AS tipo_servicio_id,
-            ts.tipo_serv_nombre AS tipo_servicio,
+            td2.id AS tipo_diagnostico_id,
+            td2.tipo_diag_nombre AS tipo_diag_nombre,
 
             -- 🩺 Texto descriptivo del diagnóstico
             'DIAGNOSTICO NRO: ' || TO_CHAR(dg.id, '0000000') AS diagnostico,
@@ -72,7 +72,7 @@ class PresupuestoServCabController extends Controller
         JOIN sucursal s ON s.empresa_id = psc.sucursal_id
         JOIN diagnostico_cab dg ON dg.id = psc.diagnostico_cab_id
         JOIN clientes c ON c.id = dg.clientes_id
-        JOIN tipo_servicio ts ON ts.id = dg.tipo_servicio_id
+        JOIN tipo_diagnostico td2 ON td2.id = dg.tipo_diagnostico_id
 
         -- 🔹 Relaciones opcionales
         LEFT JOIN descuentos_cab dc ON dc.id = psc.descuentos_cab_id
@@ -265,8 +265,8 @@ public function store(Request $r){
             dg.diag_cab_nivel_combustible,
 
             -- 🧩 Tipo de diagnóstico / servicio
-            ts.id AS tipo_servicio_id,
-            ts.tipo_serv_nombre AS tipo_serv_nombre,
+            td.id AS tipo_diagnostico_id,
+            td.tipo_diag_nombre AS tipo_diag_nombre,
 
             -- 🏢 Empresa y sucursal
             psc.empresa_id,
@@ -285,7 +285,7 @@ public function store(Request $r){
         JOIN sucursal s ON s.empresa_id = psc.sucursal_id
         JOIN diagnostico_cab dg ON dg.id = psc.diagnostico_cab_id
         JOIN clientes c ON c.id = dg.clientes_id
-        JOIN tipo_servicio ts ON ts.id = dg.tipo_servicio_id
+        JOIN tipo_diagnostico td ON td.id = dg.tipo_diagnostico_id
 
         WHERE 
             psc.pres_serv_cab_estado = 'CONFIRMADO'

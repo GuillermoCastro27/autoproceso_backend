@@ -36,6 +36,10 @@ return new class extends Migration
             $table->unsignedBigInteger('recep_cab_id');                  // 🔗 Relación directa con la recepción
             $table->foreign('recep_cab_id')->references('id')->on('recep_cab')->onDelete('restrict')->onUpdate('cascade');
 
+            $table->unsignedBigInteger('tipo_diagnostico_id');               // Tipo de servicio (Mecánica, Electricidad, etc.)
+            $table->foreign('tipo_diagnostico_id')->references('id')->on('tipo_diagnostico')->onDelete('restrict')->onUpdate('cascade');
+            $table->timestamps();
+
             $table->unsignedBigInteger('tipo_servicio_id');               // Tipo de servicio (Mecánica, Electricidad, etc.)
             $table->foreign('tipo_servicio_id')->references('id')->on('tipo_servicio')->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();

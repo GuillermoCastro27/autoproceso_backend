@@ -28,6 +28,8 @@ class PromocionesCabController extends Controller
                 u.login,
                 pc.tipo_promociones_id,
                 tp.tipo_prom_nombre AS tipo_prom_nombre,
+                tp.tipo_prom_modo AS tipo_prom_modo,
+                tp.tipo_prom_valor AS tipo_prom_valor,
                 pc.created_at,
                 pc.updated_at
             FROM promociones_cab pc
@@ -184,7 +186,7 @@ class PromocionesCabController extends Controller
                 pc.sucursal_id,
                 s.suc_razon_social,
                 'PROMOCIÓN NRO: ' || TO_CHAR(pc.id, '0000000') || 
-                ' (' || pc.prom_cab_nombre || ')' AS promocion
+                ' (' || pc.prom_cab_nombre || ')' AS prom_cab_nombre
             FROM promociones_cab pc
             JOIN users u ON u.id = pc.user_id
             JOIN empresa e ON e.id = pc.empresa_id

@@ -21,6 +21,14 @@ return new class extends Migration
             $table->foreign('item_id')
                   ->references('id')->on('items')
                   ->onDelete('restrict')->onUpdate('cascade');
+            
+            $table->unsignedBigInteger('tipo_impuesto_id');
+            $table->foreign('tipo_impuesto_id')
+                  ->references('id')->on('tipo_impuesto')
+                  ->onDelete('restrict')->onUpdate('cascade');
+
+            $table->float('prom_det_cantidad');
+            $table->float('prom_det_costo');
 
             $table->primary(['promociones_cab_id', 'item_id']);
             $table->timestamps();

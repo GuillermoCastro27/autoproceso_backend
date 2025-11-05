@@ -20,6 +20,7 @@ class DiagnosticoCab extends Model
         'empresa_id',
         'sucursal_id',
         'tipo_servicio_id',
+        'tipo_diagnostico_id',
         'recep_cab_id'
     ];
     protected $table = 'diagnostico_cab';

@@ -176,7 +176,7 @@ public function store(Request $r){
 
             -- Texto descriptivo del descuento
             'DESCUENTO NRO: ' || TO_CHAR(dc.id, '0000000') || 
-            ' (' || dc.desc_cab_nombre || ')' AS descuento
+            ' (' || dc.desc_cab_nombre || ')' AS desc_cab_nombre
 
         FROM descuentos_cab dc
         JOIN users u ON u.id = dc.user_id
