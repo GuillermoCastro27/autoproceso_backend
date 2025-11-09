@@ -77,6 +77,7 @@ Route::post("items/create",[ItemController::class,"store"]);
 Route::put("items/update/{id}",[ItemController::class,"update"]);
 Route::delete("items/delete/{id}",[ItemController::class,"destroy"]);
 Route::post("items/buscar",[ItemController::class,"buscar"]);
+Route::post("items/buscarItem",[ItemController::class,"buscarItem"]);
 
 Route::post("pedidos/create",[PedidoController::class,"store"]);
 Route::get("pedidos/read",[PedidoController::class,"read"]);

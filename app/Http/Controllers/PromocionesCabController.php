@@ -162,46 +162,57 @@ class PromocionesCabController extends Controller
         ], 200);
     }
 
-    public function buscar(Request $r)
-    {
-        $texto = $r->input('texto');
-        $userId = $r->input('user_id');
+   public function buscar(Request $r)
+{
+    $texto = $r->input('texto');
+    $userId = $r->input('user_id');
 
-        return DB::select("
-            SELECT 
-                pc.id AS promociones_cab_id,
-                pc.prom_cab_nombre,
-                pc.prom_cab_observaciones,
-                TO_CHAR(pc.prom_cab_fecha_registro, 'DD/MM/YYYY HH24:MI:SS') AS prom_cab_fecha_registro,
-                TO_CHAR(pc.prom_cab_fecha_inicio, 'DD/MM/YYYY HH24:MI:SS') AS prom_cab_fecha_inicio,
-                TO_CHAR(pc.prom_cab_fecha_fin, 'DD/MM/YYYY HH24:MI:SS') AS prom_cab_fecha_fin,
-                pc.prom_cab_estado,
-                pc.tipo_promociones_id,
-                tp.tipo_prom_nombre AS tipo_prom_nombre,
-                u.id AS user_id,
-                u.name AS encargado,
-                u.login,
-                pc.empresa_id,
-                e.emp_razon_social,
-                pc.sucursal_id,
-                s.suc_razon_social,
-                'PROMOCIÓN NRO: ' || TO_CHAR(pc.id, '0000000') || 
-                ' (' || pc.prom_cab_nombre || ')' AS prom_cab_nombre
-            FROM promociones_cab pc
-            JOIN users u ON u.id = pc.user_id
-            JOIN empresa e ON e.id = pc.empresa_id
-            JOIN sucursal s ON s.empresa_id = pc.sucursal_id
-            JOIN tipo_promociones tp ON tp.id = pc.tipo_promociones_id
-            WHERE 
-                pc.prom_cab_estado = 'CONFIRMADO'
-                AND u.id = {$userId}
-                AND (
-                    pc.prom_cab_nombre ILIKE '%{$texto}%'
-                    OR pc.prom_cab_observaciones ILIKE '%{$texto}%'
-                    OR tp.tipo_prom_nombre ILIKE '%{$texto}%'
-                    OR TO_CHAR(pc.id, '0000000') ILIKE '%{$texto}%'
-                )
-            ORDER BY pc.id DESC
-        ");
-    }
+    // 🔹 Primero: anula automáticamente las vencidas
+    DB::update("
+        UPDATE promociones_cab
+        SET prom_cab_estado = 'ANULADO'
+        WHERE prom_cab_estado = 'CONFIRMADO'
+        AND prom_cab_fecha_fin < CURRENT_TIMESTAMP
+    ");
+
+    // 🔹 Luego: busca solo las vigentes
+    return DB::select("
+        SELECT 
+            pc.id AS promociones_cab_id,
+            pc.prom_cab_nombre,
+            pc.prom_cab_observaciones,
+            TO_CHAR(pc.prom_cab_fecha_registro, 'DD/MM/YYYY HH24:MI:SS') AS prom_cab_fecha_registro,
+            TO_CHAR(pc.prom_cab_fecha_inicio, 'DD/MM/YYYY HH24:MI:SS') AS prom_cab_fecha_inicio,
+            TO_CHAR(pc.prom_cab_fecha_fin, 'DD/MM/YYYY HH24:MI:SS') AS prom_cab_fecha_fin,
+            pc.prom_cab_estado,
+            pc.tipo_promociones_id,
+            tp.tipo_prom_nombre AS tipo_prom_nombre,
+            u.id AS user_id,
+            u.name AS encargado,
+            u.login,
+            pc.empresa_id,
+            e.emp_razon_social,
+            pc.sucursal_id,
+            s.suc_razon_social,
+            'PROMOCIÓN NRO: ' || TO_CHAR(pc.id, '0000000') || 
+            ' (' || pc.prom_cab_nombre || ')' AS prom_cab_nombre
+        FROM promociones_cab pc
+        JOIN users u ON u.id = pc.user_id
+        JOIN empresa e ON e.id = pc.empresa_id
+        JOIN sucursal s ON s.empresa_id = pc.sucursal_id
+        JOIN tipo_promociones tp ON tp.id = pc.tipo_promociones_id
+        WHERE 
+            pc.prom_cab_estado = 'CONFIRMADO'
+            AND u.id = {$userId}
+            AND CURRENT_TIMESTAMP BETWEEN pc.prom_cab_fecha_inicio AND pc.prom_cab_fecha_fin
+            AND (
+                pc.prom_cab_nombre ILIKE '%{$texto}%'
+                OR pc.prom_cab_observaciones ILIKE '%{$texto}%'
+                OR tp.tipo_prom_nombre ILIKE '%{$texto}%'
+                OR TO_CHAR(pc.id, '0000000') ILIKE '%{$texto}%'
+            )
+        ORDER BY pc.id DESC
+    ");
+}
+
 }

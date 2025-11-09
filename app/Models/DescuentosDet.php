@@ -11,6 +11,9 @@ class DescuentosDet extends Model
     protected $fillable =[
         'descuentos_cab_id',
         'item_id',
+        'tipo_impuesto_id',
+        'desc_det_cantidad',
+        'desc_det_costo',
     ];
     protected $primaryKey =[
         'descuentos_cab_id',
