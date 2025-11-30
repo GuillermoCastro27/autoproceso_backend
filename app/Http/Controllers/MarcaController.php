@@ -7,12 +7,16 @@ use Illuminate\Http\Request;
 
 class MarcaController extends Controller
 {
-    public function read(){
-        return Marca::all();
+    public function read()
+    {
+        return response()->json(
+            Marca::select('id', 'marc_nom as marc_nom', 'mar_tipo as mar_tipo')->get()
+        );
     }
     public function store(Request $r){
         $datosValidados = $r->validate([
-            'marc_nom'=>'required'
+            'marc_nom'=>'required',
+            'mar_tipo'=>'required'
         ]);
         $marca = Marca::create($datosValidados);
         $marca->save();
@@ -31,7 +35,8 @@ class MarcaController extends Controller
             ],404);
         }
         $datosValidados = $r->validate([
-            'marc_nom'=>'required'
+            'marc_nom'=>'required',
+            'mar_tipo'=>'required'
         ]);
         $marca->update($datosValidados);
         return response()->json([
@@ -62,4 +67,30 @@ class MarcaController extends Controller
         WHERE i.item_decripcion ILIKE '%$r->item_decripcion%'
         AND m.marc_nom = '$r->marc_nom'");
     }
+    public function buscarPorTipo(Request $r)
+{
+    $texto = $r->input('texto');
+    $tipo = $r->input('tipo');
+
+    $resultado = Marca::select('id', 'marc_nom', 'mar_tipo')
+        ->where('mar_tipo', '=', $tipo)
+        ->where('marc_nom', 'ILIKE', "%$texto%")
+        ->orderBy('marc_nom')
+        ->get();
+
+    return response()->json($resultado);
+}
+public function buscarPorMarca(Request $r)
+{
+    $marca_id = $r->input('marca_id');
+    $texto = $r->input('texto');
+
+    $resultado = Modelo::select('id', 'modelo_nom', 'modelo_año')
+        ->where('marca_id', $marca_id)
+        ->where('modelo_nom', 'ILIKE', "%$texto%")
+        ->orderBy('modelo_nom')
+        ->get();
+
+    return response()->json($resultado);
+}
 }

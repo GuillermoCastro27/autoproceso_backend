@@ -277,7 +277,4 @@ public function store(Request $r){
         ORDER BY dc.id DESC
     ");
 }
-
-
-
 }

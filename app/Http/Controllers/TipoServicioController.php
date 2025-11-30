@@ -12,7 +12,7 @@ class TipoServicioController extends Controller
     public function read()
     {
         return response()->json(
-            TipoServicio::select('id as tipo_servicio_id', 'tipo_serv_nombre as tipo_serv_nombre')->get()
+            TipoServicio::select('id as tipo_servicio_id', 'tipo_serv_nombre as tipo_serv_nombre','tip_serv_precio as tip_serv_precio')->get()
         );
     }
 
@@ -20,10 +20,12 @@ class TipoServicioController extends Controller
     public function store(Request $r)
     {
         $datosValidados = $r->validate([
-            'tipo_serv_nombre' => 'required|string|max:100|unique:tipo_servicio,tipo_serv_nombre'
+            'tipo_serv_nombre' => 'required|string|max:100|unique:tipo_servicio,tipo_serv_nombre',
+            'tip_serv_precio' => 'required|integer'
         ], [
             'tipo_serv_nombre.required' => 'El campo nombre es obligatorio.',
             'tipo_serv_nombre.unique' => 'El tipo de servicio ya existe.',
+            'tip_serv_precio' => 'El campo precio es obligatorio',
         ]);
 
         $tiposervicio = TipoServicio::create($datosValidados);
@@ -47,10 +49,12 @@ class TipoServicioController extends Controller
         }
 
         $datosValidados = $r->validate([
-            'tipo_serv_nombre' => 'required|string|max:100|unique:tipo_servicio,tipo_serv_nombre,' . $id
+            'tipo_serv_nombre' => 'required|string|max:100|unique:tipo_servicio,tipo_serv_nombre',
+            'tip_serv_precio' => 'required|integer'
         ], [
             'tipo_serv_nombre.required' => 'El campo nombre es obligatorio.',
             'tipo_serv_nombre.unique' => 'El tipo de servicio ya existe.',
+            'tip_serv_precio' => 'El campo precio es obligatorio',
         ]);
 
         $tiposervicio->update($datosValidados);

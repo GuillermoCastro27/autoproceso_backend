@@ -55,6 +55,7 @@ use App\Http\Controllers\OrdenServCabController;
 use App\Http\Controllers\OrdenServDetController;
 use App\Http\Controllers\ContratoServCabController;
 use App\Http\Controllers\ContratoServDetController;
+use App\Http\Controllers\TipoVehiculoController;
 
 
 /*
@@ -220,6 +221,8 @@ Route::post("marca/create",[MarcaController::class,"store"]);
 Route::put("marca/update/{id}",[MarcaController::class,"update"]);
 Route::delete("marca/delete/{id}",[MarcaController::class,"destroy"]);
 Route::post("marca/buscar",[MarcaController::class,"buscar"]);
+Route::post("marca/buscarPorTipo",[MarcaController::class,"buscarPorTipo"]);
+Route::post("marca/buscarPorMarca",[MarcaController::class,"buscarPorMarca"]);
 
 Route::get("item-marca/read",[ItemMarcaController::class,"read"]);
 Route::post("item-marca/create",[ItemMarcaController::class,"store"]);
@@ -230,6 +233,7 @@ Route::get("modelo/read",[ModeloController::class,"read"]);
 Route::post("modelo/create",[ModeloController::class,"store"]);
 Route::put("modelo/update/{id}",[ModeloController::class,"update"]);
 Route::delete("modelo/delete/{id}",[ModeloController::class,"destroy"]);
+Route::post("modelo/buscarPorMarca",[ModeloController::class,"buscarPorMarca"]);
 
 Route::get("item-modelo/read",[ItemModeloController::class,"read"]);
 Route::post("item-modelo/create",[ItemModeloController::class,"store"]);
@@ -273,6 +277,12 @@ Route::post("tipo-promociones/create",[TipoPromocionesController::class,"store"]
 Route::put("tipo-promociones/update/{id}",[TipoPromocionesController::class,"update"]);
 Route::delete("tipo-promociones/delete/{id}",[TipoPromocionesController::class,"destroy"]);
 Route::get("tipo-promociones/buscar",[TipoPromocionesController::class,"buscar"]);
+
+Route::get("tipo-vehiculo/read",[TipoVehiculoController::class,"read"]);
+Route::post("tipo-vehiculo/create",[TipoVehiculoController::class,"store"]);
+Route::put("tipo-vehiculo/update/{id}",[TipoVehiculoController::class,"update"]);
+Route::delete("tipo-vehiculo/delete/{id}",[TipoVehiculoController::class,"destroy"]);
+Route::get("tipo-vehiculo/buscar",[TipoVehiculoController::class,"buscar"]);
 
 Route::get("tipo-descuentos/read",[TipoDescuentosController::class,"read"]);
 Route::post("tipo-descuentos/create",[TipoDescuentosController::class,"store"]);

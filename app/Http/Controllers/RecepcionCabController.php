@@ -26,17 +26,17 @@ class RecepcionCabController extends Controller
             -- Cliente
             c.id AS clientes_id,
             c.cli_nombre,
-            c.cli_apellido,       
+            c.cli_apellido,
             c.cli_ruc,
             c.cli_direccion,
             c.cli_telefono,
             c.cli_correo,
 
-            -- Sucursal y Empresa (según tu modelo)
-            rc.sucursal_id,
-            s.suc_razon_social,
+            -- Sucursal y Empresa
             rc.empresa_id,
-            e.emp_razon_social,
+            e.emp_razon_social as emp_razon_social,
+            rc.sucursal_id,
+            s.suc_razon_social as suc_razon_social,
 
             -- Solicitud
             sc.id AS solicitudes_cab_id,
@@ -49,19 +49,45 @@ class RecepcionCabController extends Controller
             ts.id AS tipo_servicio_id,
             ts.tipo_serv_nombre AS tipo_servicio,
 
+            -- Tipo de Vehículo
+            tv.id AS tipo_vehiculo_id,
+            tv.tip_veh_nombre,
+            tv.tip_veh_capacidad,
+            tv.tip_veh_combustible,
+            tv.tip_veh_categoria,
+            tv.tip_veh_observacion,
+
+            -- Marca
+            m.id AS marca_id,
+            m.marc_nom,
+
+            -- Modelo
+            mo.id AS modelo_id,
+            mo.modelo_nom,
+            mo.modelo_año,
+
+            -- Vehículo resumido para lista
+            (tv.tip_veh_nombre || ' - ' || m.marc_nom || ' ' || mo.modelo_nom || ' ' || mo.modelo_año) AS vehiculo_info,
+
             -- Texto para mostrar solicitud
-           'SOLICITUD NRO: ' || to_char(sc.id, '0000000') AS solicitudes,
+            'SOLICITUD NRO: ' || to_char(sc.id, '0000000') AS solicitudes,
 
             -- Encargado
             u.name AS encargado
 
         FROM recep_cab rc
         JOIN users u ON u.id = rc.user_id
-        JOIN sucursal s ON s.empresa_id = rc.sucursal_id  -- 🔹 Mantenido según tu modelo
+        JOIN sucursal s ON s.empresa_id = rc.sucursal_id
         JOIN empresa e ON e.id = rc.empresa_id
         JOIN solicitudes_cab sc ON sc.id = rc.solicitudes_cab_id
         JOIN clientes c ON c.id = sc.clientes_id
+        JOIN tipo_vehiculo tv ON tv.id = rc.tipo_vehiculo_id
+
+        JOIN marca m ON m.id = tv.marca_id
+        JOIN modelo mo ON mo.id = tv.modelo_id
+
         LEFT JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
+
         ORDER BY rc.id DESC
     ");
 }
@@ -77,6 +103,7 @@ public function store(Request $r){
             'solicitudes_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -143,6 +170,7 @@ public function store(Request $r){
             'solicitudes_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -173,6 +201,7 @@ public function store(Request $r){
             'solicitudes_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -203,6 +232,7 @@ public function store(Request $r){
             'solicitudes_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -215,7 +245,8 @@ public function store(Request $r){
         ],200);
     }
     public function buscar(Request $r){
-        return DB::select("SELECT 
+    return DB::select("
+        SELECT 
             rc.id AS recep_cab_id,
             rc.recep_cab_observaciones,
             rc.recep_cab_estado,
@@ -247,19 +278,44 @@ public function store(Request $r){
             rc.empresa_id,
             e.emp_razon_social,
 
-            -- Texto descriptivo de la solicitud
+            -- Tipo de Vehículo
+            tv.id AS tipo_vehiculo_id,
+            tv.tip_veh_nombre,
+            tv.tip_veh_capacidad,
+            tv.tip_veh_combustible,
+            tv.tip_veh_categoria,
+            tv.tip_veh_observacion,
+
+            -- Marca
+            m.id AS marca_id,
+            m.marc_nom,
+
+            -- Modelo
+            mo.id AS modelo_id,
+            mo.modelo_nom,
+            mo.modelo_año,
+
+            -- Vehículo resumido
+            (tv.tip_veh_nombre || ' - ' || m.marc_nom || ' ' || mo.modelo_nom || ' ' || mo.modelo_año) AS vehiculo_info,
+
+            -- Texto descriptivo de la recepción
             'RECEPCION NRO: ' || TO_CHAR(rc.id, '0000000') || 
             ' (' || rc.recep_cab_observaciones || ')' AS recepcion
 
-        FROM 
-            recep_cab rc 
-        JOIN users u ON u.id = rc.user_id
-        JOIN clientes c ON c.id = rc.clientes_id
+        FROM recep_cab rc
+        JOIN users u        ON u.id = rc.user_id
+        JOIN clientes c     ON c.id = rc.clientes_id
         JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
-        JOIN sucursal s ON s.empresa_id = rc.sucursal_id
-        JOIN empresa e ON e.id = rc.empresa_id
+        JOIN sucursal s     ON s.empresa_id = rc.sucursal_id
+        JOIN empresa e      ON e.id = rc.empresa_id
+        JOIN tipo_vehiculo tv ON tv.id = rc.tipo_vehiculo_id
+        JOIN marca m        ON m.id = tv.marca_id
+        JOIN modelo mo      ON mo.id = tv.modelo_id
+
         WHERE 
             rc.recep_cab_estado = 'CONFIRMADO'
-    and rc.user_id = {$r->user_id} and u.name ilike'%{$r->name}%'");
-    }
+            AND rc.user_id = {$r->user_id}
+            AND u.name ILIKE '%{$r->name}%'
+    ");
+}
 }

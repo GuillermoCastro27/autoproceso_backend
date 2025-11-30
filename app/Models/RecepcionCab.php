@@ -21,6 +21,7 @@ class RecepcionCab extends Model
         'empresa_id',
         'sucursal_id',
         'tipo_servicio_id',
+        'tipo_vehiculo_id',
         'solicitudes_cab_id'
     ];
     protected $table = 'recep_cab';
