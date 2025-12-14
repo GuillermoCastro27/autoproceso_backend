@@ -118,4 +118,34 @@ class TipoVehiculoController extends Controller
             ], 400);
         }
     }
+    public function buscarPorMarca(Request $request)
+{
+    $marca_id = $request->marca_id;
+    $texto = $request->texto ?? '';
+
+    $resultado = TipoVehiculo::select(
+            'tipo_vehiculo.id as tipo_vehiculo_id',
+            'tipo_vehiculo.tip_veh_nombre',
+            'tipo_vehiculo.tip_veh_capacidad',
+            'tipo_vehiculo.tip_veh_combustible',
+            'tipo_vehiculo.tip_veh_categoria',
+            'tipo_vehiculo.tip_veh_observacion',
+            'marca.marc_nom as marca_nombre',
+            'modelo.modelo_nom as modelo_nombre',
+            'modelo.modelo_año as modelo_año',
+            'tipo_vehiculo.marca_id',
+            'tipo_vehiculo.modelo_id'
+        )
+        ->join('marca', 'tipo_vehiculo.marca_id', '=', 'marca.id')
+        ->join('modelo', 'tipo_vehiculo.modelo_id', '=', 'modelo.id')
+        ->where('tipo_vehiculo.marca_id', $marca_id)
+        ->where(function ($q) use ($texto) {
+            $q->where('tipo_vehiculo.tip_veh_nombre', 'ILIKE', "%$texto%")
+              ->orWhere('modelo.modelo_nom', 'ILIKE', "%$texto%");
+        })
+        ->orderBy('tipo_vehiculo.tip_veh_nombre')
+        ->get();
+
+    return response()->json($resultado);
+}
 }

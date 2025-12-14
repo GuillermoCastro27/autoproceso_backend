@@ -37,17 +37,33 @@ class DiagnosticoCabController extends Controller
             rc.empresa_id,
             e.emp_razon_social,
 
-            -- Recepcion
+            -- Recepción
             rc.id AS recep_cab_id,
             rc.recep_cab_fecha,
-            rc.recep_cab_prioridad AS recep_cab_prioridad,
-            rc.recep_cab_observaciones AS recep_cab_observaciones,
+            rc.recep_cab_prioridad,
+            rc.recep_cab_observaciones,
 
             -- Tipo de diagnóstico
             td.id AS tipo_diagnostico_id,
-            td.tipo_diag_nombre AS tipo_diag_nombre,
+            td.tipo_diag_nombre,
 
-            -- Texto para mostrar recepción
+            -- Tipo de vehículo (CORRECTO)
+            tv.id AS tipo_vehiculo_id,
+            tv.tip_veh_nombre,
+            tv.tip_veh_capacidad,
+            tv.tip_veh_combustible,
+            tv.tip_veh_categoria,
+            tv.tip_veh_observacion,
+
+            -- Marca y modelo (CORRECTO)
+            m.marc_nom as marca_nombre,
+            mo.modelo_nom as modelo_nombre,
+
+            -- Tipo de servicio correcto
+            ts.id AS tipo_servicio_id,
+            ts.tipo_serv_nombre,
+
+            -- Texto de recepción
             'RECEPCION NRO: ' || to_char(rc.id, '0000000') AS recepcion,
 
             -- Encargado
@@ -57,12 +73,23 @@ class DiagnosticoCabController extends Controller
         JOIN users u ON u.id = dc.user_id
         JOIN sucursal s ON s.empresa_id = dc.sucursal_id
         JOIN empresa e ON e.id = dc.empresa_id
+
         JOIN recep_cab rc ON rc.id = dc.recep_cab_id
         JOIN clientes c ON c.id = rc.clientes_id
+
         LEFT JOIN tipo_diagnostico td ON td.id = dc.tipo_diagnostico_id
+        LEFT JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
+
+        -- 🔥 AQUÍ LOS JOIN CORRECTOS DEL VEHÍCULO 🔥
+        LEFT JOIN tipo_vehiculo tv ON tv.id = rc.tipo_vehiculo_id
+        LEFT JOIN marca m ON m.id = tv.marca_id
+        LEFT JOIN modelo mo ON mo.id = tv.modelo_id
+
         ORDER BY dc.id DESC
     ");
 }
+
+
 public function store(Request $r){
         $datosValidados = $r->validate([
             'diag_cab_observaciones'=>'required',
@@ -74,6 +101,8 @@ public function store(Request $r){
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_diagnostico_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
+            'tipo_servicio_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -139,6 +168,8 @@ public function store(Request $r){
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_diagnostico_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
+            'tipo_servicio_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -168,6 +199,8 @@ public function store(Request $r){
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_diagnostico_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
+            'tipo_servicio_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -197,6 +230,8 @@ public function store(Request $r){
             'recep_cab_id'=>'required',
             'clientes_id'=>'required',
             'tipo_diagnostico_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
+            'tipo_servicio_id'=>'required',
             'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
@@ -210,7 +245,7 @@ public function store(Request $r){
     }
     public function buscar(Request $r)
 {
-    $texto = $r->input('texto');
+    $texto  = $r->input('texto');
     $userId = $r->input('user_id');
 
     return DB::select("
@@ -236,11 +271,11 @@ public function store(Request $r){
             td.id AS tipo_diagnostico_id,
             td.tipo_diag_nombre AS tipo_diag_nombre,
 
-            -- Tipo de servicio (heredado desde recepción)
+            -- Tipo de servicio (AHORA DESDE DIAGNÓSTICO)
             ts.id AS tipo_servicio_id,
             ts.tipo_serv_nombre AS tipo_serv_nombre,
 
-            -- Empresa y Sucursal
+            -- Empresa y sucursal
             dc.empresa_id,
             e.emp_razon_social,
             dc.sucursal_id,
@@ -250,19 +285,36 @@ public function store(Request $r){
             u.id AS user_id,
             u.name AS encargado,
 
+            tv.id AS tipo_vehiculo_id,
+            tv.tip_veh_nombre,
+            tv.tip_veh_capacidad,
+            tv.tip_veh_combustible,
+            tv.tip_veh_categoria,
+
+            m.marc_nom,
+            mo.modelo_nom,
+
             -- Texto descriptivo
             'DIAGNOSTICO NRO: ' || TO_CHAR(dc.id, '0000000') ||
             ' - Cliente: ' || c.cli_nombre || ' ' || c.cli_apellido ||
             ' (' || td.tipo_diag_nombre || ')' AS diagnostico
 
         FROM diagnostico_cab dc
-        JOIN users u ON u.id = dc.user_id
-        JOIN empresa e ON e.id = dc.empresa_id
-        JOIN sucursal s ON s.empresa_id = dc.sucursal_id
-        JOIN recep_cab rc ON rc.id = dc.recep_cab_id
-        JOIN clientes c ON c.id = rc.clientes_id
+        JOIN users u        ON u.id = dc.user_id
+        JOIN empresa e      ON e.id = dc.empresa_id
+        JOIN sucursal s     ON s.empresa_id = dc.sucursal_id
+        JOIN clientes c     ON c.id = dc.clientes_id
+
         LEFT JOIN tipo_diagnostico td ON td.id = dc.tipo_diagnostico_id
-        LEFT JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
+
+        -- 🔹 Tipo de servicio desde DIAGNÓSTICO
+        LEFT JOIN tipo_servicio ts ON ts.id = dc.tipo_servicio_id
+
+        -- 🔹 Tipo de vehículo desde DIAGNÓSTICO
+        LEFT JOIN tipo_vehiculo tv ON tv.id = dc.tipo_vehiculo_id
+        LEFT JOIN marca m          ON m.id = tv.marca_id
+        LEFT JOIN modelo mo        ON mo.id = tv.modelo_id
+
         WHERE 
             dc.diag_cab_estado IN ('CONFIRMADO')
             AND u.id = {$userId}

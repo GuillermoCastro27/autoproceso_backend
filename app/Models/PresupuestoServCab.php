@@ -17,6 +17,8 @@ class PresupuestoServCab extends Model
         'empresa_id',
         'sucursal_id',
         'diagnostico_cab_id',
+        'tipo_servicio_id',
+        'tipo_vehiculo_id',
         'promociones_cab_id',
         'descuentos_cab_id',
         'clientes_id'

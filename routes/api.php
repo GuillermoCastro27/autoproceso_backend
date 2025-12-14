@@ -56,6 +56,9 @@ use App\Http\Controllers\OrdenServDetController;
 use App\Http\Controllers\ContratoServCabController;
 use App\Http\Controllers\ContratoServDetController;
 use App\Http\Controllers\TipoVehiculoController;
+use App\Http\Controllers\EquipoTrabajoController;
+use App\Http\Controllers\ReclamoCliCabController;
+use App\Http\Controllers\ReclamoCliDetController;
 
 
 /*
@@ -223,6 +226,8 @@ Route::delete("marca/delete/{id}",[MarcaController::class,"destroy"]);
 Route::post("marca/buscar",[MarcaController::class,"buscar"]);
 Route::post("marca/buscarPorTipo",[MarcaController::class,"buscarPorTipo"]);
 Route::post("marca/buscarPorMarca",[MarcaController::class,"buscarPorMarca"]);
+Route::post('marca/buscarVehiculo', [MarcaController::class, 'buscarVehiculo']);
+Route::post('marca/buscarPorTipoItem', [MarcaController::class, 'buscarPorTipoItem']);
 
 Route::get("item-marca/read",[ItemMarcaController::class,"read"]);
 Route::post("item-marca/create",[ItemMarcaController::class,"store"]);
@@ -234,6 +239,8 @@ Route::post("modelo/create",[ModeloController::class,"store"]);
 Route::put("modelo/update/{id}",[ModeloController::class,"update"]);
 Route::delete("modelo/delete/{id}",[ModeloController::class,"destroy"]);
 Route::post("modelo/buscarPorMarca",[ModeloController::class,"buscarPorMarca"]);
+Route::get('modelo/buscarModelosItem', [ModeloController::class, 'buscarModelosItem']);
+
 
 Route::get("item-modelo/read",[ItemModeloController::class,"read"]);
 Route::post("item-modelo/create",[ItemModeloController::class,"store"]);
@@ -283,6 +290,13 @@ Route::post("tipo-vehiculo/create",[TipoVehiculoController::class,"store"]);
 Route::put("tipo-vehiculo/update/{id}",[TipoVehiculoController::class,"update"]);
 Route::delete("tipo-vehiculo/delete/{id}",[TipoVehiculoController::class,"destroy"]);
 Route::get("tipo-vehiculo/buscar",[TipoVehiculoController::class,"buscar"]);
+Route::get('tipo-vehiculo/buscarPorMarca', [TipoVehiculoController::class, 'buscarPorMarca']);
+
+Route::get("equipo_trabajo/read",[EquipoTrabajoController::class,"read"]);
+Route::post("equipo_trabajo/create",[EquipoTrabajoController::class,"store"]);
+Route::put("equipo_trabajo/update/{id}",[EquipoTrabajoController::class,"update"]);
+Route::delete("equipo_trabajo/delete/{id}",[EquipoTrabajoController::class,"destroy"]);
+Route::get("equipo_trabajo/buscar",[EquipoTrabajoController::class,"buscar"]);
 
 Route::get("tipo-descuentos/read",[TipoDescuentosController::class,"read"]);
 Route::post("tipo-descuentos/create",[TipoDescuentosController::class,"store"]);
@@ -363,6 +377,8 @@ Route::put("presupuestoservcab/anular/{id}",[PresupuestoServCabController::class
 Route::put("presupuestoservcab/confirmar/{id}",[PresupuestoServCabController::class,"confirmar"]);
 Route::post("presupuestoservcab/buscar",[PresupuestoServCabController::class,"buscar"]);
 Route::get("presupuestoservcab/buscar-informe", [PresupuestoServCabController::class, "buscarInforme"]);
+Route::get('presupuestoservcab/readById/{id}', [PresupuestoServCabController::class, 'readById']);
+
 
 Route::post("presupuesto_serv_det/create",[PresupuestoServDetController::class,"store"]);
 Route::get("presupuesto_serv_det/read/{id}",[PresupuestoServDetController::class,"read"]);
@@ -372,7 +388,7 @@ Route::delete("presupuesto_serv_det/delete/{presupuesto_serv_cab_id}/{item_id}",
 Route::post("ordenserviciocab/create",[OrdenServCabController::class,"store"]);
 Route::get("ordenserviciocab/read",[OrdenServCabController::class,"read"]);
 Route::put("ordenserviciocab/update/{id}",[OrdenServCabController::class,"update"]);
-Route::put("presupuestosordenserviciocabervcab/anular/{id}",[OrdenServCabController::class,"anular"]);
+Route::put("ordenserviciocab/anular/{id}",[OrdenServCabController::class,"anular"]);
 Route::put("ordenserviciocab/confirmar/{id}",[OrdenServCabController::class,"confirmar"]);
 Route::post("ordenserviciocab/buscar",[OrdenServCabController::class,"buscar"]);
 Route::get("ordenserviciocab/buscar-informe", [OrdenServCabController::class, "buscarInforme"]);
@@ -389,11 +405,25 @@ Route::put("contratoservcab/anular/{id}",[ContratoServCabController::class,"anul
 Route::put("contratoservcab/confirmar/{id}",[ContratoServCabController::class,"confirmar"]);
 Route::post("contratoservcab/buscar",[ContratoServCabController::class,"buscar"]);
 Route::get("contratoservcab/buscar-informe", [ContratoServCabController::class, "buscarInforme"]);
+Route::get('contratoservcab/imprimir/{id}', [ContratoServCabController::class, 'imprimir']);
 
 Route::post("contratoservdet/create",[ContratoServDetController::class,"store"]);
 Route::get("contratoservdet/read/{id}",[ContratoServDetController::class,"read"]);
 Route::put("contratoservdet/update/{contrato_serv_cab_id}",[ContratoServDetController::class,"update"]);
 Route::delete("contratoservdet/delete/{contrato_serv_cab_id}/{item_id}",[ContratoServDetController::class,"destroy"]);
+
+Route::post("reclamoclicab/create",[ReclamoCliCabController::class,"store"]);
+Route::get("reclamoclicab/read",[ReclamoCliCabController::class,"read"]);
+Route::put("reclamoclicab/update/{id}",[ReclamoCliCabController::class,"update"]);
+Route::put("reclamoclicab/anular/{id}",[ReclamoCliCabController::class,"anular"]);
+Route::put("reclamoclicab/confirmar/{id}",[ReclamoCliCabController::class,"confirmar"]);
+Route::post("reclamoclicab/buscar",[ReclamoCliCabController::class,"buscar"]);
+Route::get("reclamoclicab/buscar-informe", [ReclamoCliCabController::class, "buscarInforme"]);
+
+Route::post("reclamoclidet/create",[ReclamoCliDetController::class,"store"]);
+Route::get("reclamoclidet/read/{id}",[ReclamoCliDetController::class,"read"]);
+Route::put("reclamoclidet/update/{reclamo_cli_cab_id}",[ReclamoCliDetController::class,"update"]);
+Route::delete("reclamoclidet/delete/{reclamo_cli_cab_id}/{item_id}",[ReclamoCliDetController::class,"destroy"]);
 
 Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
 

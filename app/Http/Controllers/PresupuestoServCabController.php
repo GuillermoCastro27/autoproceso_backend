@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 class PresupuestoServCabController extends Controller
 {
-    public function read()
+   public function read()
 {
     return DB::select("
         SELECT 
@@ -20,7 +20,7 @@ class PresupuestoServCabController extends Controller
             psc.pres_serv_cab_fecha_vence,
             psc.pres_serv_cab_estado,
 
-            -- 🧾 Cliente
+            -- Cliente
             c.id AS clientes_id,
             c.cli_nombre,
             c.cli_apellido,       
@@ -29,13 +29,13 @@ class PresupuestoServCabController extends Controller
             c.cli_telefono,
             c.cli_correo,
 
-            -- 🏢 Sucursal y Empresa
-            psc.sucursal_id,
-            s.suc_razon_social,
+            -- Empresa y Sucursal
             psc.empresa_id,
             e.emp_razon_social,
+            psc.sucursal_id,
+            s.suc_razon_social,
 
-            -- 🧰 Diagnóstico
+            -- Diagnóstico
             dg.id AS diagnostico_cab_id,
             dg.diag_cab_fecha,
             dg.diag_cab_kilometraje,
@@ -43,46 +43,73 @@ class PresupuestoServCabController extends Controller
             dg.diag_cab_observaciones,
             dg.diag_cab_nivel_combustible,
 
-            -- 💸 Descuento (opcional)
+            -- Tipo Diagnóstico
+            td2.id AS tipo_diagnostico_id,
+            td2.tipo_diag_nombre AS tipo_diag_nombre,
+
+            -- Texto del diagnóstico
+            'DIAGNOSTICO NRO: ' || TO_CHAR(dg.id, '0000000') AS diagnostico,
+
+            -- Usuario encargado
+            u.name AS encargado,
+
+            -- Tipo de Vehículo
+            tv.id AS tipo_vehiculo_id,
+            tv.tip_veh_nombre,
+            tv.tip_veh_capacidad,
+            tv.tip_veh_combustible,
+            tv.tip_veh_categoria,
+
+            -- Marca y Modelo
+            m.id AS marca_id,
+            m.marc_nom AS marca_nombre,
+            mo.id AS modelo_id,
+            mo.modelo_nom AS modelo_nombre,
+
+            -- Tipo de Servicio (AHORA SÍ: solo nombre y precio)
+            ts.id AS tipo_servicio_id,
+            ts.tipo_serv_nombre AS tipo_servicio,
+            ts.tip_serv_precio AS precio_servicio,
+
+            -- Descuento (opcional)
             COALESCE(dc.id, 0) AS descuentos_cab_id,
             COALESCE(dc.desc_cab_nombre, 'N/A') AS desc_cab_nombre,
             COALESCE(dc.desc_cab_porcentaje, 0) AS desc_cab_porcentaje,
             COALESCE(td.tipo_desc_nombre, 'N/A') AS tipo_descuentos,
 
-            -- 🎁 Promoción (opcional)
+            -- Promoción (opcional)
             COALESCE(pc.id, 0) AS promociones_cab_id,
             COALESCE(pc.prom_cab_nombre, 'N/A') AS prom_cab_nombre,
             COALESCE(tp.tipo_prom_nombre, 'N/A') AS tipo_promociones,
             COALESCE(tp.tipo_prom_modo, 'N/A') AS tipo_prom_modo,
-            COALESCE(tp.tipo_prom_valor, 0) AS tipo_prom_valor,
+            COALESCE(tp.tipo_prom_valor, 0) AS tipo_prom_valor
 
-            -- 🧩 Tipo de servicio
-            td2.id AS tipo_diagnostico_id,
-            td2.tipo_diag_nombre AS tipo_diag_nombre,
-
-            -- 🩺 Texto descriptivo del diagnóstico
-            'DIAGNOSTICO NRO: ' || TO_CHAR(dg.id, '0000000') AS diagnostico,
-
-            -- 👤 Usuario encargado
-            u.name AS encargado
-
-        FROM presupuesto_serv_cab psc 
-        JOIN users u ON u.id = psc.user_id 
-        JOIN empresa e ON e.id = psc.empresa_id
-        JOIN sucursal s ON s.empresa_id = psc.sucursal_id
-        JOIN diagnostico_cab dg ON dg.id = psc.diagnostico_cab_id
-        JOIN clientes c ON c.id = dg.clientes_id
+        FROM presupuesto_serv_cab psc
+        JOIN users u             ON u.id = psc.user_id 
+        JOIN empresa e           ON e.id = psc.empresa_id
+        JOIN sucursal s          ON s.empresa_id = psc.sucursal_id
+        JOIN diagnostico_cab dg  ON dg.id = psc.diagnostico_cab_id
+        JOIN clientes c          ON c.id = dg.clientes_id
         JOIN tipo_diagnostico td2 ON td2.id = dg.tipo_diagnostico_id
 
-        -- 🔹 Relaciones opcionales
-        LEFT JOIN descuentos_cab dc ON dc.id = psc.descuentos_cab_id
-        LEFT JOIN tipo_descuentos td ON td.id = dc.tipo_descuentos_id 
-        LEFT JOIN promociones_cab pc ON pc.id = psc.promociones_cab_id
-        LEFT JOIN tipo_promociones tp ON tp.id = pc.tipo_promociones_id 
+        -- Vehículo
+        JOIN tipo_vehiculo tv    ON tv.id = psc.tipo_vehiculo_id
+        JOIN marca m             ON m.id = tv.marca_id
+        JOIN modelo mo           ON mo.id = tv.modelo_id
+
+        -- Tipo de servicio
+        JOIN tipo_servicio ts    ON ts.id = psc.tipo_servicio_id
+
+        -- Relaciones opcionales
+        LEFT JOIN descuentos_cab dc    ON dc.id = psc.descuentos_cab_id
+        LEFT JOIN tipo_descuentos td   ON td.id = dc.tipo_descuentos_id 
+        LEFT JOIN promociones_cab pc   ON pc.id = psc.promociones_cab_id
+        LEFT JOIN tipo_promociones tp  ON tp.id = pc.tipo_promociones_id 
 
         ORDER BY psc.id DESC
     ");
 }
+
 
 public function store(Request $r){
         $datosValidados = $r->validate([
@@ -94,6 +121,8 @@ public function store(Request $r){
             'empresa_id'=>'required',
             'sucursal_id'=>'required',
             'diagnostico_cab_id'=>'required',
+            'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'promociones_cab_id'=>'nullable|integer',
             'descuentos_cab_id'=>'nullable|integer',
             'clientes_id'=>'required'
@@ -157,6 +186,8 @@ public function store(Request $r){
             'empresa_id'=>'required',
             'sucursal_id'=>'required',
             'diagnostico_cab_id'=>'required',
+            'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'promociones_cab_id'=>'required',
             'descuentos_cab_id'=>'required',
             'clientes_id'=>'required'
@@ -188,6 +219,8 @@ public function store(Request $r){
             'empresa_id' => 'required',
             'sucursal_id' => 'required',
             'diagnostico_cab_id' => 'required',
+            'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'clientes_id' => 'required'
         ]);
 
@@ -223,6 +256,8 @@ public function store(Request $r){
             'empresa_id'=>'required',
             'sucursal_id'=>'required',
             'diagnostico_cab_id'=>'required',
+            'tipo_servicio_id'=>'required',
+            'tipo_vehiculo_id'=>'required',
             'promociones_cab_id'=>'nullable|integer',
             'descuentos_cab_id'=>'nullable|integer',
             'clientes_id'=>'required'
@@ -268,6 +303,19 @@ public function store(Request $r){
             td.id AS tipo_diagnostico_id,
             td.tipo_diag_nombre AS tipo_diag_nombre,
 
+            -- Tipo de Vehículo
+            tv.id AS tipo_vehiculo_id,
+            tv.tip_veh_nombre,
+            tv.tip_veh_capacidad,
+            tv.tip_veh_combustible,
+            tv.tip_veh_categoria,
+
+            -- Marca y Modelo
+            m.id AS marca_id,
+            m.marc_nom AS marc_nom,
+            mo.id AS modelo_id,
+            mo.modelo_nom AS modelo_nom,
+
             -- 🏢 Empresa y sucursal
             psc.empresa_id,
             e.emp_razon_social,
@@ -284,8 +332,11 @@ public function store(Request $r){
         JOIN empresa e ON e.id = psc.empresa_id
         JOIN sucursal s ON s.empresa_id = psc.sucursal_id
         JOIN diagnostico_cab dg ON dg.id = psc.diagnostico_cab_id
-        JOIN clientes c ON c.id = dg.clientes_id
+        JOIN clientes c ON c.id = psc.clientes_id
         JOIN tipo_diagnostico td ON td.id = dg.tipo_diagnostico_id
+        JOIN tipo_vehiculo tv    ON tv.id = psc.tipo_vehiculo_id
+        JOIN marca m             ON m.id = tv.marca_id
+        JOIN modelo mo           ON mo.id = tv.modelo_id
 
         WHERE 
             psc.pres_serv_cab_estado = 'CONFIRMADO'
@@ -295,4 +346,85 @@ public function store(Request $r){
         ORDER BY psc.id DESC
     ");
 }
+public function readById($id)
+{
+    $registro = DB::selectOne("
+        SELECT 
+            -- =========================
+            -- CABECERA
+            -- =========================
+            psc.id,
+            psc.pres_serv_cab_fecha,
+            psc.pres_serv_cab_fecha_vence,
+            psc.pres_serv_cab_observaciones,
+            psc.pres_serv_cab_estado,
+
+            -- =========================
+            -- EMPRESA / SUCURSAL
+            -- =========================
+            psc.empresa_id,
+            e.emp_razon_social,
+
+            psc.sucursal_id,
+            s.suc_razon_social,
+
+            -- =========================
+            -- CLIENTE
+            -- =========================
+            psc.clientes_id,
+            c.cli_nombre,
+            c.cli_apellido,
+
+            -- =========================
+            -- RELACIONES CLAVE
+            -- =========================
+            psc.diagnostico_cab_id,
+            psc.tipo_servicio_id,
+            psc.tipo_vehiculo_id,
+
+            -- =========================
+            -- PROMOCIÓN (opcional)
+            -- =========================
+            COALESCE(pc.id, 0) AS promociones_cab_id,
+            COALESCE(tp.tipo_prom_modo, 'N/A') AS tipo_prom_modo,
+            COALESCE(tp.tipo_prom_valor, 0) AS tipo_prom_valor,
+
+            -- =========================
+            -- DESCUENTO (opcional)
+            -- =========================
+            COALESCE(dc.id, 0) AS descuentos_cab_id,
+            COALESCE(dc.desc_cab_porcentaje, 0) AS desc_cab_porcentaje,
+
+            -- =========================
+            -- MANO DE OBRA (tipo servicio)
+            -- =========================
+            COALESCE(ts.tip_serv_precio, 0) AS tip_serv_precio
+
+        FROM presupuesto_serv_cab psc
+
+        -- Relaciones obligatorias
+        JOIN empresa e   ON e.id = psc.empresa_id
+        JOIN sucursal s  ON s.empresa_id = psc.sucursal_id
+        JOIN clientes c  ON c.id = psc.clientes_id
+
+        -- Relaciones opcionales
+        LEFT JOIN promociones_cab pc     ON pc.id = psc.promociones_cab_id
+        LEFT JOIN tipo_promociones tp    ON tp.id = pc.tipo_promociones_id
+        LEFT JOIN descuentos_cab dc      ON dc.id = psc.descuentos_cab_id
+        LEFT JOIN tipo_servicio ts       ON ts.id = psc.tipo_servicio_id
+
+        WHERE psc.id = ?
+    ", [$id]);
+
+    if (!$registro) {
+        return response()->json([
+            'mensaje' => 'Presupuesto no encontrado',
+            'tipo' => 'error'
+        ], 404);
+    }
+
+    return response()->json($registro);
+}
+
+
 }

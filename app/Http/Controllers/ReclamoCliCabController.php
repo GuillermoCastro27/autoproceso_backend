@@ -33,7 +33,7 @@ class ReclamoCliCabController extends Controller
             c.cli_correo,
 
             rcc.user_id,
-            u.name,
+            u.name AS encargado,
             u.login,
 
             rcc.created_at,
@@ -131,7 +131,7 @@ class ReclamoCliCabController extends Controller
         }
         $datosValidados = $r->validate([
             'rec_cli_cab_observacion'=>'required',
-            'rec_cli_cab_fecha'=>'required',
+            'rec_cli_cab_fecha'=>'required|date',
             'rec_cli_cab_fecha_inicio'=>'required',
             'rec_cli_cab_fecha_fin'=>'required',
             'rec_cli_cab_prioridad'=>'required',

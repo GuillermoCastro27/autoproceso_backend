@@ -86,4 +86,18 @@ class ModeloController extends Controller
 
     return response()->json($resultado);
 }
+public function buscarModelosItem(Request $r)
+{
+    $marca_id = $r->input('marca_id');
+    $texto = $r->input('texto', '');
+
+    $resultado = Modelo::select('id', 'modelo_nom')   // 👈 QUITAMOS modelo_año
+        ->where('marca_id', $marca_id)
+        ->where('modelo_nom', 'ILIKE', "%$texto%")
+        ->orderBy('modelo_nom')
+        ->get();
+
+    return response()->json($resultado);
+}
+
 }

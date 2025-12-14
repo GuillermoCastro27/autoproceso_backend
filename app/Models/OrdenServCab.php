@@ -17,6 +17,10 @@ class OrdenServCab extends Model
         'user_id',
         'presupuesto_serv_cab_id',
         'clientes_id',
+        'equipo_trabajo_id',
+        'diagnostico_cab_id',
+        'tipo_diagnostico_id',
+        'tipo_vehiculo_id',
         'empresa_id',
         'sucursal_id',
     ];

@@ -13,23 +13,39 @@ class ContratoServCabController extends Controller
     return DB::select("
         SELECT 
             csc.id,
+
+            -- Fechas
             TO_CHAR(csc.contrato_fecha, 'DD/MM/YYYY HH24:MI:SS') AS contrato_fecha,
             TO_CHAR(csc.contrato_fecha_inicio, 'DD/MM/YYYY') AS contrato_fecha_inicio,
             TO_CHAR(csc.contrato_fecha_fin, 'DD/MM/YYYY') AS contrato_fecha_fin,
 
-            -- 🗓️ Mostrar N/A si no hay intervalo de vencimiento
-            COALESCE(TO_CHAR(csc.contrato_intervalo_fecha_vence, 'DD/MM/YYYY HH24:MI:SS'), 'N/A') AS contrato_intervalo_fecha_vence,
+            COALESCE(
+                TO_CHAR(csc.contrato_intervalo_fecha_vence, 'DD/MM/YYYY HH24:MI:SS'),
+                'N/A'
+            ) AS contrato_intervalo_fecha_vence,
 
+            -- Estado y pago
             csc.contrato_estado,
             csc.contrato_condicion_pago,
-
-            -- 💰 Mostrar N/A si no hay cuotas
             COALESCE(csc.contrato_cuotas::TEXT, 'N/A') AS contrato_cuotas,
 
+            -- Tipo
+            csc.contrato_tipo,
+
+            -- Contenido contractual
+            csc.contrato_objeto,
+            csc.contrato_alcance,
+            csc.contrato_responsabilidad,
+            csc.contrato_garantia,
+            csc.contrato_limitacion,
+            csc.contrato_fuerza_mayor,
+            csc.contrato_jurisdiccion,
+
+            -- Otros
             csc.contrato_observacion,
             csc.contrato_archivo_url,
 
-            -- 🧾 Cliente
+            -- Cliente
             cli.id AS clientes_id,
             cli.cli_nombre,
             cli.cli_apellido,
@@ -38,39 +54,37 @@ class ContratoServCabController extends Controller
             cli.cli_telefono,
             cli.cli_correo,
 
-            -- 🏢 Empresa y Sucursal
+            -- Empresa y Sucursal
             csc.empresa_id,
             e.emp_razon_social AS emp_razon_social,
             csc.sucursal_id,
             s.suc_razon_social AS suc_razon_social,
 
-            -- ⚙️ Tipo de Servicio
+            -- Tipo de Servicio
             ts.id AS tipo_servicio_id,
             ts.tipo_serv_nombre AS tipo_serv_nombre,
 
-            -- 👤 Usuario encargado
+            -- Usuario
             u.name AS encargado
 
         FROM contrato_serv_cab csc
-            JOIN users u ON u.id = csc.user_id
-            JOIN empresa e ON e.id = csc.empresa_id
-            JOIN sucursal s ON s.empresa_id = csc.sucursal_id
+            JOIN users u          ON u.id = csc.user_id
+            JOIN empresa e        ON e.id = csc.empresa_id
+            JOIN sucursal s       ON s.empresa_id = csc.sucursal_id
             JOIN tipo_servicio ts ON ts.id = csc.tipo_servicio_id
-            JOIN clientes cli ON cli.id = csc.clientes_id
+            JOIN clientes cli     ON cli.id = csc.clientes_id
 
         ORDER BY csc.id DESC
     ");
 }
+
 public function store(Request $r)
 {
     // 🔹 1. Normalizar datos antes de validar
-
-    // Si el campo viene vacío, lo convertimos en null
     if ($r->contrato_intervalo_fecha_vence === '') {
         $r->merge(['contrato_intervalo_fecha_vence' => null]);
     }
 
-    // Si la condición de pago es CONTADO, anulamos las cuotas y vencimiento
     if ($r->contrato_condicion_pago === 'CONTADO') {
         $r->merge([
             'contrato_cuotas' => null,
@@ -78,15 +92,27 @@ public function store(Request $r)
         ]);
     }
 
-    // 🔹 2. Validación de campos
+    // 🔹 2. Validación
     $datosValidados = $r->validate([
-        'contrato_fecha' => 'required|date',
-        'contrato_fecha_inicio' => 'required|date',
-        'contrato_fecha_fin' => 'required|date',
+        'contrato_fecha' => 'required',
+        'contrato_fecha_inicio' => 'required',
+        'contrato_fecha_fin' => 'required',
         'contrato_intervalo_fecha_vence' => 'nullable|date',
+
         'contrato_estado' => 'required|string|max:20',
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
+
+        'contrato_tipo' => 'nullable|string|max:30',
+
+        'contrato_objeto' => 'nullable|string',
+        'contrato_alcance' => 'nullable|string',
+        'contrato_responsabilidad' => 'nullable|string',
+        'contrato_garantia' => 'nullable|string',
+        'contrato_limitacion' => 'nullable|string',
+        'contrato_fuerza_mayor' => 'nullable|string',
+        'contrato_jurisdiccion' => 'nullable|string',
+
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
@@ -94,22 +120,36 @@ public function store(Request $r)
         'user_id' => 'required|integer'
     ]);
 
-    // 🔹 3. Reforzar coherencia lógica
+    // 🔹 3. Coherencia lógica adicional
     if ($r->contrato_condicion_pago === 'CONTADO') {
         $datosValidados['contrato_cuotas'] = null;
         $datosValidados['contrato_intervalo_fecha_vence'] = null;
     }
 
-    // 🔹 4. Crear registro
+    // 🔹 4. Crear contrato
     $contrato = ContratoServCab::create([
         'contrato_fecha' => $r->contrato_fecha,
         'contrato_fecha_inicio' => $r->contrato_fecha_inicio,
         'contrato_fecha_fin' => $r->contrato_fecha_fin,
         'contrato_intervalo_fecha_vence' => $datosValidados['contrato_intervalo_fecha_vence'] ?? null,
+
         'contrato_estado' => strtoupper($r->contrato_estado),
         'contrato_condicion_pago' => strtoupper($r->contrato_condicion_pago),
         'contrato_cuotas' => $datosValidados['contrato_cuotas'] ?? null,
+
+        'contrato_tipo' => strtoupper($r->contrato_tipo),
+
+        'contrato_objeto' => $r->contrato_objeto,
+        'contrato_alcance' => $r->contrato_alcance,
+        'contrato_responsabilidad' => $r->contrato_responsabilidad,
+        'contrato_garantia' => $r->contrato_garantia,
+        'contrato_limitacion' => $r->contrato_limitacion,
+        'contrato_fuerza_mayor' => $r->contrato_fuerza_mayor,
+        'contrato_jurisdiccion' => $r->contrato_jurisdiccion,
+
         'contrato_observacion' => $r->contrato_observacion,
+        'contrato_archivo_url' => null,
+
         'empresa_id' => $r->empresa_id,
         'sucursal_id' => $r->sucursal_id,
         'clientes_id' => $r->clientes_id,
@@ -117,15 +157,14 @@ public function store(Request $r)
         'user_id' => $r->user_id
     ]);
 
-    $contrato->save();
-
-    // 🔹 5. Respuesta JSON
+    // 🔹 5. Respuesta
     return response()->json([
         'mensaje' => 'Contrato registrado con éxito',
         'tipo' => 'success',
         'registro' => $contrato
     ], 200);
 }
+
 public function update(Request $r, $id)
 {
     $contrato = ContratoServCab::find($id);
@@ -149,31 +188,71 @@ public function update(Request $r, $id)
         ]);
     }
 
-    // 🔹 Validar datos
+    // 🔹 Validación
     $datosValidados = $r->validate([
-        'contrato_fecha' => 'required|date',
-        'contrato_fecha_inicio' => 'required|date',
-        'contrato_fecha_fin' => 'required|date',
+        'contrato_fecha' => 'required',
+        'contrato_fecha_inicio' => 'required',
+        'contrato_fecha_fin' => 'required',
         'contrato_intervalo_fecha_vence' => 'nullable|date',
+
         'contrato_estado' => 'required|string|max:20',
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
+
+        'contrato_tipo' => 'nullable|string|max:30',
+
+        'contrato_objeto' => 'nullable|string',
+        'contrato_alcance' => 'nullable|string',
+        'contrato_responsabilidad' => 'nullable|string',
+        'contrato_garantia' => 'nullable|string',
+        'contrato_limitacion' => 'nullable|string',
+        'contrato_fuerza_mayor' => 'nullable|string',
+        'contrato_jurisdiccion' => 'nullable|string',
+
+        'contrato_observacion' => 'nullable|string|max:200',
+
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
         'tipo_servicio_id' => 'required|integer',
-        'user_id' => 'required|integer',
-        'contrato_observacion' => 'nullable|string|max:200'
+        'user_id' => 'required|integer'
     ]);
 
-    // 🔹 Ajustar coherencia lógica
+    // 🔹 Coherencia lógica final
     if ($r->contrato_condicion_pago === 'CONTADO') {
         $datosValidados['contrato_cuotas'] = null;
         $datosValidados['contrato_intervalo_fecha_vence'] = null;
     }
 
-    // 🔹 Actualizar registro
-    $contrato->update($datosValidados);
+    // 🔹 Actualizar
+    $contrato->update([
+        'contrato_fecha' => $r->contrato_fecha,
+        'contrato_fecha_inicio' => $r->contrato_fecha_inicio,
+        'contrato_fecha_fin' => $r->contrato_fecha_fin,
+        'contrato_intervalo_fecha_vence' => $datosValidados['contrato_intervalo_fecha_vence'] ?? null,
+
+        'contrato_estado' => strtoupper($r->contrato_estado),
+        'contrato_condicion_pago' => strtoupper($r->contrato_condicion_pago),
+        'contrato_cuotas' => $datosValidados['contrato_cuotas'] ?? null,
+
+        'contrato_tipo' => strtoupper($r->contrato_tipo),
+
+        'contrato_objeto' => $r->contrato_objeto,
+        'contrato_alcance' => $r->contrato_alcance,
+        'contrato_responsabilidad' => $r->contrato_responsabilidad,
+        'contrato_garantia' => $r->contrato_garantia,
+        'contrato_limitacion' => $r->contrato_limitacion,
+        'contrato_fuerza_mayor' => $r->contrato_fuerza_mayor,
+        'contrato_jurisdiccion' => $r->contrato_jurisdiccion,
+
+        'contrato_observacion' => $r->contrato_observacion,
+
+        'empresa_id' => $r->empresa_id,
+        'sucursal_id' => $r->sucursal_id,
+        'clientes_id' => $r->clientes_id,
+        'tipo_servicio_id' => $r->tipo_servicio_id,
+        'user_id' => $r->user_id
+    ]);
 
     return response()->json([
         'mensaje' => 'Registro modificado con éxito',
@@ -192,7 +271,19 @@ public function anular(Request $r, $id)
         ], 404);
     }
 
-    // 🔹 Normalizar valores de pago
+    // Evitar doble anulación
+    if ($contrato->contrato_estado === 'ANULADO') {
+        return response()->json([
+            'mensaje' => 'El contrato ya se encuentra anulado',
+            'tipo' => 'warning'
+        ], 200);
+    }
+
+    // 🔹 Normalizar valores
+    if ($r->contrato_intervalo_fecha_vence === '') {
+        $r->merge(['contrato_intervalo_fecha_vence' => null]);
+    }
+
     if ($r->contrato_condicion_pago === 'CONTADO') {
         $r->merge([
             'contrato_cuotas' => null,
@@ -200,14 +291,28 @@ public function anular(Request $r, $id)
         ]);
     }
 
-    // 🔹 Validar datos mínimos
+    // 🔹 Validación COMPLETA (igual que update)
     $datosValidados = $r->validate([
-        'contrato_fecha' => 'required|date',
-        'contrato_fecha_inicio' => 'required|date',
-        'contrato_fecha_fin' => 'required|date',
+        'contrato_fecha' => 'required',
+        'contrato_fecha_inicio' => 'required',
+        'contrato_fecha_fin' => 'required',
+        'contrato_intervalo_fecha_vence' => 'nullable|date',
+
         'contrato_estado' => 'required|string|max:20',
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
+
+        'contrato_tipo' => 'nullable|string|max:30',
+        'contrato_objeto' => 'nullable|string',
+        'contrato_alcance' => 'nullable|string',
+        'contrato_responsabilidad' => 'nullable|string',
+        'contrato_garantia' => 'nullable|string',
+        'contrato_limitacion' => 'nullable|string',
+        'contrato_fuerza_mayor' => 'nullable|string',
+        'contrato_jurisdiccion' => 'nullable|string',
+
+        'contrato_observacion' => 'nullable|string|max:200',
+
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
@@ -215,7 +320,7 @@ public function anular(Request $r, $id)
         'user_id' => 'required|integer'
     ]);
 
-    // 🔹 Actualizar estado a ANULADO
+    // 🔹 Actualizar todo + estado ANULADO
     $contrato->update([
         ...$datosValidados,
         'contrato_estado' => 'ANULADO'
@@ -227,7 +332,6 @@ public function anular(Request $r, $id)
         'registro' => $contrato
     ], 200);
 }
-
 public function confirmar(Request $r, $id)
 {
     $contrato = ContratoServCab::find($id);
@@ -239,7 +343,19 @@ public function confirmar(Request $r, $id)
         ], 404);
     }
 
+    // Solo se puede confirmar si está pendiente
+    if ($contrato->contrato_estado !== 'PENDIENTE') {
+        return response()->json([
+            'mensaje' => 'Solo se pueden confirmar contratos en estado PENDIENTE',
+            'tipo' => 'warning'
+        ], 200);
+    }
+
     // 🔹 Normalizar valores
+    if ($r->contrato_intervalo_fecha_vence === '') {
+        $r->merge(['contrato_intervalo_fecha_vence' => null]);
+    }
+
     if ($r->contrato_condicion_pago === 'CONTADO') {
         $r->merge([
             'contrato_cuotas' => null,
@@ -247,15 +363,28 @@ public function confirmar(Request $r, $id)
         ]);
     }
 
-    // 🔹 Validar datos requeridos
+    // 🔹 Validación COMPLETA
     $datosValidados = $r->validate([
-        'contrato_fecha' => 'required|date',
-        'contrato_fecha_inicio' => 'required|date',
-        'contrato_fecha_fin' => 'required|date',
+        'contrato_fecha' => 'required',
+        'contrato_fecha_inicio' => 'required',
+        'contrato_fecha_fin' => 'required',
         'contrato_intervalo_fecha_vence' => 'nullable|date',
+
         'contrato_estado' => 'required|string|max:20',
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
+
+        'contrato_tipo' => 'nullable|string|max:30',
+        'contrato_objeto' => 'nullable|string',
+        'contrato_alcance' => 'nullable|string',
+        'contrato_responsabilidad' => 'nullable|string',
+        'contrato_garantia' => 'nullable|string',
+        'contrato_limitacion' => 'nullable|string',
+        'contrato_fuerza_mayor' => 'nullable|string',
+        'contrato_jurisdiccion' => 'nullable|string',
+
+        'contrato_observacion' => 'nullable|string|max:200',
+
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
@@ -263,10 +392,11 @@ public function confirmar(Request $r, $id)
         'user_id' => 'required|integer'
     ]);
 
-    // 🔹 Actualizar estado a CONFIRMADO
+    // 🔹 Actualizar todo + estado CONFIRMADO
     $contrato->update([
         ...$datosValidados,
         'contrato_estado' => 'CONFIRMADO'
+        // o ACTIVO si preferís
     ]);
 
     return response()->json([
@@ -274,6 +404,23 @@ public function confirmar(Request $r, $id)
         'tipo' => 'success',
         'registro' => $contrato
     ], 200);
+}
+public function imprimir($id)
+{
+    $contrato = \App\Models\ContratoServCab::with([
+        'empresa',
+        'sucursal',
+        'cliente',
+        'tipoServicio',
+        'user'
+    ])->findOrFail($id);
+
+    // 🔒 Solo permitir imprimir contratos CONFIRMADOS
+    if ($contrato->contrato_estado !== 'CONFIRMADO') {
+        abort(403, 'Solo se pueden imprimir contratos confirmados');
+    }
+
+    return view('contrato_servicio.imprimir', compact('contrato'));
 }
 
 }

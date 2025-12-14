@@ -21,7 +21,8 @@ class DiagnosticoCab extends Model
         'sucursal_id',
         'tipo_servicio_id',
         'tipo_diagnostico_id',
-        'recep_cab_id'
+        'recep_cab_id',
+        'tipo_vehiculo_id'
     ];
     protected $table = 'diagnostico_cab';
 }

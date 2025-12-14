@@ -93,4 +93,33 @@ public function buscarPorMarca(Request $r)
 
     return response()->json($resultado);
 }
+public function buscarVehiculo(Request $r)
+{
+    $texto = $r->input('texto'); // texto que escribe el usuario
+
+    $resultado = Marca::select('id', 'marc_nom', 'mar_tipo')
+        ->where('mar_tipo', 'VEHICULO')
+        ->where('marc_nom', 'ILIKE', "%$texto%")
+        ->orderBy('marc_nom')
+        ->get();
+
+    return response()->json($resultado);
+}
+public function buscarPorTipoItem(Request $r)
+{
+    // texto que escribe el usuario en el campo Marca del CRUD de Items
+    $texto = $r->input('texto', '');
+
+    // tipo de ítem seleccionado (PRODUCTO, LUBRICANTES, etc.)
+    $tipoItem = $r->input('tipo_descripcion');
+
+    $resultado = Marca::select('id', 'marc_nom', 'mar_tipo')
+        ->where('mar_tipo', $tipoItem)                  // filtra por tipo
+        ->where('marc_nom', 'ILIKE', "%$texto%")        // filtra por nombre
+        ->orderBy('marc_nom')
+        ->get();
+
+    return response()->json($resultado);
+}
+
 }
