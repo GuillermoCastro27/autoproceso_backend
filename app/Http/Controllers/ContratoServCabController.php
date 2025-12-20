@@ -29,8 +29,9 @@ class ContratoServCabController extends Controller
             csc.contrato_condicion_pago,
             COALESCE(csc.contrato_cuotas::TEXT, 'N/A') AS contrato_cuotas,
 
-            -- Tipo
-            csc.contrato_tipo,
+            -- Tipo de contrato (FK + nombre)
+            csc.tipo_contrato_id,
+            tc.tip_con_nombre AS tip_con_nombre,
 
             -- Contenido contractual
             csc.contrato_objeto,
@@ -68,11 +69,12 @@ class ContratoServCabController extends Controller
             u.name AS encargado
 
         FROM contrato_serv_cab csc
-            JOIN users u          ON u.id = csc.user_id
-            JOIN empresa e        ON e.id = csc.empresa_id
-            JOIN sucursal s       ON s.empresa_id = csc.sucursal_id
-            JOIN tipo_servicio ts ON ts.id = csc.tipo_servicio_id
-            JOIN clientes cli     ON cli.id = csc.clientes_id
+            JOIN users u           ON u.id = csc.user_id
+            JOIN empresa e         ON e.id = csc.empresa_id
+            JOIN sucursal s        ON s.empresa_id = csc.sucursal_id
+            JOIN tipo_servicio ts  ON ts.id = csc.tipo_servicio_id
+            JOIN clientes cli      ON cli.id = csc.clientes_id
+            JOIN tipo_contrato tc  ON tc.id = csc.tipo_contrato_id
 
         ORDER BY csc.id DESC
     ");
@@ -103,7 +105,8 @@ public function store(Request $r)
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
 
-        'contrato_tipo' => 'nullable|string|max:30',
+        // 🟢 NUEVO: tipo de contrato por FK
+        'tipo_contrato_id' => 'required|integer|exists:tipo_contrato,id',
 
         'contrato_objeto' => 'nullable|string',
         'contrato_alcance' => 'nullable|string',
@@ -137,7 +140,8 @@ public function store(Request $r)
         'contrato_condicion_pago' => strtoupper($r->contrato_condicion_pago),
         'contrato_cuotas' => $datosValidados['contrato_cuotas'] ?? null,
 
-        'contrato_tipo' => strtoupper($r->contrato_tipo),
+        // 🟢 NUEVO
+        'tipo_contrato_id' => $r->tipo_contrato_id,
 
         'contrato_objeto' => $r->contrato_objeto,
         'contrato_alcance' => $r->contrato_alcance,
@@ -199,7 +203,8 @@ public function update(Request $r, $id)
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
 
-        'contrato_tipo' => 'nullable|string|max:30',
+        // 🟢 NUEVO
+        'tipo_contrato_id' => 'required|integer|exists:tipo_contrato,id',
 
         'contrato_objeto' => 'nullable|string',
         'contrato_alcance' => 'nullable|string',
@@ -235,7 +240,8 @@ public function update(Request $r, $id)
         'contrato_condicion_pago' => strtoupper($r->contrato_condicion_pago),
         'contrato_cuotas' => $datosValidados['contrato_cuotas'] ?? null,
 
-        'contrato_tipo' => strtoupper($r->contrato_tipo),
+        // 🟢 NUEVO
+        'tipo_contrato_id' => $r->tipo_contrato_id,
 
         'contrato_objeto' => $r->contrato_objeto,
         'contrato_alcance' => $r->contrato_alcance,
@@ -260,6 +266,7 @@ public function update(Request $r, $id)
         'registro' => $contrato
     ], 200);
 }
+
 public function anular(Request $r, $id)
 {
     $contrato = ContratoServCab::find($id);
@@ -291,7 +298,7 @@ public function anular(Request $r, $id)
         ]);
     }
 
-    // 🔹 Validación COMPLETA (igual que update)
+    // 🔹 Validación COMPLETA
     $datosValidados = $r->validate([
         'contrato_fecha' => 'required',
         'contrato_fecha_inicio' => 'required',
@@ -302,7 +309,9 @@ public function anular(Request $r, $id)
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
 
-        'contrato_tipo' => 'nullable|string|max:30',
+        // 🟢 FK
+        'tipo_contrato_id' => 'required|integer|exists:tipo_contrato,id',
+
         'contrato_objeto' => 'nullable|string',
         'contrato_alcance' => 'nullable|string',
         'contrato_responsabilidad' => 'nullable|string',
@@ -374,7 +383,9 @@ public function confirmar(Request $r, $id)
         'contrato_condicion_pago' => 'required|string|max:20',
         'contrato_cuotas' => 'nullable|integer|min:1',
 
-        'contrato_tipo' => 'nullable|string|max:30',
+        // 🟢 FK
+        'tipo_contrato_id' => 'required|integer|exists:tipo_contrato,id',
+
         'contrato_objeto' => 'nullable|string',
         'contrato_alcance' => 'nullable|string',
         'contrato_responsabilidad' => 'nullable|string',
@@ -396,7 +407,6 @@ public function confirmar(Request $r, $id)
     $contrato->update([
         ...$datosValidados,
         'contrato_estado' => 'CONFIRMADO'
-        // o ACTIVO si preferís
     ]);
 
     return response()->json([
@@ -405,6 +415,7 @@ public function confirmar(Request $r, $id)
         'registro' => $contrato
     ], 200);
 }
+
 public function imprimir($id)
 {
     $contrato = \App\Models\ContratoServCab::with([

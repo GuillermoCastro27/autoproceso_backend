@@ -59,6 +59,14 @@ use App\Http\Controllers\TipoVehiculoController;
 use App\Http\Controllers\EquipoTrabajoController;
 use App\Http\Controllers\ReclamoCliCabController;
 use App\Http\Controllers\ReclamoCliDetController;
+use App\Http\Controllers\CajaController;
+use App\Http\Controllers\TipoContratoController;
+use App\Http\Controllers\EntidadEmisoraController;
+use App\Http\Controllers\MarcaTarjetaController;
+use App\Http\Controllers\EntidadAdheridaController;
+use App\Http\Controllers\FormaCobroController;
+use App\Http\Controllers\PedidoVentasController;
+use App\Http\Controllers\PedidoVentasDetController;
 
 
 /*
@@ -304,6 +312,11 @@ Route::put("tipo-descuentos/update/{id}",[TipoDescuentosController::class,"updat
 Route::delete("tipo-descuentos/delete/{id}",[TipoDescuentosController::class,"destroy"]);
 Route::get("tipo-descuentos/buscar",[TipoDescuentosController::class,"buscar"]);
 
+Route::get("tipo_contrato/read",[TipoContratoController::class,"read"]);
+Route::post("tipo_contrato/create",[TipoContratoController::class,"store"]);
+Route::put("tipo_contrato/update/{id}",[TipoContratoController::class,"update"]);
+Route::delete("tipo_contrato/delete/{id}",[TipoContratoController::class,"destroy"]);
+
 Route::post("solicitudcad/create",[SolicitudCabController::class,"store"]);
 Route::get("solicitudcad/read",[SolicitudCabController::class,"read"]);
 Route::put("solicitudcad/update/{id}",[SolicitudCabController::class,"update"]);
@@ -416,8 +429,8 @@ Route::post("reclamoclicab/create",[ReclamoCliCabController::class,"store"]);
 Route::get("reclamoclicab/read",[ReclamoCliCabController::class,"read"]);
 Route::put("reclamoclicab/update/{id}",[ReclamoCliCabController::class,"update"]);
 Route::put("reclamoclicab/anular/{id}",[ReclamoCliCabController::class,"anular"]);
-Route::put("reclamoclicab/confirmar/{id}",[ReclamoCliCabController::class,"confirmar"]);
-Route::post("reclamoclicab/buscar",[ReclamoCliCabController::class,"buscar"]);
+Route::put("reclamoclicab/procesar/{id}", [ReclamoCliCabController::class, "procesar"]);
+Route::put("reclamoclicab/resolver/{id}", [ReclamoCliCabController::class, "resolver"]);
 Route::get("reclamoclicab/buscar-informe", [ReclamoCliCabController::class, "buscarInforme"]);
 
 Route::post("reclamoclidet/create",[ReclamoCliDetController::class,"store"]);
@@ -425,7 +438,47 @@ Route::get("reclamoclidet/read/{id}",[ReclamoCliDetController::class,"read"]);
 Route::put("reclamoclidet/update/{reclamo_cli_cab_id}",[ReclamoCliDetController::class,"update"]);
 Route::delete("reclamoclidet/delete/{reclamo_cli_cab_id}/{item_id}",[ReclamoCliDetController::class,"destroy"]);
 
-Route::get("libro_compras/buscar-informe", [LibroComprasController::class, "buscarInforme"]);
+Route::get("caja/read",[CajaController::class,"read"]);
+Route::post("caja/create",[CajaController::class,"store"]);
+Route::put("caja/update/{id}",[CajaController::class,"update"]);
+Route::delete("caja/delete/{id}",[CajaController::class,"destroy"]);
+
+Route::get("entidad_emisora/read",[EntidadEmisoraController::class,"read"]);
+Route::post("entidad_emisora/create",[EntidadEmisoraController::class,"store"]);
+Route::put("entidad_emisora/update/{id}",[EntidadEmisoraController::class,"update"]);
+Route::delete("entidad_emisora/delete/{id}",[EntidadEmisoraController::class,"destroy"]);
+Route::get('entidad_emisora/buscar', [EntidadEmisoraController::class, 'buscarEntidadEmisora']);
+
+Route::get('marca_tarjeta/read',[MarcaTarjetaController::class, 'read']);
+Route::post('marca_tarjeta/create',[MarcaTarjetaController::class, 'store']);
+Route::put('marca_tarjeta/update/{id}',[MarcaTarjetaController::class, 'update']);
+Route::delete('marca_tarjeta/delete/{id}',[MarcaTarjetaController::class, 'destroy']);
+
+Route::get('entidad_adherida/read',[EntidadAdheridaController::class, 'read']);
+Route::post('entidad_adherida/create',[EntidadAdheridaController::class, 'store']);
+Route::put('entidad_adherida/update/{id}',[EntidadAdheridaController::class, 'update']);
+Route::delete('entidad_adherida/delete/{id}',[EntidadAdheridaController::class, 'destroy']);
+
+Route::get('forma_cobro/read',    [FormaCobroController::class, 'read']);
+Route::post('forma_cobro/create', [FormaCobroController::class, 'store']);
+Route::put('forma_cobro/update/{id}', [FormaCobroController::class, 'update']);
+Route::delete('forma_cobro/delete/{id}', [FormaCobroController::class, 'destroy']);
+
+Route::get('pedido_ventas/read',[PedidoVentasController::class, 'read']);
+Route::post('pedido_ventas/create',[PedidoVentasController::class, 'store']);
+Route::put('pedido_ventas/update/{id}',[PedidoVentasController::class, 'update']);
+Route::put('pedido_ventas/anular/{id}',[PedidoVentasController::class, 'anular']);
+Route::put('pedido_ventas/confirmar/{id}',[PedidoVentasController::class, 'confirmar']);
+Route::delete('pedido_ventas/delete/{id}',[PedidoVentasController::class, 'eliminar']);
+Route::post('pedido_ventas/buscar',[PedidoVentasController::class, 'buscar']);
+Route::post('pedido_ventas/buscarInforme',[PedidoVentasController::class, 'buscarInforme']);
+
+Route::post("pedido_ventas_det/create",[PedidoVentasDetController::class,"store"]);
+Route::get("pedido_ventas_det/read/{pedidos_ventas_id}",[PedidoVentasDetController::class,"read"]);
+Route::put("pedido_ventas_det/update/{pedidos_ventas_id}",[PedidoVentasDetController::class,"update"]);
+Route::delete("pedido_ventas_det/delete/{pedidos_ventas_id}/{item_id}",[PedidoVentasDetController::class,"destroy"]);
+
+Route::get("libro_compras/buscar-informe",[LibroComprasController::class, "buscarInforme"]);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

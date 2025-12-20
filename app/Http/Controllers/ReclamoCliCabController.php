@@ -94,58 +94,88 @@ class ReclamoCliCabController extends Controller
             'registro'=> $reclamoclicab
         ],200);
     }
-    public function anular(Request $r, $id){
-        $reclamoclicab = ReclamoCliCab::find($id);
-        if(!$reclamoclicab){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'rec_cli_cab_observacion'=>'required',
-            'rec_cli_cab_fecha'=>'required',
-            'rec_cli_cab_fecha_inicio'=>'required',
-            'rec_cli_cab_fecha_fin'=>'required',
-            'rec_cli_cab_prioridad'=>'required',
-            'rec_cli_cab_estado'=>'required',
-            'clientes_id'=>'required',
-            'user_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
-        ]);
-        $reclamoclicab->update($datosValidados);
+    public function anular($id)
+{
+    $reclamo = ReclamoCliCab::find($id);
+
+    if (!$reclamo) {
         return response()->json([
-            'mensaje'=>'Registro anulado con exito',
-            'tipo'=>'success',
-            'registro'=> $reclamoclicab
-        ],200);
+            'mensaje' => 'Registro no encontrado',
+            'tipo' => 'error'
+        ], 404);
     }
-    public function confirmar(Request $r, $id){
-        $reclamoclicab = ReclamoCliCab::find($id);
-        if(!$reclamoclicab){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'rec_cli_cab_observacion'=>'required',
-            'rec_cli_cab_fecha'=>'required|date',
-            'rec_cli_cab_fecha_inicio'=>'required',
-            'rec_cli_cab_fecha_fin'=>'required',
-            'rec_cli_cab_prioridad'=>'required',
-            'rec_cli_cab_estado'=>'required',
-            'clientes_id'=>'required',
-            'user_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
-        ]);
-        $reclamoclicab->update($datosValidados);
+
+    if ($reclamo->rec_cli_cab_estado === 'ANULADO') {
         return response()->json([
-            'mensaje'=>'Registro confirmado con exito',
-            'tipo'=>'success',
-            'registro'=> $reclamoclicab
-        ],200);
+            'mensaje' => 'El reclamo ya se encuentra anulado',
+            'tipo' => 'warning'
+        ], 200);
     }
+
+    $reclamo->update([
+        'rec_cli_cab_estado' => 'ANULADO'
+    ]);
+
+    return response()->json([
+        'mensaje' => 'Reclamo ANULADO con éxito',
+        'tipo' => 'success',
+        'registro' => $reclamo
+    ], 200);
+}
+    public function procesar($id)
+{
+    $reclamo = ReclamoCliCab::find($id);
+
+    if (!$reclamo) {
+        return response()->json([
+            'mensaje' => 'Registro no encontrado',
+            'tipo' => 'error'
+        ], 404);
+    }
+
+    if ($reclamo->rec_cli_cab_estado !== 'PENDIENTE') {
+        return response()->json([
+            'mensaje' => 'Solo se pueden procesar reclamos en estado PENDIENTE',
+            'tipo' => 'warning'
+        ], 200);
+    }
+
+    $reclamo->update([
+        'rec_cli_cab_estado' => 'EN PROCESO'
+    ]);
+
+    return response()->json([
+        'mensaje' => 'Reclamo pasado a EN PROCESO',
+        'tipo' => 'success',
+        'registro' => $reclamo
+    ], 200);
+}
+public function resolver($id)
+{
+    $reclamo = ReclamoCliCab::find($id);
+
+    if (!$reclamo) {
+        return response()->json([
+            'mensaje' => 'Registro no encontrado',
+            'tipo' => 'error'
+        ], 404);
+    }
+
+    if ($reclamo->rec_cli_cab_estado !== 'EN PROCESO') {
+        return response()->json([
+            'mensaje' => 'Solo se pueden resolver reclamos EN PROCESO',
+            'tipo' => 'warning'
+        ], 200);
+    }
+
+    $reclamo->update([
+        'rec_cli_cab_estado' => 'RESUELTO'
+    ]);
+
+    return response()->json([
+        'mensaje' => 'Reclamo RESUELTO con éxito',
+        'tipo' => 'success',
+        'registro' => $reclamo
+    ], 200);
+}
 }

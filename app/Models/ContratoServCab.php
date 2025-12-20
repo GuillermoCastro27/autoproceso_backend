@@ -38,8 +38,13 @@ class ContratoServCab extends Model
         'sucursal_id',
         'clientes_id',
         'tipo_servicio_id',
+        'tipo_contrato_id',
         'user_id'
     ];
+    public function tipoContrato()
+{
+    return $this->belongsTo(TipoContrato::class, 'tipo_contrato_id');
+}
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
