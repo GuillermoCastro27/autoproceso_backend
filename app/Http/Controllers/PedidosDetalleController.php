@@ -48,25 +48,31 @@ public function store(Request $r) {
 }
 
 
-public function update(Request $r, $pedidos_id) {
-    // Actualizar el registro
-    DB::table('pedidos_detalles') // Cambio de 'pedidos-detalles' a 'pedidos_detalles'
+public function update(Request $r, $pedidos_id)
+{
+    // Validación mínima
+    $r->validate([
+        'item_id'        => 'required|integer',
+        'det_cantidad'   => 'required|integer|min:1',
+        'cantidad_stock'=> 'required|integer|min:0'
+    ]);
+
+    DB::table('pedidos_detalles')
         ->where('pedidos_id', $pedidos_id)
+        ->where('item_id', $r->item_id) // 👈 identifica el detalle
         ->update([
-            'item_id' => $r->item_id,
-            'det_cantidad' => intval($r->det_cantidad),
-            'cantidad_stock' => intval($r->cantidad_stock)
+            'det_cantidad'    => intval($r->det_cantidad),
+            'cantidad_stock'  => intval($r->cantidad_stock)
         ]);
 
-    // Definir item_id correctamente
-    $item_id = $r->item_id;
-
-    // Consultar el registro actualizado usando parámetros enlazados
-    $detalle = DB::select("SELECT * FROM pedidos_detalles WHERE pedidos_id = ? AND item_id = ?", [$pedidos_id, $item_id]);
+    $detalle = DB::table('pedidos_detalles')
+        ->where('pedidos_id', $pedidos_id)
+        ->where('item_id', $r->item_id)
+        ->first();
 
     return response()->json([
-        'mensaje' => 'Registro modificado con éxito',
-        'tipo' => 'success',
+        'mensaje'  => 'Cantidad modificada correctamente',
+        'tipo'     => 'success',
         'registro' => $detalle
     ], 200);
 }

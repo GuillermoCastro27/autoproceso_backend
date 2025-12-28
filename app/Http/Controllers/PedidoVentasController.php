@@ -154,28 +154,39 @@ class PedidoVentasController extends Controller
                 'PEDIDO VTA NRO: ' || TO_CHAR(pv.id, '0000000') || 
                 ' (' || pv.ped_ven_observaciones || ')' AS pedido,
 
+                -- Cliente
                 pv.clientes_id,
-                c.cli_nombre || ' ' || c.cli_apellido AS cliente,
+                c.cli_nombre,
+                c.cli_apellido,
+                c.cli_ruc,
+                c.cli_telefono,
+                c.cli_correo,
+                c.cli_direccion,
 
+                -- Usuario
                 pv.user_id,
                 u.name,
                 u.login,
 
+                -- Sucursal
                 pv.sucursal_id,
                 s.suc_razon_social,
 
+                -- Empresa
                 pv.empresa_id,
                 e.emp_razon_social
+
             FROM pedidos_ventas pv
             JOIN clientes c ON c.id = pv.clientes_id
             JOIN users u    ON u.id = pv.user_id
             JOIN sucursal s ON s.empresa_id = pv.sucursal_id
             JOIN empresa  e ON e.id = pv.empresa_id
             WHERE pv.ped_ven_estado = 'CONFIRMADO'
-              AND pv.user_id = ?
-              AND u.name ILIKE ?
+            AND pv.user_id = ?
+            AND u.name ILIKE ?
         ", [$r->user_id, "%{$r->name}%"]);
     }
+
     public function buscarInforme(Request $r)
     {
         return DB::select("

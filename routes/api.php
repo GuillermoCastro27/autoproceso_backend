@@ -67,8 +67,15 @@ use App\Http\Controllers\EntidadAdheridaController;
 use App\Http\Controllers\FormaCobroController;
 use App\Http\Controllers\PedidoVentasController;
 use App\Http\Controllers\PedidoVentasDetController;
-
-
+use App\Http\Controllers\VentasCabController;
+use App\Http\Controllers\VentasDetController;
+use App\Http\Controllers\AperturaCierreCajaController;
+use App\Http\Controllers\CobrosCabController;
+use App\Http\Controllers\CobrosDetController;
+use App\Http\Controllers\CtasCobrarController;
+use App\Http\Controllers\CobrosTarjetaController;
+use App\Http\Controllers\CobrosChequeController;
+use App\Http\Controllers\ArqueoCajaController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -477,6 +484,40 @@ Route::post("pedido_ventas_det/create",[PedidoVentasDetController::class,"store"
 Route::get("pedido_ventas_det/read/{pedidos_ventas_id}",[PedidoVentasDetController::class,"read"]);
 Route::put("pedido_ventas_det/update/{pedidos_ventas_id}",[PedidoVentasDetController::class,"update"]);
 Route::delete("pedido_ventas_det/delete/{pedidos_ventas_id}/{item_id}",[PedidoVentasDetController::class,"destroy"]);
+
+Route::get('ventas_cab/read', [VentasCabController::class, 'read']);
+Route::post('ventas_cab/create', [VentasCabController::class, 'store']);
+Route::put('ventas_cab/update/{id}', [VentasCabController::class, 'update']);
+Route::put('ventas_cab/anular/{id}', [VentasCabController::class, 'anular']);
+Route::put('ventas_cab/confirmar/{id}', [VentasCabController::class, 'confirmar']);
+
+Route::get('ventas_det/read/{ventas_cab_id}', [VentasDetController::class, 'read']);
+
+Route::get('apertura_cierre_caja/read', [AperturaCierreCajaController::class, 'read']);
+Route::post('apertura_cierre_caja/create', [AperturaCierreCajaController::class, 'store']);
+Route::post('apertura_cierre_caja/anular', [AperturaCierreCajaController::class, 'anular']);
+Route::put('apertura_cierre_caja/cerrarCaja', [AperturaCierreCajaController::class, 'cerrarCaja']);
+Route::get('apertura_cierre_caja/abiertas',[AperturaCierreCajaController::class, 'buscarAbiertas']);
+
+Route::get('cobros_cab/read', [CobrosCabController::class, 'read']);
+Route::post('cobros_cab/create', [CobrosCabController::class, 'store']);
+Route::put('cobros_cab/update/{id}', [CobrosCabController::class, 'update']);
+Route::put('cobros_cab/anular/{id}', [CobrosCabController::class, 'anular']);
+Route::put('cobros_cab/confirmar/{id}', [CobrosCabController::class, 'confirmar']);
+Route::get('cobros_cab/ctas/{id}', [CobrosCabController::class, 'readCtasCobro']);
+Route::get('cobros_cab/ctas/{id}', [CobrosCabController::class, 'ctas']);
+
+Route::get('cobros_det/read/{cobros_cab_id}', [CobrosDetController::class, 'read']);
+
+Route::get('ctas_cobrar/cliente/{cliente_id}',[CtasCobrarController::class, 'buscarPorCliente']);
+
+Route::get('cobros_tarjeta/readByCobro/{id}', [CobrosTarjetaController::class, 'readByCobro']);
+
+Route::get('cobros_cheque/readByCobro/{id}', [CobrosChequeController::class, 'readByCobro']);
+
+Route::get('arqueo_caja/read', [ArqueoCajaController::class, 'read']);
+Route::post('arqueo_caja/create', [ArqueoCajaController::class, 'store']);
+Route::put('arqueo_caja/confirmar/{id}', [ArqueoCajaController::class, 'confirmar']);
 
 Route::get("libro_compras/buscar-informe",[LibroComprasController::class, "buscarInforme"]);
 
