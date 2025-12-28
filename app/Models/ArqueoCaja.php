@@ -15,7 +15,6 @@ class ArqueoCaja extends Model
      * Campos asignables
      */
     protected $fillable = [
-        'arqueo_nro',
         'arqueo_fecha',
         'empresa_id',
         'sucursal_id',

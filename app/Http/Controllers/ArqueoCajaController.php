@@ -13,10 +13,40 @@ class ArqueoCajaController extends Controller
     // ====================================================
     // 📋 LISTAR ARQUEOS
     // ====================================================
-    public function read()
-    {
-        return ArqueoCaja::orderBy('id', 'desc')->get();
-    }
+   public function read()
+{
+    return DB::table('arqueo_caja as a')
+        ->join('empresa as e', 'e.id', '=', 'a.empresa_id')
+        ->join('sucursal as s', 's.id', '=', 'a.sucursal_id')
+        ->join('apertura_cierre_caja as acc', 'acc.id', '=', 'a.apertura_cierre_caja_id')
+        ->join('caja as c', 'c.id', '=', 'acc.caja_id')
+        ->join('users as u', 'u.id', '=', 'a.user_id')
+        ->select(
+            'a.id',
+
+            // Fecha de arqueo
+            DB::raw("TO_CHAR(a.arqueo_fecha, 'DD/MM/YYYY HH24:MI:SS') as arqueo_fecha"),
+
+            // Tipo y estado
+            'a.tipo_arqueo',
+            'a.estado',
+
+            // Totales
+            DB::raw("COALESCE(a.total_efectivo, 0) as total_efectivo"),
+            DB::raw("COALESCE(a.total_cheque, 0) as total_cheque"),
+            DB::raw("COALESCE(a.total_tarjeta, 0) as total_tarjeta"),
+            DB::raw("COALESCE(a.total_general, 0) as total_general"),
+
+            // Datos generales
+            'e.emp_razon_social as emp_razon_social',
+            's.suc_razon_social as suc_razon_social',
+            'c.caja_descripcion as caja_descripcion',
+            'u.name as usuario'
+        )
+        ->orderBy('a.id', 'desc')
+        ->get();
+}
+
 
     // ====================================================
     // 🧾 GENERAR ARQUEO (PENDIENTE)
@@ -84,9 +114,8 @@ class ArqueoCajaController extends Controller
             // 🔢 Total general
             $totalGeneral = $totalEfectivo + $totalCheque + $totalTarjeta;
 
-            // 🧾 Crear arqueo
+            // 🧾 Crear arqueo (SIN arqueo_nro)
             $arqueo = ArqueoCaja::create([
-                'arqueo_nro'              => 'ARQ-' . now()->format('YmdHis'),
                 'arqueo_fecha'            => now(),
                 'empresa_id'              => $r->empresa_id,
                 'sucursal_id'             => $r->sucursal_id,
