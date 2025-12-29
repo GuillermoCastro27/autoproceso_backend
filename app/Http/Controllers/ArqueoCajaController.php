@@ -10,146 +10,165 @@ use Illuminate\Support\Facades\DB;
 
 class ArqueoCajaController extends Controller
 {
-    // ====================================================
-    // 📋 LISTAR ARQUEOS
-    // ====================================================
    public function read()
 {
     return DB::table('arqueo_caja as a')
-        ->join('empresa as e', 'e.id', '=', 'a.empresa_id')
-        ->join('sucursal as s', 's.id', '=', 'a.sucursal_id')
+
+        // 🔗 Apertura / Cierre
         ->join('apertura_cierre_caja as acc', 'acc.id', '=', 'a.apertura_cierre_caja_id')
+
+        // 🔗 Empresa y Sucursal (DESDE apertura)
+        ->join('empresa as e', 'e.id', '=', 'acc.empresa_id')
+        ->join('sucursal as s', 's.empresa_id', '=', 'acc.sucursal_id')
+
+        // 🔗 Caja
         ->join('caja as c', 'c.id', '=', 'acc.caja_id')
+
+        // 🔗 Usuario que genera el arqueo
         ->join('users as u', 'u.id', '=', 'a.user_id')
+
+        // 🔗 Cobros confirmados de esa apertura
+        ->leftJoin('cobros_cab as cc', function ($join) {
+            $join->on('cc.apertura_cierre_caja_id', '=', 'a.apertura_cierre_caja_id')
+                 ->where('cc.cobro_estado', 'CONFIRMADO');
+        })
+
+        // 🔗 Detalles reales de cobro
+        ->leftJoin('cobro_efectivo as ce', 'ce.cobros_cab_id', '=', 'cc.id')
+        ->leftJoin('cobros_cheque as ch', 'ch.cobros_cab_id', '=', 'cc.id')
+        ->leftJoin('cobros_tarjeta as ct', 'ct.cobros_cab_id', '=', 'cc.id')
+
         ->select(
             'a.id',
 
-            // Fecha de arqueo
+            // 📅 Fecha de arqueo
             DB::raw("TO_CHAR(a.arqueo_fecha, 'DD/MM/YYYY HH24:MI:SS') as arqueo_fecha"),
 
-            // Tipo y estado
+            // Estado y tipo
             'a.tipo_arqueo',
             'a.estado',
 
-            // Totales
-            DB::raw("COALESCE(a.total_efectivo, 0) as total_efectivo"),
-            DB::raw("COALESCE(a.total_cheque, 0) as total_cheque"),
-            DB::raw("COALESCE(a.total_tarjeta, 0) as total_tarjeta"),
-            DB::raw("COALESCE(a.total_general, 0) as total_general"),
+            // 💰 TOTALES REALES (CORRECTOS)
+            DB::raw("COALESCE(SUM(ce.monto_efectivo), 0) as total_efectivo"),
+            DB::raw("COALESCE(SUM(ch.monto_cheque), 0) as total_cheque"),
+            DB::raw("COALESCE(SUM(ct.monto_tarjeta), 0) as total_tarjeta"),
 
-            // Datos generales
+            DB::raw("
+                COALESCE(SUM(ce.monto_efectivo), 0)
+              + COALESCE(SUM(ch.monto_cheque), 0)
+              + COALESCE(SUM(ct.monto_tarjeta), 0)
+              as total_general
+            "),
+
+            // 📌 Datos generales
             'e.emp_razon_social as emp_razon_social',
             's.suc_razon_social as suc_razon_social',
             'c.caja_descripcion as caja_descripcion',
             'u.name as usuario'
         )
+
+        ->groupBy(
+            'a.id',
+            'a.arqueo_fecha',
+            'a.tipo_arqueo',
+            'a.estado',
+            'e.emp_razon_social',
+            's.suc_razon_social',
+            'c.caja_descripcion',
+            'u.name'
+        )
+
         ->orderBy('a.id', 'desc')
         ->get();
 }
 
-
-    // ====================================================
-    // 🧾 GENERAR ARQUEO (PENDIENTE)
-    // ====================================================
     public function store(Request $r)
-    {
-        $r->validate([
-            'empresa_id'                => 'required|integer',
-            'sucursal_id'               => 'required|integer',
-            'apertura_cierre_caja_id'   => 'required|exists:apertura_cierre_caja,id',
-            'user_id'                   => 'required|exists:users,id',
-            'tipo_arqueo'               => 'required|in:EFECTIVO,CHEQUE,TARJETA,TOTAL'
-        ]);
+{
+    $r->validate([
+        'arqueo_fecha'            => 'required|date',
+        'apertura_cierre_caja_id' => 'required|exists:apertura_cierre_caja,id',
+        'user_id'                 => 'required|exists:users,id',
+        'tipo_arqueo'             => 'required|in:EFECTIVO,CHEQUE,TARJETA,TOTAL'
+    ]);
 
-        // 🔒 Verificar que la caja esté ABIERTA
-        $apertura = AperturaCierreCaja::find($r->apertura_cierre_caja_id);
+    $apertura = AperturaCierreCaja::find($r->apertura_cierre_caja_id);
 
-        if ($apertura->aper_cier_estado !== 'ABIERTA') {
-            return response()->json([
-                'mensaje' => 'La caja no está abierta',
-                'tipo'    => 'warning'
-            ], 400);
-        }
-
-        // 🔒 Evitar arqueos duplicados pendientes
-        $existe = ArqueoCaja::where('apertura_cierre_caja_id', $r->apertura_cierre_caja_id)
-            ->where('estado', 'PENDIENTE')
-            ->exists();
-
-        if ($existe) {
-            return response()->json([
-                'mensaje' => 'Ya existe un arqueo pendiente para esta caja',
-                'tipo'    => 'warning'
-            ], 400);
-        }
-
-        DB::beginTransaction();
-
-        try {
-
-            // 🔢 Totales iniciales
-            $totalEfectivo = 0;
-            $totalCheque   = 0;
-            $totalTarjeta  = 0;
-
-            // 🔎 Leer SOLO cobros CONFIRMADOS
-            $cobros = CobrosCab::where('apertura_cierre_caja_id', $r->apertura_cierre_caja_id)
-                ->where('cobro_estado', 'CONFIRMADO')
-                ->get();
-
-            foreach ($cobros as $c) {
-                switch ($c->forma_cobro_id) {
-                    case 1: // EFECTIVO
-                        $totalEfectivo += $c->cobro_importe;
-                        break;
-                    case 2: // CHEQUE
-                        $totalCheque += $c->cobro_importe;
-                        break;
-                    case 3: // TARJETA
-                        $totalTarjeta += $c->cobro_importe;
-                        break;
-                }
-            }
-
-            // 🔢 Total general
-            $totalGeneral = $totalEfectivo + $totalCheque + $totalTarjeta;
-
-            // 🧾 Crear arqueo (SIN arqueo_nro)
-            $arqueo = ArqueoCaja::create([
-                'arqueo_fecha'            => now(),
-                'empresa_id'              => $r->empresa_id,
-                'sucursal_id'             => $r->sucursal_id,
-                'apertura_cierre_caja_id' => $r->apertura_cierre_caja_id,
-                'user_id'                 => $r->user_id,
-                'tipo_arqueo'             => $r->tipo_arqueo,
-                'total_efectivo'          => $totalEfectivo,
-                'total_cheque'            => $totalCheque,
-                'total_tarjeta'           => $totalTarjeta,
-                'total_general'           => $totalGeneral,
-                'estado'                  => 'PENDIENTE'
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'mensaje' => 'Arqueo generado correctamente',
-                'tipo'    => 'success',
-                'data'    => $arqueo
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'mensaje' => 'Error al generar arqueo',
-                'error'   => $e->getMessage()
-            ], 500);
-        }
+    if ($apertura->estado !== 'ABIERTA') {
+        return response()->json([
+            'mensaje' => 'La caja no está abierta',
+            'tipo'    => 'warning'
+        ], 400);
     }
 
-    // ====================================================
-    // ✅ CONFIRMAR ARQUEO
-    // ====================================================
+    $existe = ArqueoCaja::where('apertura_cierre_caja_id', $r->apertura_cierre_caja_id)
+        ->where('estado', 'PENDIENTE')
+        ->exists();
+
+    if ($existe) {
+        return response()->json([
+            'mensaje' => 'Ya existe un arqueo pendiente para esta caja',
+            'tipo'    => 'warning'
+        ], 400);
+    }
+
+    DB::beginTransaction();
+
+    try {
+
+        $arqueo = ArqueoCaja::create([
+            'arqueo_fecha'            => $r->arqueo_fecha,
+            'apertura_cierre_caja_id' => $r->apertura_cierre_caja_id,
+            'user_id'                 => $r->user_id,
+            'tipo_arqueo'             => $r->tipo_arqueo,
+            'estado'                  => 'PENDIENTE'
+        ]);
+
+        DB::commit();
+
+        return response()->json([
+            'mensaje' => 'Arqueo generado correctamente',
+            'tipo'    => 'success',
+            'data'    => $arqueo
+        ]);
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'mensaje' => 'Error al generar arqueo',
+            'error'   => $e->getMessage()
+        ], 500);
+    }
+}
+
+public function anular($id)
+{
+    $arqueo = ArqueoCaja::find($id);
+
+    if (!$arqueo) {
+        return response()->json([
+            'mensaje' => 'Arqueo no encontrado',
+            'tipo'    => 'error'
+        ], 404);
+    }
+
+    if ($arqueo->estado !== 'PENDIENTE') {
+        return response()->json([
+            'mensaje' => 'Solo se pueden anular arqueos PENDIENTE',
+            'tipo'    => 'warning'
+        ], 400);
+    }
+
+    $arqueo->estado = 'ANULADO';
+    $arqueo->save();
+
+    return response()->json([
+        'mensaje' => 'Arqueo anulado correctamente',
+        'tipo'    => 'success'
+    ]);
+}
+
     public function confirmar($id)
     {
         $arqueo = ArqueoCaja::find($id);

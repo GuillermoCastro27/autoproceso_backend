@@ -21,10 +21,6 @@ class ArqueoCaja extends Model
         'apertura_cierre_caja_id',
         'user_id',
         'tipo_arqueo',
-        'total_efectivo',
-        'total_cheque',
-        'total_tarjeta',
-        'total_general',
         'estado'
     ];
 
@@ -33,10 +29,6 @@ class ArqueoCaja extends Model
      */
     protected $casts = [
         'arqueo_fecha'   => 'datetime',
-        'total_efectivo'=> 'decimal:2',
-        'total_cheque'  => 'decimal:2',
-        'total_tarjeta' => 'decimal:2',
-        'total_general' => 'decimal:2',
     ];
 
     /* =====================================================

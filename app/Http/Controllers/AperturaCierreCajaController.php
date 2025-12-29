@@ -211,5 +211,26 @@ class AperturaCierreCajaController extends Controller
         ->orderBy('acc.fecha_apertura', 'desc')
         ->get();
 }
+public function buscarAbiertasArqueo()
+{
+    return DB::table('apertura_cierre_caja as acc')
+        ->join('empresa as e', 'e.id', '=', 'acc.empresa_id')
+        ->join('sucursal as s', 's.empresa_id', '=', 'acc.sucursal_id')
+        ->join('caja as c', 'c.id', '=', 'acc.caja_id')
+        ->join('users as u', 'u.id', '=', 'acc.user_id')
+        ->select(
+            'acc.id as apertura_cierre_caja_id',
+            'acc.id as empresa_id',
+            'e.emp_razon_social',
+            'acc.sucursal_id as sucursal_id',
+            's.suc_razon_social',
+            'c.caja_descripcion',
+            DB::raw("TO_CHAR(acc.fecha_apertura, 'DD/MM/YYYY HH24:MI:SS') as fecha_apertura"),
+            'u.name as usuario'
+        )
+        ->where('acc.estado', 'ABIERTA')
+        ->orderBy('acc.id', 'desc')
+        ->get();
+}
 
 }

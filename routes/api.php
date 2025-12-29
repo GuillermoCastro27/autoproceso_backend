@@ -76,6 +76,10 @@ use App\Http\Controllers\CtasCobrarController;
 use App\Http\Controllers\CobrosTarjetaController;
 use App\Http\Controllers\CobrosChequeController;
 use App\Http\Controllers\ArqueoCajaController;
+use App\Http\Controllers\NotaRemiVentController;
+use App\Http\Controllers\NotaRemiVentDetController;
+use App\Http\Controllers\NotasVentCabController;
+use App\Http\Controllers\NotasVentDetController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -490,6 +494,8 @@ Route::post('ventas_cab/create', [VentasCabController::class, 'store']);
 Route::put('ventas_cab/update/{id}', [VentasCabController::class, 'update']);
 Route::put('ventas_cab/anular/{id}', [VentasCabController::class, 'anular']);
 Route::put('ventas_cab/confirmar/{id}', [VentasCabController::class, 'confirmar']);
+Route::get('ventas_cab/buscar', [VentasCabController::class, 'buscarVentas']);
+Route::get('ventas_cab/buscarVentasNota', [VentasCabController::class, 'buscarVentasNota']);
 
 Route::get('ventas_det/read/{ventas_cab_id}', [VentasDetController::class, 'read']);
 
@@ -498,6 +504,7 @@ Route::post('apertura_cierre_caja/create', [AperturaCierreCajaController::class,
 Route::post('apertura_cierre_caja/anular', [AperturaCierreCajaController::class, 'anular']);
 Route::put('apertura_cierre_caja/cerrarCaja', [AperturaCierreCajaController::class, 'cerrarCaja']);
 Route::get('apertura_cierre_caja/abiertas',[AperturaCierreCajaController::class, 'buscarAbiertas']);
+Route::get('apertura_cierre_caja/abiertas_arqueo',[AperturaCierreCajaController::class, 'buscarAbiertasArqueo']);
 
 Route::get('cobros_cab/read', [CobrosCabController::class, 'read']);
 Route::post('cobros_cab/create', [CobrosCabController::class, 'store']);
@@ -517,7 +524,28 @@ Route::get('cobros_cheque/readByCobro/{id}', [CobrosChequeController::class, 're
 
 Route::get('arqueo_caja/read', [ArqueoCajaController::class, 'read']);
 Route::post('arqueo_caja/create', [ArqueoCajaController::class, 'store']);
+Route::put('arqueo_caja/anular/{id}', [ArqueoCajaController::class, 'anular']);
 Route::put('arqueo_caja/confirmar/{id}', [ArqueoCajaController::class, 'confirmar']);
+
+Route::get("notaremivent/read",[NotaRemiVentController::class,"read"]);
+Route::post("notaremivent/create",[NotaRemiVentController::class,"store"]);
+Route::put("notaremivent/update/{id}",[NotaRemiVentController::class,"update"]);
+Route::put("notaremivent/anular/{id}",[NotaRemiVentController::class,"anular"]);
+Route::put("notaremivent/confirmar/{id}", [NotaRemiVentController::class, "confirmar"]);
+
+Route::get("notaremiventdet/read/{nota_remi_vent_id}",[NotaRemiVentDetController::class,"read"]);
+
+Route::post("notaventcab/create",[NotasVentCabController::class,"store"]);
+Route::get("notaventcab/read",[NotasVentCabController::class,"read"]);
+Route::put("notaventcab/update/{id}",[NotasVentCabController::class,"update"]);
+Route::put("notaventcab/anular/{id}",[NotasVentCabController::class,"anular"]);
+Route::delete("notavemtcab/delete/{id}",[NotasVentCabController::class,"eliminar"]);
+Route::put("notaventcab/confirmar/{id}",[NotasVentCabController::class,"confirmar"]);;
+
+Route::post("notaventdet/create",[NotasVentDetController::class,"store"]);
+Route::get("notaventdet/read/{id}",[NotasVentDetController::class,"read"]);
+Route::put("notaventdet/update/{notas_vent_cab_id}/{item_id}",[NotasVentDetController::class,"update"]);
+Route::delete("notaventdet/delete/{notas_vent_cab_id}/{item_id}",[NotasVentDetController::class,"destroy"]);
 
 Route::get("libro_compras/buscar-informe",[LibroComprasController::class, "buscarInforme"]);
 

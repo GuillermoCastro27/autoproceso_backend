@@ -36,6 +36,7 @@ class VentasCabController extends Controller
             c.cli_nombre,
             c.cli_apellido,
             c.cli_ruc,
+            c.cli_direccion,
             c.cli_telefono,
             c.cli_correo,
 
@@ -417,4 +418,141 @@ for ($i = 1; $i <= $cuotas; $i++) {
         'registro'=> $ventacab
     ], 200);
 }
+public function buscarVentas(Request $r)
+{
+    $texto = $r->get('q', '');
+
+    return DB::select("
+        SELECT
+            v.id AS ventas_cab_id,
+            TO_CHAR(v.id, '0000000') AS nro_venta,
+
+            -- Fecha venta
+            TO_CHAR(v.vent_fecha, 'dd/mm/yyyy') AS vent_fecha,
+
+            -- Estado
+            v.vent_estado,
+            v.condicion_pago,
+
+            -- Cliente
+            c.id AS clientes_id,
+            c.cli_nombre,
+            c.cli_apellido,
+            c.cli_ruc,
+            c.cli_direccion,
+            c.cli_telefono,
+            c.cli_correo,
+
+            -- Empresa
+            e.id AS empresa_id,
+            e.emp_razon_social,
+
+            -- Sucursal
+            s.empresa_id AS sucursal_id,
+            s.suc_razon_social
+
+        FROM ventas_cab v
+
+        JOIN clientes c 
+            ON c.id = v.clientes_id
+
+        JOIN empresa e 
+            ON e.id = v.empresa_id
+
+        JOIN sucursal s 
+            ON s.empresa_id = v.sucursal_id
+
+        WHERE v.vent_estado = 'CONFIRMADO'
+
+        AND (
+            TO_CHAR(v.id, '0000000') ILIKE ?
+            OR c.cli_nombre ILIKE ?
+            OR c.cli_apellido ILIKE ?
+            OR c.cli_ruc ILIKE ?
+        )
+
+        ORDER BY v.id DESC
+        LIMIT 10
+    ", [
+        "%$texto%",
+        "%$texto%",
+        "%$texto%",
+        "%$texto%"
+    ]);
+}
+public function buscarVentasNota(Request $r)
+{
+    $texto = $r->get('q', '');
+
+    return DB::select("
+        SELECT
+            v.id AS ventas_cab_id,
+            TO_CHAR(v.id, '0000000') AS venta,
+
+            -- Fecha venta
+            TO_CHAR(v.vent_fecha, 'dd/mm/yyyy') AS vent_fecha,
+
+            -- Estado
+            v.vent_estado,
+            v.condicion_pago,
+
+            -- Vencimiento (solo si es crédito)
+            CASE 
+                WHEN v.condicion_pago = 'CONTADO' THEN 'N/A'
+                ELSE TO_CHAR(v.vent_intervalo_fecha_vence, 'dd/mm/yyyy')
+            END AS vent_intervalo_fecha_vence,
+
+            -- Cuotas
+            CASE 
+                WHEN v.condicion_pago = 'CONTADO' THEN 'N/A'
+                ELSE COALESCE(v.vent_cant_cuota::varchar, '1')
+            END AS vent_cant_cuota,
+
+            -- Cliente
+            c.id AS clientes_id,
+            c.cli_nombre,
+            c.cli_apellido,
+            c.cli_ruc,
+            c.cli_direccion,
+            c.cli_telefono,
+            c.cli_correo,
+
+            -- Empresa
+            e.id AS empresa_id,
+            e.emp_razon_social,
+
+            -- Sucursal
+            s.empresa_id AS sucursal_id,
+            s.suc_razon_social
+
+        FROM ventas_cab v
+
+        JOIN clientes c 
+            ON c.id = v.clientes_id
+
+        JOIN empresa e 
+            ON e.id = v.empresa_id
+
+        JOIN sucursal s 
+            ON s.empresa_id = v.sucursal_id
+
+        WHERE v.vent_estado = 'CONFIRMADO'
+
+        AND (
+            TO_CHAR(v.id, '0000000') ILIKE ?
+            OR c.cli_nombre ILIKE ?
+            OR c.cli_apellido ILIKE ?
+            OR c.cli_ruc ILIKE ?
+        )
+
+        ORDER BY v.id DESC
+        LIMIT 10
+    ", [
+        "%$texto%",
+        "%$texto%",
+        "%$texto%",
+        "%$texto%"
+    ]);
+}
+
 }
