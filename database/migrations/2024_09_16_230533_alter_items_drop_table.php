@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table("items", function(Blueprint $table){
-            $table->dropColumn('modelo_id');
-            $table->dropColumn('marca_id');
+            if (Schema::hasColumn('items', 'modelo_id')) $table->dropColumn('modelo_id');
+            if (Schema::hasColumn('items', 'marca_id')) $table->dropColumn('marca_id');
         });
     }
 

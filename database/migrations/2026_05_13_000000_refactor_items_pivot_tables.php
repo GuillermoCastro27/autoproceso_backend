@@ -11,7 +11,8 @@ return new class extends Migration
     {
         // Quitar marca_id y modelo_id de items (ahora se gestiona por tablas pivot)
         Schema::table('items', function (Blueprint $table) {
-            $table->dropColumn(['marca_id', 'modelo_id']);
+            if (Schema::hasColumn('items', 'marca_id')) $table->dropColumn('marca_id');
+            if (Schema::hasColumn('items', 'modelo_id')) $table->dropColumn('modelo_id');
         });
 
         // Hacer nullable los campos descrip en las tablas pivot (campo auxiliar, no requerido desde UI)

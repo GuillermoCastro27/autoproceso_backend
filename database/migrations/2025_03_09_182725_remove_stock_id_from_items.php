@@ -15,7 +15,7 @@ return new class extends Migration
             // Eliminar la clave forÃ¡nea primero
 
             // Luego eliminar la columna stock_id
-            $table->dropColumn('stock_id');
+            if (Schema::hasColumn('items', 'stock_id')) $table->dropColumn('stock_id');
         });
     }
 
