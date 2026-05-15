@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('items', function (Blueprint $table) {
-            // Eliminar la clave foránea primero
-            $table->dropForeign(['stock_id']);
+            // Eliminar la clave forÃ¡nea primero
 
             // Luego eliminar la columna stock_id
             $table->dropColumn('stock_id');

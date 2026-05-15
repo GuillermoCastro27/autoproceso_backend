@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -14,8 +14,6 @@ return new class extends Migration
         Schema::table('arqueo_caja', function (Blueprint $table) {
 
     // Eliminar FKs primero
-    $table->dropForeign(['empresa_id']);
-    $table->dropForeign(['sucursal_id']);
 
     // Eliminar columnas
     $table->dropColumn(['empresa_id', 'sucursal_id']);

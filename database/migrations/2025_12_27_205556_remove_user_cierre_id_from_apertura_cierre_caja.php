@@ -10,7 +10,6 @@ return new class extends Migration {
     {
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
             if (Schema::hasColumn('apertura_cierre_caja', 'user_cierre_id')) {
-                $table->dropForeign(['user_cierre_id']);
                 $table->dropColumn('user_cierre_id');
             }
         });

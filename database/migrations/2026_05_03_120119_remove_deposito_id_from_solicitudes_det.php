@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('solicitudes_det', function (Blueprint $table) {
-            $table->dropForeign(['deposito_id']);
             $table->dropColumn('deposito_id');
         });
     }

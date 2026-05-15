@@ -27,7 +27,6 @@ return new class extends Migration
     {
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
 
-            $table->dropForeign(['user_cierre_id']);
 
             $table->dropColumn([
                 'fecha_cierre',

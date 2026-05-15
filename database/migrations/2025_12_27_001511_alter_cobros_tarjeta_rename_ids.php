@@ -11,9 +11,6 @@ return new class extends Migration {
         Schema::table('cobros_tarjeta', function (Blueprint $table) {
 
             // â— Primero eliminar FKs
-            $table->dropForeign(['entidad_emisora_id']);
-            $table->dropForeign(['marca_tarjeta_id']);
-            $table->dropForeign(['entidad_adherida_id']);
 
             // ðŸ” Renombrar columnas
             $table->renameColumn('entidad_emisora_id', 'entidad_emisora_tarjeta_id');
@@ -33,9 +30,6 @@ return new class extends Migration {
     {
         Schema::table('cobros_tarjeta', function (Blueprint $table) {
 
-            $table->dropForeign(['entidad_emisora_tarjeta_id']);
-            $table->dropForeign(['marca_tarjeta_tarjeta_id']);
-            $table->dropForeign(['entidad_adherida_tarjeta_id']);
 
             $table->renameColumn('entidad_emisora_tarjeta_id', 'entidad_emisora_id');
             $table->renameColumn('marca_tarjeta_tarjeta_id', 'marca_tarjeta_id');

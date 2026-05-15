@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::table('cobros_cheque', function (Blueprint $table) {
 
             // ðŸ”¥ eliminar FK primero
-            $table->dropForeign(['entidad_emisora_id']);
 
             // ðŸ” renombrar columna
             $table->renameColumn('entidad_emisora_id', 'entidad_emisora_cheque_id');
@@ -27,7 +26,6 @@ return new class extends Migration
     {
         Schema::table('cobros_cheque', function (Blueprint $table) {
 
-            $table->dropForeign(['entidad_emisora_cheque_id']);
 
             $table->renameColumn('entidad_emisora_cheque_id', 'entidad_emisora_id');
         });

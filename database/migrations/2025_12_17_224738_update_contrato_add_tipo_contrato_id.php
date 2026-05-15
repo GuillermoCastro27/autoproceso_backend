@@ -26,7 +26,6 @@ return new class extends Migration
         Schema::table('contrato_serv_cab', function (Blueprint $table) {
 
             // ðŸ”„ Quitar FK
-            $table->dropForeign(['tipo_contrato_id']);
             $table->dropColumn('tipo_contrato_id');
 
             // ðŸ”„ Restaurar columna anterior (por si rollback)

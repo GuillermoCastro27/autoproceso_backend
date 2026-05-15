@@ -27,17 +27,14 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('nota_remi_com_det', function (Blueprint $table) {
-            $table->dropForeign(['deposito_id']);
             $table->dropColumn('deposito_id');
         });
 
         Schema::table('notas_comp_det', function (Blueprint $table) {
-            $table->dropForeign(['deposito_id']);
             $table->dropColumn('deposito_id');
         });
 
         Schema::table('ajuste_det', function (Blueprint $table) {
-            $table->dropForeign(['deposito_id']);
             $table->dropColumn('deposito_id');
         });
     }

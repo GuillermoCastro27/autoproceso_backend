@@ -11,8 +11,6 @@ return new class extends Migration
     {
         // Quitar marca_id y modelo_id de items (ahora se gestiona por tablas pivot)
         Schema::table('items', function (Blueprint $table) {
-            $table->dropForeign(['marca_id']);
-            $table->dropForeign(['modelo_id']);
             $table->dropColumn(['marca_id', 'modelo_id']);
         });
 

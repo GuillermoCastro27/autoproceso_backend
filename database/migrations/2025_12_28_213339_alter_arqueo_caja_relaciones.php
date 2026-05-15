@@ -36,8 +36,6 @@ return new class extends Migration
     {
         Schema::table('arqueo_caja', function (Blueprint $table) {
 
-            $table->dropForeign(['apertura_cierre_caja_id']);
-            $table->dropForeign(['user_id']);
 
             // solo para rollback
             $table->unsignedBigInteger('empresa_id')->nullable();

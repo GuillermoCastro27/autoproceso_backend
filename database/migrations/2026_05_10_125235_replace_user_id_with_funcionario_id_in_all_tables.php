@@ -76,7 +76,6 @@ return new class extends Migration
             ");
 
             Schema::table($table, function (Blueprint $t) {
-                $t->dropForeign(['funcionario_id']);
                 $t->dropColumn('funcionario_id');
             });
         }

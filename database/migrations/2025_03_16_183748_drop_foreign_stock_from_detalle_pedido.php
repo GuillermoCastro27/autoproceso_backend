@@ -8,7 +8,6 @@ return new class extends Migration {
     public function up() {
         Schema::table('pedidos_detalles', function (Blueprint $table) {
             // Elimina la clave forÃ¡nea si existe
-            $table->dropForeign(['stock_id']); 
             // Elimina la columna stock_id
             $table->dropColumn('stock_id'); 
         });
