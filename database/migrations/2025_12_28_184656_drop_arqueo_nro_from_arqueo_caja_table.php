@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,7 +13,7 @@ return new class extends Migration
             $table->dropUnique(['arqueo_nro']);
 
             // Luego eliminar la columna
-            $table->dropColumn('arqueo_nro');
+            if (Schema::hasColumn('arqueo_caja', 'arqueo_nro')) $table->dropColumn('arqueo_nro');
         });
     }
 

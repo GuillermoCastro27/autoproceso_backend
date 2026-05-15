@@ -27,15 +27,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('nota_remi_com_det', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('nota_remi_com_det', 'deposito_id')) $table->dropColumn('deposito_id');
         });
 
         Schema::table('notas_comp_det', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('notas_comp_det', 'deposito_id')) $table->dropColumn('deposito_id');
         });
 
         Schema::table('ajuste_det', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('ajuste_det', 'deposito_id')) $table->dropColumn('deposito_id');
         });
     }
 };

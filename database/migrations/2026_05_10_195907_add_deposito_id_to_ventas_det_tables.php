@@ -23,11 +23,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('pedidos_ventas_det', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('pedidos_ventas_det', 'deposito_id')) $table->dropColumn('deposito_id');
         });
 
         Schema::table('notas_vent_det', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('notas_vent_det', 'deposito_id')) $table->dropColumn('deposito_id');
         });
     }
 };

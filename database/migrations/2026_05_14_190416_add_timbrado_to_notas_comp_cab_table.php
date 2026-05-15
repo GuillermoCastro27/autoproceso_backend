@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('notas_comp_cab', function (Blueprint $table) {
-            $table->dropColumn('nota_comp_timbrado');
+            if (Schema::hasColumn('notas_comp_cab', 'nota_comp_timbrado')) $table->dropColumn('nota_comp_timbrado');
         });
     }
 };

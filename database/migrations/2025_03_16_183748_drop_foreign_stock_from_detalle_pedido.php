@@ -9,7 +9,7 @@ return new class extends Migration {
         Schema::table('pedidos_detalles', function (Blueprint $table) {
             // Elimina la clave forÃ¡nea si existe
             // Elimina la columna stock_id
-            $table->dropColumn('stock_id'); 
+            if (Schema::hasColumn('pedidos_detalles', 'stock_id')) $table->dropColumn('stock_id'); 
         });
     }
 

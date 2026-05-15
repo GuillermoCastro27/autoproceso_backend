@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -19,7 +19,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('reclamo_cli_cab', function (Blueprint $table) {
-            $table->dropColumn('token_seguimiento');
+            if (Schema::hasColumn('reclamo_cli_cab', 'token_seguimiento')) $table->dropColumn('token_seguimiento');
         });
     }
 };

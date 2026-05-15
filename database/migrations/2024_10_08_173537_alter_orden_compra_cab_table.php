@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('orden_compra_cab', function (Blueprint $table) {
             // Eliminar la relaciÃ³n y la columna proveedor_id
-            $table->dropColumn('proveedor_id');
+            if (Schema::hasColumn('orden_compra_cab', 'proveedor_id')) $table->dropColumn('proveedor_id');
         });
     }
 

@@ -13,7 +13,7 @@ return new class extends Migration
             // ðŸ”´ eliminar unique de arqueo_nro (si existe)
             if (Schema::hasColumn('arqueo_caja', 'arqueo_nro')) {
                 $table->dropUnique(['arqueo_nro']);
-                $table->dropColumn('arqueo_nro');
+                if (Schema::hasColumn('arqueo_caja', 'arqueo_nro')) $table->dropColumn('arqueo_nro');
             }
 
             // ðŸ”´ eliminar columnas de totales

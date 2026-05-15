@@ -19,7 +19,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('contrato_serv_cab', function (Blueprint $table) {
-            $table->dropColumn('orden_serv_cab_id');
+            if (Schema::hasColumn('contrato_serv_cab', 'orden_serv_cab_id')) $table->dropColumn('orden_serv_cab_id');
         });
     }
 };

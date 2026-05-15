@@ -12,7 +12,7 @@ return new class extends Migration
 
             // ðŸ”¹ Eliminar columna antigua (texto)
             if (Schema::hasColumn('contrato_serv_cab', 'tipo_contrato')) {
-                $table->dropColumn('tipo_contrato');
+                if (Schema::hasColumn('contrato_serv_cab', 'tipo_contrato')) $table->dropColumn('tipo_contrato');
             }
 
             // ðŸ”¹ Nueva relaciÃ³n
@@ -26,7 +26,7 @@ return new class extends Migration
         Schema::table('contrato_serv_cab', function (Blueprint $table) {
 
             // ðŸ”„ Quitar FK
-            $table->dropColumn('tipo_contrato_id');
+            if (Schema::hasColumn('contrato_serv_cab', 'tipo_contrato_id')) $table->dropColumn('tipo_contrato_id');
 
             // ðŸ”„ Restaurar columna anterior (por si rollback)
             if (!Schema::hasColumn('contrato_serv_cab', 'tipo_contrato')) $table->string('tipo_contrato')->nullable();

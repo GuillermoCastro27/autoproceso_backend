@@ -32,20 +32,20 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('pedidos_detalles', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('pedidos_detalles', 'deposito_id')) $table->dropColumn('deposito_id');
         });
 
         Schema::table('solicitudes_det', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('solicitudes_det', 'deposito_id')) $table->dropColumn('deposito_id');
         });
 
         Schema::table('orden_compra_det', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('orden_compra_det', 'deposito_id')) $table->dropColumn('deposito_id');
         });
 
         Schema::table('presupuestos_detalles', function (Blueprint $table) {
-            $table->dropColumn('deposito_id');
-            $table->dropColumn('id');
+            if (Schema::hasColumn('presupuestos_detalles', 'deposito_id')) $table->dropColumn('deposito_id');
+            if (Schema::hasColumn('presupuestos_detalles', 'id')) $table->dropColumn('id');
         });
         DB::statement('ALTER TABLE presupuestos_detalles ADD PRIMARY KEY (presupuesto_id, item_id)');
     }

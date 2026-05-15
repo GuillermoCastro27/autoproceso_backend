@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orden_compra_det', function (Blueprint $table) {
-            $table->float('orden_compra_det_costo')->nullable(); // Cambiar aquí para permitir nulos
+            $table->float('orden_compra_det_costo')->nullable(); // Cambiar aquÃ­ para permitir nulos
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('orden_compra_det', function (Blueprint $table) {
-            $table->dropColumn('orden_compra_det_costo'); // Asegúrate de que esto esté correcto
+            if (Schema::hasColumn('orden_compra_det', 'orden_compra_det_costo')) $table->dropColumn('orden_compra_det_costo'); // AsegÃºrate de que esto estÃ© correcto
         });
     }
 };

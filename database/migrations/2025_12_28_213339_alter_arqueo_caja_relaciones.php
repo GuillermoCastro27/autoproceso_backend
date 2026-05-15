@@ -19,11 +19,11 @@ return new class extends Migration
 
             // ðŸ”¥ Eliminamos duplicaciones si existen
             if (Schema::hasColumn('arqueo_caja', 'empresa_id')) {
-                $table->dropColumn('empresa_id');
+                if (Schema::hasColumn('arqueo_caja', 'empresa_id')) $table->dropColumn('empresa_id');
             }
 
             if (Schema::hasColumn('arqueo_caja', 'sucursal_id')) {
-                $table->dropColumn('sucursal_id');
+                if (Schema::hasColumn('arqueo_caja', 'sucursal_id')) $table->dropColumn('sucursal_id');
             }
 
             // âœ… RelaciÃ³n REAL con apertura/cierre
