@@ -11,15 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasColumn('presupuestos', 'pedido_id')) return;
+
         Schema::table('presupuestos', function (Blueprint $table) {
-            if (!Schema::hasColumn('presupuestos', 'pedido_id')) $table->unsignedBigInteger('pedido_id')->nullable()->change();
+            $table->unsignedBigInteger('pedido_id')->nullable()->change();
         });
     }
 
     public function down(): void
     {
+        if (!Schema::hasColumn('presupuestos', 'pedido_id')) return;
+
         Schema::table('presupuestos', function (Blueprint $table) {
-            if (!Schema::hasColumn('presupuestos', 'pedido_id')) $table->unsignedBigInteger('pedido_id')->nullable(false)->change();
+            $table->unsignedBigInteger('pedido_id')->nullable(false)->change();
         });
     }
 };

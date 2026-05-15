@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('reclamo_cli_cab', function (Blueprint $table) {
-            $table->string('token_seguimiento', 64)->unique()->nullable()->after('venta_cab_id');
+            if (!Schema::hasColumn('reclamo_cli_cab', 'token_seguimiento')) {
+                $table->string('token_seguimiento', 64)->unique()->nullable()->after('venta_cab_id');
+            }
         });
     }
 

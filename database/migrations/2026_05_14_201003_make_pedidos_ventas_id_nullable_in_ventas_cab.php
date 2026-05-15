@@ -11,15 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasColumn('ventas_cab', 'pedidos_ventas_id')) return;
+
         Schema::table('ventas_cab', function (Blueprint $table) {
-            if (!Schema::hasColumn('ventas_cab', 'pedidos_ventas_id')) $table->unsignedBigInteger('pedidos_ventas_id')->nullable()->change();
+            $table->unsignedBigInteger('pedidos_ventas_id')->nullable()->change();
         });
     }
 
     public function down(): void
     {
+        if (!Schema::hasColumn('ventas_cab', 'pedidos_ventas_id')) return;
+
         Schema::table('ventas_cab', function (Blueprint $table) {
-            if (!Schema::hasColumn('ventas_cab', 'pedidos_ventas_id')) $table->unsignedBigInteger('pedidos_ventas_id')->nullable(false)->change();
+            $table->unsignedBigInteger('pedidos_ventas_id')->nullable(false)->change();
         });
     }
 };

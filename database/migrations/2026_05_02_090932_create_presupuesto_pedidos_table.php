@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('presupuesto_pedidos')) return;
+
         Schema::create('presupuesto_pedidos', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('presupuesto_id')->constrained('presupuestos')->cascadeOnDelete();
-            $table->unsignedBigInteger('pedido_id')->constrained('pedidos')->cascadeOnDelete();
+            $table->unsignedBigInteger('presupuesto_id');
+            $table->unsignedBigInteger('pedido_id');
             $table->timestamp('pres_prov_ped_fecha_registro')->nullable();
             $table->timestamps();
         });
