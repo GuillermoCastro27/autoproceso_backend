@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('accesos', function (Blueprint $table) {
-            $table->foreignId('mod_id')->nullable()->after('perfil_id')
+            $table->unsignedBigInteger('mod_id')->nullable()->after('perfil_id');
             $table->timestamp('acc_fecha')->nullable()->after('acc_estado');
         });
     }
