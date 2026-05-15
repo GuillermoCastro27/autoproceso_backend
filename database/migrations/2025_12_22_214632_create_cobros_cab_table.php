@@ -25,66 +25,26 @@ return new class extends Migration
         $table->timestamp('fecha_cobro_diferido')->nullable();
 
         $table->unsignedBigInteger('forma_cobro_id');
-            ->references('id')
-            ->on('forma_cobro')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('clientes_id');
-            ->references('id')
-            ->on('clientes')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('ventas_cab_id');
-            ->references('id')
-            ->on('ventas_cab')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('user_id');
-            ->references('id')
-            ->on('users')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('caja_id');
-            ->references('id')
-            ->on('caja')
-            ->onDelete('cascade')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('empresa_id');
-            ->references('id')
-            ->on('empresa')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('sucursal_id');
-            ->references('empresa_id')
-            ->on('sucursal')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('apertura_cierre_caja_id')->nullable();
-            ->references('id')
-            ->on('apertura_cierre_caja')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('entidad_emisora_id')->nullable();
 
         $table->unsignedBigInteger('marca_tarjeta_id')->nullable();
-            ->references('id')
-            ->on('marca_tarjeta')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
 
         $table->unsignedBigInteger('entidad_adherida_id')->nullable();
-            ->references('id')
-            ->on('entidad_adherida')
-            ->onDelete('restrict')
-            ->onUpdate('cascade');
         $table->timestamps();
     });
 }

@@ -14,14 +14,8 @@ return new class extends Migration
         Schema::create('orden_serv_venta', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('ventas_cab_id');
-                  ->references('id')->on('ventas_cab')
-                  ->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('orden_serv_cab_id');
-                  ->references('id')->on('orden_serv_cab')
-                  ->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('contrato_serv_cab_id')->nullable();
-                  ->references('id')->on('contrato_serv_cab')
-                  ->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

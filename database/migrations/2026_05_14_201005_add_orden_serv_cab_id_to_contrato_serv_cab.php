@@ -13,8 +13,6 @@ return new class extends Migration
     {
         Schema::table('contrato_serv_cab', function (Blueprint $table) {
             $table->unsignedBigInteger('orden_serv_cab_id')->nullable()->after('user_id');
-                  ->references('id')->on('orden_serv_cab')
-                  ->onDelete('restrict')->onUpdate('cascade');
         });
     }
 

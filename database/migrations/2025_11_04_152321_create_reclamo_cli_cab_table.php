@@ -25,16 +25,12 @@ return new class extends Migration
 
             // ðŸ”¹ Relaciones principales
             $table->unsignedBigInteger('clientes_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('empresa_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('sucursal_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('user_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             // ðŸ”¹ RelaciÃ³n futura con venta (nullable)
             $table->unsignedBigInteger('venta_cab_id')->nullable();

@@ -14,18 +14,12 @@ return new class extends Migration
         Schema::create('contrato_serv_det', function (Blueprint $table) {
             // ðŸ”¹ RelaciÃ³n con cabecera
             $table->unsignedBigInteger('contrato_serv_cab_id');
-                  ->references('id')->on('contrato_serv_cab')
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             // ðŸ”¹ RelaciÃ³n con Ã­tems
             $table->unsignedBigInteger('item_id');
-                  ->references('id')->on('items')
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             // ðŸ”¹ RelaciÃ³n con tipo de impuesto
             $table->unsignedBigInteger('tipo_impuesto_id');
-                  ->references('id')->on('tipo_impuesto')
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             // ðŸ”¹ Datos principales
             $table->decimal('contrato_serv_det_cantidad', 15, 2);

@@ -26,9 +26,6 @@ return new class extends Migration
             $table->string('condicion_pago', 20);
 
             // FK ventas
-                ->references('id')->on('ventas_cab')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             // Evitar duplicar una misma cuota
             $table->unique(['ventas_cab_id', 'nro_cuota']);

@@ -20,8 +20,6 @@ return new class extends Migration
             $table->decimal('monto_cheque_cierre', 14, 2)->nullable();
 
             // ðŸ” FK usuario cierre
-                  ->references('id')
-                  ->on('users');
         });
     }
 

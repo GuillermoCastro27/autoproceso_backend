@@ -28,25 +28,9 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
 
             // ðŸ”‘ Foreign Keys
-                  ->references('id')
-                  ->on('clientes')
-                  ->onDelete('restrict')
-                  ->onUpdate('cascade');
 
-                  ->references('id')
-                  ->on('empresa')
-                  ->onDelete('restrict')
-                  ->onUpdate('cascade');
 
-                  ->references('empresa_id')
-                  ->on('sucursal')
-                  ->onDelete('restrict')
-                  ->onUpdate('cascade');
 
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('restrict')
-                  ->onUpdate('cascade');
 
             $table->timestamps();
         });

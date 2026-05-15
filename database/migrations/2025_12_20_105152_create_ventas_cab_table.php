@@ -25,33 +25,18 @@ return new class extends Migration
 
             // ðŸ‘¤ Usuario
             $table->unsignedBigInteger('user_id');
-                ->references('id')->on('users')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             // ðŸ§¾ Pedido de venta
             $table->unsignedBigInteger('pedidos_ventas_id');
-                ->references('id')->on('pedidos_ventas')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             // ðŸ‘¥ Cliente
             $table->unsignedBigInteger('clientes_id')->nullable();
-                ->references('id')->on('clientes')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             // ðŸ¢ Empresa
             $table->unsignedBigInteger('empresa_id');
-                ->references('id')->on('empresa')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             // ðŸ¬ Sucursal
             $table->unsignedBigInteger('sucursal_id');
-                ->references('empresa_id')->on('sucursal')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             $table->timestamps();
         });

@@ -21,8 +21,6 @@ return new class extends Migration {
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
             $table->unsignedBigInteger('user_cierre_id')->nullable();
 
-                  ->references('id')
-                  ->on('users');
         });
     }
 };

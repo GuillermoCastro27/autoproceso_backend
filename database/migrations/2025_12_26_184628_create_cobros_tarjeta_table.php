@@ -36,18 +36,9 @@ return new class extends Migration
             // =========================
             // ðŸ”‘ CLAVES FORÃNEAS
             // =========================
-                ->references('id')
-                ->on('cobros_cab')
-                ->onDelete('cascade');
 
-                ->references('id')
-                ->on('entidad_emisora');
 
-                ->references('id')
-                ->on('marca_tarjeta');
 
-                ->references('id')
-                ->on('entidad_adherida');
         });
 
     }

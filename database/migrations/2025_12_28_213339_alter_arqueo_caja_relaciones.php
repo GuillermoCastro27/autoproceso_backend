@@ -27,14 +27,8 @@ return new class extends Migration
             }
 
             // âœ… RelaciÃ³n REAL con apertura/cierre
-                  ->references('id')
-                  ->on('apertura_cierre_caja')
-                  ->onDelete('restrict');
 
             // âœ… Usuario que realiza el arqueo
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('restrict');
         });
     }
 

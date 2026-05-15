@@ -22,19 +22,14 @@ return new class extends Migration
 
             // ðŸ”— Relaciones
             $table->unsignedBigInteger('presupuesto_serv_cab_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('clientes_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('user_id'); // usuario que genera la orden
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('empresa_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('sucursal_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->timestamps();
         });

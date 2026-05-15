@@ -20,8 +20,6 @@ return new class extends Migration
         Schema::table('cobros_cheque', function (Blueprint $table) {
 
             // ðŸ”— recrear FK con el nuevo nombre
-                ->references('id')
-                ->on('entidad_emisora');
         });
     }
 
@@ -36,8 +34,6 @@ return new class extends Migration
 
         Schema::table('cobros_cheque', function (Blueprint $table) {
 
-                ->references('id')
-                ->on('entidad_emisora');
         });
     }
 };

@@ -13,8 +13,6 @@ return new class extends Migration
     {
         Schema::table('descuentos_det', function (Blueprint $table) {
             $table->unsignedBigInteger('tipo_impuesto_id')->nullable();
-                  ->references('id')->on('tipo_impuesto')
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->float('desc_det_cantidad')->nullable();
             $table->float('desc_det_costo')->nullable();

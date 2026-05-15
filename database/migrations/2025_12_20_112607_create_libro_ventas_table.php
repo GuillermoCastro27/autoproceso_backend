@@ -32,14 +32,8 @@ return new class extends Migration
             $table->string('tip_imp_nom', 100)->nullable();
 
             // FK cliente
-                ->references('id')->on('clientes')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             // FK tipo impuesto
-                ->references('id')->on('tipo_impuesto')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             $table->timestamps();
         });

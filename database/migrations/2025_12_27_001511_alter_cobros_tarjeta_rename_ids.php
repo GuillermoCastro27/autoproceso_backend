@@ -24,11 +24,8 @@ return new class extends Migration {
         Schema::table('cobros_tarjeta', function (Blueprint $table) {
 
             // ðŸ”— Volver a crear FKs
-                ->references('id')->on('entidad_emisora');
 
-                ->references('id')->on('marca_tarjeta');
 
-                ->references('id')->on('entidad_adherida');
         });
     }
 
@@ -47,11 +44,8 @@ return new class extends Migration {
 
         Schema::table('cobros_tarjeta', function (Blueprint $table) {
 
-                ->references('id')->on('entidad_emisora');
 
-                ->references('id')->on('marca_tarjeta');
 
-                ->references('id')->on('entidad_adherida');
         });
     }
 };

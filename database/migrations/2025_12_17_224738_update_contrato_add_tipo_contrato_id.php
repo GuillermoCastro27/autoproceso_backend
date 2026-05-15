@@ -18,10 +18,6 @@ return new class extends Migration
             // ðŸ”¹ Nueva relaciÃ³n
             $table->unsignedBigInteger('tipo_contrato_id')->nullable()->after('id');
 
-                ->references('id')
-                ->on('tipo_contrato')
-                ->onUpdate('cascade')
-                ->onDelete('cascade');
         });
     }
 

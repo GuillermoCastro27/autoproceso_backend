@@ -26,19 +26,14 @@ return new class extends Migration
 
             // ðŸ”¹ Relaciones principales
             $table->unsignedBigInteger('empresa_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('sucursal_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('clientes_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('tipo_servicio_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
 
             $table->unsignedBigInteger('user_id');
-                  ->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

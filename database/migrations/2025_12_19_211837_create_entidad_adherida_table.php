@@ -27,11 +27,7 @@ return new class extends Migration {
             $table->timestamps();
 
             // ðŸ”‘ Foreign Keys
-                  ->references('id')
-                  ->on('entidad_emisora');
 
-                  ->references('id')
-                  ->on('marca_tarjeta');
 
             // ðŸ” Evitar duplicados lÃ³gicos
             $table->unique(

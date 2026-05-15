@@ -22,15 +22,7 @@ return new class extends Migration
             $table->primary(['pedidos_ventas_id', 'item_id']);
 
             // ðŸ”— Foreign Keys
-                ->references('id')
-                ->on('pedidos_ventas')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
-                ->references('id')
-                ->on('items')
-                ->onDelete('restrict')
-                ->onUpdate('cascade');
 
             $table->timestamps();
         });
