@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('arqueo_caja', function (Blueprint $table) {
-            $table->unsignedBigInteger('sucursal_id')->nullable(); 
-            $table->unsignedBigInteger('empresa_id')->nullable(); 
+            if (!Schema::hasColumn('arqueo_caja', 'sucursal_id')) $table->unsignedBigInteger('sucursal_id')->nullable();
+            if (!Schema::hasColumn('arqueo_caja', 'empresa_id')) $table->unsignedBigInteger('empresa_id')->nullable();
         });
     }
 

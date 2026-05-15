@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
-            $table->decimal('monto_apertura', 14, 2)
-                ->default(0)
-                ->after('fecha_apertura');
+            if (!Schema::hasColumn('apertura_cierre_caja', 'monto_apertura')) {
+                $table->decimal('monto_apertura', 14, 2)->default(0)->after('fecha_apertura');
+            }
         });
     }
 

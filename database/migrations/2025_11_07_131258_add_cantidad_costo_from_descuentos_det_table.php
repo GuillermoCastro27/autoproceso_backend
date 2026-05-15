@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('descuentos_det')) return;
+
         Schema::table('descuentos_det', function (Blueprint $table) {
             if (!Schema::hasColumn('descuentos_det', 'tipo_impuesto_id')) $table->unsignedBigInteger('tipo_impuesto_id')->nullable();
 
