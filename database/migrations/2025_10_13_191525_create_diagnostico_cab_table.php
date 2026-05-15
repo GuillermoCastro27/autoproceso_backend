@@ -31,10 +31,8 @@ return new class extends Migration
 
             $table->unsignedBigInteger('recep_cab_id');                  // ðŸ”— RelaciÃ³n directa con la recepciÃ³n
 
-            $table->unsignedBigInteger('tipo_diagnostico_id');               // Tipo de servicio (MecÃ¡nica, Electricidad, etc.)
-            $table->timestamps();
-
-            $table->unsignedBigInteger('tipo_servicio_id');               // Tipo de servicio (MecÃ¡nica, Electricidad, etc.)
+            $table->unsignedBigInteger('tipo_diagnostico_id')->nullable();
+            $table->unsignedBigInteger('tipo_servicio_id')->nullable();
             $table->timestamps();
         });
     }
