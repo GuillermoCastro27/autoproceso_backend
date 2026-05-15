@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('pedidos', function (Blueprint $table) {
-            $table->timestamp('ped_fecha')->nullable();
+            if (!Schema::hasColumn('pedidos', 'ped_fecha')) $table->timestamp('ped_fecha')->nullable();
         });
     }
 

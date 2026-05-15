@@ -11,13 +11,13 @@ return new class extends Migration
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
 
             // ðŸ•’ Datos de cierre
-            $table->timestamp('fecha_cierre')->nullable();
-            $table->unsignedBigInteger('user_cierre_id')->nullable();
+            if (!Schema::hasColumn('apertura_cierre_caja', 'fecha_cierre')) $table->timestamp('fecha_cierre')->nullable();
+            if (!Schema::hasColumn('apertura_cierre_caja', 'user_cierre_id')) $table->unsignedBigInteger('user_cierre_id')->nullable();
 
             // ðŸ’° Totales de cierre
-            $table->decimal('monto_efectivo_cierre', 14, 2)->nullable();
-            $table->decimal('monto_tarjeta_cierre', 14, 2)->nullable();
-            $table->decimal('monto_cheque_cierre', 14, 2)->nullable();
+            if (!Schema::hasColumn('apertura_cierre_caja', 'monto_efectivo_cierre')) $table->decimal('monto_efectivo_cierre', 14, 2)->nullable();
+            if (!Schema::hasColumn('apertura_cierre_caja', 'monto_tarjeta_cierre')) $table->decimal('monto_tarjeta_cierre', 14, 2)->nullable();
+            if (!Schema::hasColumn('apertura_cierre_caja', 'monto_cheque_cierre')) $table->decimal('monto_cheque_cierre', 14, 2)->nullable();
 
             // ðŸ” FK usuario cierre
         });

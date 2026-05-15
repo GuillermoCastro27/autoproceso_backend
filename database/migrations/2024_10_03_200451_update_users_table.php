@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table){
             $table->string('login', 100)->unique();
-            $table->integer('intentos')->default(0);
+            if (!Schema::hasColumn('users', 'intentos')) $table->integer('intentos')->default(0);
         });
     }
 

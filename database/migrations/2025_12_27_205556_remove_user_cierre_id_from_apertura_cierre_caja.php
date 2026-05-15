@@ -18,7 +18,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
-            $table->unsignedBigInteger('user_cierre_id')->nullable();
+            if (!Schema::hasColumn('apertura_cierre_caja', 'user_cierre_id')) $table->unsignedBigInteger('user_cierre_id')->nullable();
 
         });
     }

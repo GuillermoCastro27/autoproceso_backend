@@ -16,7 +16,7 @@ return new class extends Migration
             }
 
             // ðŸ”¹ Nueva relaciÃ³n
-            $table->unsignedBigInteger('tipo_contrato_id')->nullable()->after('id');
+            if (!Schema::hasColumn('contrato_serv_cab', 'tipo_contrato_id')) $table->unsignedBigInteger('tipo_contrato_id')->nullable()->after('id');
 
         });
     }
@@ -29,7 +29,7 @@ return new class extends Migration
             $table->dropColumn('tipo_contrato_id');
 
             // ðŸ”„ Restaurar columna anterior (por si rollback)
-            $table->string('tipo_contrato')->nullable();
+            if (!Schema::hasColumn('contrato_serv_cab', 'tipo_contrato')) $table->string('tipo_contrato')->nullable();
         });
     }
 };

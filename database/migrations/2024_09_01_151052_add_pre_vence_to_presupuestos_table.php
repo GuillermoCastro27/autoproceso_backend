@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,7 +13,7 @@ return new class extends Migration
     {
         if (Schema::hasTable('presupuestos') && !Schema::hasColumn('presupuestos', 'pre_vence')) {
             Schema::table('presupuestos', function (Blueprint $table) {
-                $table->timestamp('pre_vence')->nullable();
+                if (!Schema::hasColumn('presupuestos', 'pre_vence')) $table->timestamp('pre_vence')->nullable();
             });
         }
     }

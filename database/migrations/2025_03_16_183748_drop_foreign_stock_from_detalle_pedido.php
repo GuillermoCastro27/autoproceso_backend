@@ -16,7 +16,7 @@ return new class extends Migration {
     public function down() {
         Schema::table('pedidos_detalles', function (Blueprint $table) {
             // Si necesitas restaurar la columna y la relaciÃ³n
-            $table->unsignedBigInteger('stock_id')->nullable();
+            if (!Schema::hasColumn('pedidos_detalles', 'stock_id')) $table->unsignedBigInteger('stock_id')->nullable();
         });
     }
 };

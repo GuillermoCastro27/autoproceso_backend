@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,13 +10,13 @@ return new class extends Migration
     {
         Schema::table('arqueo_caja', function (Blueprint $table) {
 
-            // 🔴 eliminar unique de arqueo_nro (si existe)
+            // ðŸ”´ eliminar unique de arqueo_nro (si existe)
             if (Schema::hasColumn('arqueo_caja', 'arqueo_nro')) {
                 $table->dropUnique(['arqueo_nro']);
                 $table->dropColumn('arqueo_nro');
             }
 
-            // 🔴 eliminar columnas de totales
+            // ðŸ”´ eliminar columnas de totales
             $table->dropColumn([
                 'total_efectivo',
                 'total_cheque',
@@ -30,14 +30,14 @@ return new class extends Migration
     {
         Schema::table('arqueo_caja', function (Blueprint $table) {
 
-            // 🔙 restaurar arqueo_nro
+            // ðŸ”™ restaurar arqueo_nro
             $table->string('arqueo_nro')->unique();
 
-            // 🔙 restaurar totales
-            $table->decimal('total_efectivo', 15, 2)->default(0);
-            $table->decimal('total_cheque', 15, 2)->default(0);
-            $table->decimal('total_tarjeta', 15, 2)->default(0);
-            $table->decimal('total_general', 15, 2)->default(0);
+            // ðŸ”™ restaurar totales
+            if (!Schema::hasColumn('arqueo_caja', 'total_efectivo')) $table->decimal('total_efectivo', 15, 2)->default(0);
+            if (!Schema::hasColumn('arqueo_caja', 'total_cheque')) $table->decimal('total_cheque', 15, 2)->default(0);
+            if (!Schema::hasColumn('arqueo_caja', 'total_tarjeta')) $table->decimal('total_tarjeta', 15, 2)->default(0);
+            if (!Schema::hasColumn('arqueo_caja', 'total_general')) $table->decimal('total_general', 15, 2)->default(0);
         });
     }
 };

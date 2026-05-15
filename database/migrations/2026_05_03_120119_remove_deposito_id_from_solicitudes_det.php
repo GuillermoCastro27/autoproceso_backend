@@ -19,7 +19,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('solicitudes_det', function (Blueprint $table) {
-            $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
+            if (!Schema::hasColumn('solicitudes_det', 'deposito_id')) $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
         });
     }
 };

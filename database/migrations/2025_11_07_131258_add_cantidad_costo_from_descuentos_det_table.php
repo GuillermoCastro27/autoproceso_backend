@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('descuentos_det', function (Blueprint $table) {
-            $table->unsignedBigInteger('tipo_impuesto_id')->nullable();
+            if (!Schema::hasColumn('descuentos_det', 'tipo_impuesto_id')) $table->unsignedBigInteger('tipo_impuesto_id')->nullable();
 
-            $table->float('desc_det_cantidad')->nullable();
-            $table->float('desc_det_costo')->nullable();
+            if (!Schema::hasColumn('descuentos_det', 'desc_det_cantidad')) $table->float('desc_det_cantidad')->nullable();
+            if (!Schema::hasColumn('descuentos_det', 'desc_det_costo')) $table->float('desc_det_costo')->nullable();
         });
     }
 

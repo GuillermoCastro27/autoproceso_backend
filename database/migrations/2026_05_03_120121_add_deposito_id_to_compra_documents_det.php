@@ -12,15 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('nota_remi_com_det', function (Blueprint $table) {
-            $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
+            if (!Schema::hasColumn('nota_remi_com_det', 'deposito_id')) $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
         });
 
         Schema::table('notas_comp_det', function (Blueprint $table) {
-            $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
+            if (!Schema::hasColumn('notas_comp_det', 'deposito_id')) $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
         });
 
         Schema::table('ajuste_det', function (Blueprint $table) {
-            $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
+            if (!Schema::hasColumn('ajuste_det', 'deposito_id')) $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
         });
     }
 

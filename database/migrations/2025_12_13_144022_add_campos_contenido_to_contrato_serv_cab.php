@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('contrato_serv_cab', function (Blueprint $table) {
-            $table->string('contrato_tipo', 30)->nullable()->after('contrato_condicion_pago');
-            $table->text('contrato_objeto')->nullable()->after('contrato_tipo');
-            $table->text('contrato_alcance')->nullable()->after('contrato_objeto');
-            $table->text('contrato_responsabilidad')->nullable()->after('contrato_alcance');
-            $table->text('contrato_garantia') ->nullable()->after('contrato_responsabilidad');
-            $table->text('contrato_limitacion') ->nullable() ->after('contrato_garantia');
-            $table->text('contrato_fuerza_mayor')->nullable()->after('contrato_limitacion');
-            $table->text('contrato_jurisdiccion')->nullable()->after('contrato_fuerza_mayor');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_tipo')) $table->string('contrato_tipo', 30)->nullable()->after('contrato_condicion_pago');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_objeto')) $table->text('contrato_objeto')->nullable()->after('contrato_tipo');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_alcance')) $table->text('contrato_alcance')->nullable()->after('contrato_objeto');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_responsabilidad')) $table->text('contrato_responsabilidad')->nullable()->after('contrato_alcance');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_garantia')) $table->text('contrato_garantia') ->nullable()->after('contrato_responsabilidad');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_limitacion')) $table->text('contrato_limitacion') ->nullable() ->after('contrato_garantia');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_fuerza_mayor')) $table->text('contrato_fuerza_mayor')->nullable()->after('contrato_limitacion');
+            if (!Schema::hasColumn('contrato_serv_cab', 'contrato_jurisdiccion')) $table->text('contrato_jurisdiccion')->nullable()->after('contrato_fuerza_mayor');
         });
     }
 

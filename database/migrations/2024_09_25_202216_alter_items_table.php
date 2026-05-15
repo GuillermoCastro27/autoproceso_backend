@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::table('items', function (Blueprint $table) {
             // Modificar las columnas existentes para que no acepten valores NULL
-            $table->unsignedBigInteger('tipo_impuesto_id')->nullable(false)->change();
-            $table->unsignedBigInteger('marca_id')->nullable(false)->change();
-            $table->unsignedBigInteger('modelo_id')->nullable(false)->change();
+            if (!Schema::hasColumn('items', 'tipo_impuesto_id')) $table->unsignedBigInteger('tipo_impuesto_id')->nullable(false)->change();
+            if (!Schema::hasColumn('items', 'marca_id')) $table->unsignedBigInteger('marca_id')->nullable(false)->change();
+            if (!Schema::hasColumn('items', 'modelo_id')) $table->unsignedBigInteger('modelo_id')->nullable(false)->change();
         });
     }
 

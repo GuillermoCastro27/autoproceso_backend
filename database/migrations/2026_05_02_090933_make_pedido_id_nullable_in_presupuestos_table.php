@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('presupuestos', function (Blueprint $table) {
-            $table->unsignedBigInteger('pedido_id')->nullable()->change();
+            if (!Schema::hasColumn('presupuestos', 'pedido_id')) $table->unsignedBigInteger('pedido_id')->nullable()->change();
         });
     }
 
     public function down(): void
     {
         Schema::table('presupuestos', function (Blueprint $table) {
-            $table->unsignedBigInteger('pedido_id')->nullable(false)->change();
+            if (!Schema::hasColumn('presupuestos', 'pedido_id')) $table->unsignedBigInteger('pedido_id')->nullable(false)->change();
         });
     }
 };

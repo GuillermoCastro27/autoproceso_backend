@@ -23,8 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('items', function (Blueprint $table) {
-            $table->unsignedInteger('marca_id')->nullable();
-            $table->unsignedInteger('modelo_id')->nullable();
+            if (!Schema::hasColumn('items', 'marca_id')) $table->unsignedInteger('marca_id')->nullable();
+            if (!Schema::hasColumn('items', 'modelo_id')) $table->unsignedInteger('modelo_id')->nullable();
         });
 
         DB::statement('ALTER TABLE item_marca ALTER COLUMN item_marca_descrip SET NOT NULL');

@@ -38,8 +38,8 @@ return new class extends Migration
 
 
             // solo para rollback
-            $table->unsignedBigInteger('empresa_id')->nullable();
-            $table->unsignedBigInteger('sucursal_id')->nullable();
+            if (!Schema::hasColumn('arqueo_caja', 'empresa_id')) $table->unsignedBigInteger('empresa_id')->nullable();
+            if (!Schema::hasColumn('arqueo_caja', 'sucursal_id')) $table->unsignedBigInteger('sucursal_id')->nullable();
         });
     }
 };
