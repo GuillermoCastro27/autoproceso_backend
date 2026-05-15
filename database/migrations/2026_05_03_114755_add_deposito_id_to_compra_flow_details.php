@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -11,17 +11,14 @@ return new class extends Migration
     {
         Schema::table('pedidos_detalles', function (Blueprint $table) {
             $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
-            $table->foreign('deposito_id')->references('id')->on('deposito')->nullOnDelete();
         });
 
         Schema::table('solicitudes_det', function (Blueprint $table) {
             $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
-            $table->foreign('deposito_id')->references('id')->on('deposito')->nullOnDelete();
         });
 
         Schema::table('orden_compra_det', function (Blueprint $table) {
             $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
-            $table->foreign('deposito_id')->references('id')->on('deposito')->nullOnDelete();
         });
 
         // presupuestos_detalles: drop composite PK, add auto-increment id, add deposito_id
@@ -29,7 +26,6 @@ return new class extends Migration
         DB::statement('ALTER TABLE presupuestos_detalles ADD COLUMN id BIGSERIAL PRIMARY KEY');
         Schema::table('presupuestos_detalles', function (Blueprint $table) {
             $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
-            $table->foreign('deposito_id')->references('id')->on('deposito')->nullOnDelete();
         });
     }
 

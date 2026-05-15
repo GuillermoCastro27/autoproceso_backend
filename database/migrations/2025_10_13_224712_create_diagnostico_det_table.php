@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,11 +13,8 @@ return new class extends Migration
     {
         Schema::create('diagnostico_det', function (Blueprint $table) {
             $table->unsignedBigInteger('diagnostico_cab_id');
-            $table->foreign('diagnostico_cab_id')->references('id')->on('diagnostico_cab')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('item_id');
-            $table->foreign('item_id')->references('id')->on('items')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('tipo_impuesto_id');
-            $table->foreign('tipo_impuesto_id')->references('id')->on('tipo_impuesto')->onDelete('restrict')->onUpdate('cascade');
             $table->float('diag_det_cantidad');
             $table->float('diag_det_costo');
             $table->integer('diag_det_cantidad_stock');

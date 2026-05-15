@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -21,7 +21,6 @@ return new class extends Migration
     {
         Schema::table('solicitudes_det', function (Blueprint $table) {
             $table->unsignedBigInteger('deposito_id')->nullable()->after('item_id');
-            $table->foreign('deposito_id')->references('id')->on('deposito')->nullOnDelete();
         });
     }
 };

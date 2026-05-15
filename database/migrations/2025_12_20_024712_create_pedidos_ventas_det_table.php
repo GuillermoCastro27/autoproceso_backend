@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,25 +10,23 @@ return new class extends Migration
     {
         Schema::create('pedidos_ventas_det', function (Blueprint $table) {
 
-            // 🔑 Clave compuesta
+            // ðŸ”‘ Clave compuesta
             $table->unsignedBigInteger('pedidos_ventas_id');
             $table->unsignedBigInteger('item_id');
 
-            // 📦 Cantidades
+            // ðŸ“¦ Cantidades
             $table->integer('det_cantidad');
             $table->integer('cantidad_stock'); 
 
-            // ✅ PK compuesta (igual a tu idea de compras)
+            // âœ… PK compuesta (igual a tu idea de compras)
             $table->primary(['pedidos_ventas_id', 'item_id']);
 
-            // 🔗 Foreign Keys
-            $table->foreign('pedidos_ventas_id')
+            // ðŸ”— Foreign Keys
                 ->references('id')
                 ->on('pedidos_ventas')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
 
-            $table->foreign('item_id')
                 ->references('id')
                 ->on('items')
                 ->onDelete('restrict')

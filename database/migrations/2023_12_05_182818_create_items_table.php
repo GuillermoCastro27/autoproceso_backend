@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -18,7 +18,6 @@ return new class extends Migration
             $table->integer('item_costo')->default(0);
             $table->integer('item_precio')->default(0);
             $table->unsignedBigInteger('tipo_id');
-            $table->foreign('tipo_id')->references('id')->on('tipos')->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -17,13 +17,11 @@ return new class extends Migration {
             $table->string('prov_ruc', 20)->nullable()->after('prov_razonsocial');
             $table->string('tip_imp_nom', 100)->nullable()->after('tipo_impuesto_id');
 
-            // Relación con proveedor
+            // RelaciÃ³n con proveedor
             $table->unsignedBigInteger('proveedor_id');
-            $table->foreign('proveedor_id')->references('id')->on('proveedores')->onDelete('restrict')->onUpdate('cascade');
 
-            // Relación con tipo de impuesto
+            // RelaciÃ³n con tipo de impuesto
             $table->unsignedBigInteger('tipo_impuesto_id');
-            $table->foreign('tipo_impuesto_id')->references('id')->on('tipo_impuesto')->onDelete('restrict')->onUpdate('cascade');
 
             $table->timestamps();
         });

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,12 +13,10 @@ return new class extends Migration
     {
         Schema::table('pedidos_ventas_det', function (Blueprint $table) {
             $table->unsignedBigInteger('deposito_id')->nullable()->after('cantidad_stock');
-            $table->foreign('deposito_id')->references('id')->on('deposito')->nullOnDelete();
         });
 
         Schema::table('notas_vent_det', function (Blueprint $table) {
             $table->unsignedBigInteger('deposito_id')->nullable()->after('tipo_impuesto_id');
-            $table->foreign('deposito_id')->references('id')->on('deposito')->nullOnDelete();
         });
     }
 

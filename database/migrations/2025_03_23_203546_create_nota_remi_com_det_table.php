@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,9 +13,7 @@ return new class extends Migration
     {
         Schema::create('nota_remi_com_det', function (Blueprint $table) {
             $table->unsignedBigInteger('nota_remi_comp_id');
-            $table->foreign('nota_remi_comp_id')->references('id')->on('nota_remi_comp')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('item_id');
-            $table->foreign('item_id')->references('id')->on('items')->onDelete('restrict')->onUpdate('cascade');
             $table->float('nota_remi_com_det_cantidad');
             $table->timestamps();
         });

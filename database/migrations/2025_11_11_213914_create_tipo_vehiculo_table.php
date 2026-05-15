@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -19,9 +19,7 @@ return new class extends Migration
             $table->string('tip_veh_categoria', 30)->nullable();
             $table->string('tip_veh_observacion', 200)->nullable();
             $table->unsignedBigInteger('marca_id');
-            $table->foreign('marca_id')->references('id')->on('marca')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('modelo_id');
-            $table->foreign('modelo_id')->references('id')->on('modelo')->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

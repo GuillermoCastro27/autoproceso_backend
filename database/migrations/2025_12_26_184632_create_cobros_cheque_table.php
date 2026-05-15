@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -16,13 +16,13 @@ return new class extends Migration
             $table->id();
 
             // =========================
-            // 🔗 RELACIONES
+            // ðŸ”— RELACIONES
             // =========================
             $table->unsignedBigInteger('cobros_cab_id');
             $table->unsignedBigInteger('entidad_emisora_id')->nullable();
 
             // =========================
-            // 🧾 DATOS DEL CHEQUE
+            // ðŸ§¾ DATOS DEL CHEQUE
             // =========================
             $table->string('nro_cheque', 50)->nullable();
             $table->date('fecha_vencimiento')->nullable();
@@ -34,14 +34,12 @@ return new class extends Migration
             $table->timestamps();
 
             // =========================
-            // 🔑 CLAVES FORÁNEAS
+            // ðŸ”‘ CLAVES FORÃNEAS
             // =========================
-            $table->foreign('cobros_cab_id')
                 ->references('id')
                 ->on('cobros_cab')
                 ->onDelete('cascade');
 
-            $table->foreign('entidad_emisora_id')
                 ->references('id')
                 ->on('entidad_emisora');
         });

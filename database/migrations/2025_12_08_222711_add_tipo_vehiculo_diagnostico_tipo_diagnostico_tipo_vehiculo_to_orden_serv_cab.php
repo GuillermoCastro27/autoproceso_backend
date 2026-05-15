@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -16,9 +16,6 @@ return new class extends Migration
             $table->unsignedBigInteger('tipo_diagnostico_id')->nullable()->after('diagnostico_cab_id');
             $table->unsignedBigInteger('tipo_vehiculo_id')->nullable()->after('clientes_id');
 
-            $table->foreign('diagnostico_cab_id')->references('id')->on('diagnostico_cab');
-            $table->foreign('tipo_diagnostico_id')->references('id')->on('tipo_diagnostico');
-            $table->foreign('tipo_vehiculo_id')->references('id')->on('tipo_vehiculo');
         });
     }
 

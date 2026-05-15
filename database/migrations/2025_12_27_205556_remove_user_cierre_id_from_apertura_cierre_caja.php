@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -21,7 +21,6 @@ return new class extends Migration {
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
             $table->unsignedBigInteger('user_cierre_id')->nullable();
 
-            $table->foreign('user_cierre_id')
                   ->references('id')
                   ->on('users');
         });

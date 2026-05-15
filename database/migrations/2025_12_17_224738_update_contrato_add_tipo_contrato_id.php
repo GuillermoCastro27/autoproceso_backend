@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,15 +10,14 @@ return new class extends Migration
     {
         Schema::table('contrato_serv_cab', function (Blueprint $table) {
 
-            // 🔹 Eliminar columna antigua (texto)
+            // ðŸ”¹ Eliminar columna antigua (texto)
             if (Schema::hasColumn('contrato_serv_cab', 'tipo_contrato')) {
                 $table->dropColumn('tipo_contrato');
             }
 
-            // 🔹 Nueva relación
+            // ðŸ”¹ Nueva relaciÃ³n
             $table->unsignedBigInteger('tipo_contrato_id')->nullable()->after('id');
 
-            $table->foreign('tipo_contrato_id')
                 ->references('id')
                 ->on('tipo_contrato')
                 ->onUpdate('cascade')
@@ -30,11 +29,11 @@ return new class extends Migration
     {
         Schema::table('contrato_serv_cab', function (Blueprint $table) {
 
-            // 🔄 Quitar FK
+            // ðŸ”„ Quitar FK
             $table->dropForeign(['tipo_contrato_id']);
             $table->dropColumn('tipo_contrato_id');
 
-            // 🔄 Restaurar columna anterior (por si rollback)
+            // ðŸ”„ Restaurar columna anterior (por si rollback)
             $table->string('tipo_contrato')->nullable();
         });
     }

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,11 +13,11 @@ return new class extends Migration
             /*
              |--------------------------------------------------
              | El arqueo SE RELACIONA con empresa y sucursal
-             | A TRAVÉS de apertura_cierre_caja
+             | A TRAVÃ‰S de apertura_cierre_caja
              |--------------------------------------------------
              */
 
-            // 🔥 Eliminamos duplicaciones si existen
+            // ðŸ”¥ Eliminamos duplicaciones si existen
             if (Schema::hasColumn('arqueo_caja', 'empresa_id')) {
                 $table->dropColumn('empresa_id');
             }
@@ -26,14 +26,12 @@ return new class extends Migration
                 $table->dropColumn('sucursal_id');
             }
 
-            // ✅ Relación REAL con apertura/cierre
-            $table->foreign('apertura_cierre_caja_id')
+            // âœ… RelaciÃ³n REAL con apertura/cierre
                   ->references('id')
                   ->on('apertura_cierre_caja')
                   ->onDelete('restrict');
 
-            // ✅ Usuario que realiza el arqueo
-            $table->foreign('user_id')
+            // âœ… Usuario que realiza el arqueo
                   ->references('id')
                   ->on('users')
                   ->onDelete('restrict');

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('ciu_descripcion', 200);
             $table->unsignedBigInteger('pais_id');
-            $table->foreign('pais_id')->references('id')->on('paises')->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

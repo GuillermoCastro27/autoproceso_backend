@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -14,8 +14,6 @@ return new class extends Migration
         Schema::create('presupuestos_detalles', function (Blueprint $table) {
             $table->unsignedBigInteger('presupuesto_id');
             $table->unsignedBigInteger('item_id');
-            $table->foreign('presupuesto_id')->references('id')->on('presupuestos')->onDelete('restrict')->onUpdate('cascade');
-            $table->foreign('item_id')->references('id')->on('items')->onDelete('restrict')->onUpdate('cascade');
             $table->integer('det_costo');
             $table->double('det_cantidad');
             $table->timestamps();

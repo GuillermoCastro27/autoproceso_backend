@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -21,15 +21,10 @@ return new class extends Migration
             $table->string('nota_vent_observaciones', 200);
             $table->string('nota_vene_condicion_pago', 20);
             $table->unsignedBigInteger('clientes_id');
-            $table->foreign('clientes_id')->references('id')->on('clientes')->onDelete('restrict');
             $table->unsignedBigInteger('ventas_cab_id');
-            $table->foreign('ventas_cab_id')->references('id')->on('ventas_cab')->onDelete('restrict');
             $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('empresa_id');
-            $table->foreign('empresa_id')->references('id')->on('empresa')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('sucursal_id');
-            $table->foreign('sucursal_id')->references('empresa_id')->on('sucursal')->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

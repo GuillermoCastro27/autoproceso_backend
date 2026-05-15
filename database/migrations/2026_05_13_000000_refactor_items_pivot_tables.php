@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -26,8 +26,6 @@ return new class extends Migration
         Schema::table('items', function (Blueprint $table) {
             $table->unsignedInteger('marca_id')->nullable();
             $table->unsignedInteger('modelo_id')->nullable();
-            $table->foreign('marca_id')->references('id')->on('marca');
-            $table->foreign('modelo_id')->references('id')->on('modelo');
         });
 
         DB::statement('ALTER TABLE item_marca ALTER COLUMN item_marca_descrip SET NOT NULL');

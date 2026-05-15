@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::table('pedidos_detalles', function (Blueprint $table) {     // Agregar la columna stock_id
                     $table->unsignedBigInteger('stock_id')->nullable(); 
         
-                    // Agregar la clave foránea que referencia a stock
-                    $table->foreign('stock_id')->references('stock_id')->on('stock')->onDelete('cascade');
+                    // Agregar la clave forÃ¡nea que referencia a stock
                 });
     }
 

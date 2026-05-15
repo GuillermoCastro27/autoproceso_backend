@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::table('presupuesto_serv_cab', function (Blueprint $table) {
             $table->unsignedBigInteger('tipo_vehiculo_id')->nullable();
-            $table->foreign('tipo_vehiculo_id')->references('id')->on('tipo_vehiculo');
         });
     }
 

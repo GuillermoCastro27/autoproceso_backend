@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -11,42 +11,38 @@ return new class extends Migration
         Schema::create('pedidos_ventas', function (Blueprint $table) {
             $table->id();
 
-            // 📅 Fechas
+            // ðŸ“… Fechas
             $table->timestamp('ped_ven_fecha');       // fecha del pedido
             $table->timestamp('ped_ven_vence');       // fecha de vencimiento
 
-            // 📝 Observaciones
+            // ðŸ“ Observaciones
             $table->string('ped_ven_observaciones', 200)->nullable();
 
-            // 📌 Estado
+            // ðŸ“Œ Estado
             $table->string('ped_ven_estado', 50);
 
-            // 🔗 Relaciones
+            // ðŸ”— Relaciones
             $table->unsignedBigInteger('clientes_id');
             $table->unsignedBigInteger('empresa_id');
             $table->unsignedBigInteger('sucursal_id');
             $table->unsignedBigInteger('user_id');
 
-            // 🔑 Foreign Keys
-            $table->foreign('clientes_id')
+            // ðŸ”‘ Foreign Keys
                   ->references('id')
                   ->on('clientes')
                   ->onDelete('restrict')
                   ->onUpdate('cascade');
 
-            $table->foreign('empresa_id')
                   ->references('id')
                   ->on('empresa')
                   ->onDelete('restrict')
                   ->onUpdate('cascade');
 
-            $table->foreign('sucursal_id')
                   ->references('empresa_id')
                   ->on('sucursal')
                   ->onDelete('restrict')
                   ->onUpdate('cascade');
 
-            $table->foreign('user_id')
                   ->references('id')
                   ->on('users')
                   ->onDelete('restrict')

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -24,12 +24,7 @@ return new class extends Migration
             $table->unsignedBigInteger('empresa_id');
             $table->unsignedBigInteger('sucursal_id');
 
-            // 🔹 Foreign keys
-            $table->foreign('clientes_id')->references('id')->on('clientes')->onDelete('restrict');
-            $table->foreign('ventas_cab_id')->references('id')->on('ventas_cab')->onDelete('restrict');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('restrict');
-            $table->foreign('empresa_id')->references('id')->on('empresa')->onDelete('restrict');
-            $table->foreign('sucursal_id')->references('empresa_id')->on('sucursal')->onDelete('restrict');
+            // ðŸ”¹ Foreign keys
 
             $table->timestamps();
         });

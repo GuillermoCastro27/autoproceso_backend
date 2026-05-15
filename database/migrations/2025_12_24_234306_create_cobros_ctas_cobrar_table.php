@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -18,8 +18,6 @@ return new class extends Migration
         $table->unsignedBigInteger('ctas_cobrar_id');
         $table->decimal('monto_cobrado', 14, 2);
 
-        $table->foreign('cobros_cab_id')->references('id')->on('cobros_cab');
-        $table->foreign('ctas_cobrar_id')->references('id')->on('ctas_cobrar');
 
         $table->timestamps();
     });

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,17 +10,16 @@ return new class extends Migration
     {
         Schema::table('cobros_cheque', function (Blueprint $table) {
 
-            // 🔥 eliminar FK primero
+            // ðŸ”¥ eliminar FK primero
             $table->dropForeign(['entidad_emisora_id']);
 
-            // 🔁 renombrar columna
+            // ðŸ” renombrar columna
             $table->renameColumn('entidad_emisora_id', 'entidad_emisora_cheque_id');
         });
 
         Schema::table('cobros_cheque', function (Blueprint $table) {
 
-            // 🔗 recrear FK con el nuevo nombre
-            $table->foreign('entidad_emisora_cheque_id')
+            // ðŸ”— recrear FK con el nuevo nombre
                 ->references('id')
                 ->on('entidad_emisora');
         });
@@ -37,7 +36,6 @@ return new class extends Migration
 
         Schema::table('cobros_cheque', function (Blueprint $table) {
 
-            $table->foreign('entidad_emisora_id')
                 ->references('id')
                 ->on('entidad_emisora');
         });

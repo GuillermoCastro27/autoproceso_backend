@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -17,9 +17,7 @@ return new class extends Migration
             $table->string('pre_estado');
             $table->timestamp('pre_vence')->nullable();
             $table->unsignedBigInteger('proveedor_id');
-            $table->foreign('proveedor_id')->references('id')->on('proveedores')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('pedidos_id');
-            $table->foreign('pedidos_id')->references('id')->on('pedidos')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('user_id')->nullable();
             $table->timestamps();
         });

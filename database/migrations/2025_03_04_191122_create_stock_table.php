@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,12 +13,11 @@ return new class extends Migration
     {
         Schema::create('stock', function (Blueprint $table) {
             $table->id('stock_id'); // ID de stock
-            $table->unsignedBigInteger('item_id'); // ID del artículo
+            $table->unsignedBigInteger('item_id'); // ID del artÃ­culo
             $table->integer('cantidad'); // Cantidad de stock
-            $table->timestamps(); // Fecha de creación y actualización
+            $table->timestamps(); // Fecha de creaciÃ³n y actualizaciÃ³n
 
-            // Relación con la tabla items
-            $table->foreign('item_id')->references('id')->on('items')->onDelete('cascade');
+            // RelaciÃ³n con la tabla items
         });
     }
 

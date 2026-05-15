@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -14,24 +14,20 @@ return new class extends Migration
         Schema::create('apertura_cierre_caja', function (Blueprint $table) {
             $table->id();
 
-            // 🔗 Relaciones básicas
+            // ðŸ”— Relaciones bÃ¡sicas
             $table->unsignedBigInteger('empresa_id');
             $table->unsignedBigInteger('sucursal_id');
             $table->unsignedBigInteger('caja_id');
             $table->unsignedBigInteger('user_id');
 
-            // 🕒 Datos de apertura
+            // ðŸ•’ Datos de apertura
             $table->timestamp('fecha_apertura');
             $table->string('estado', 20);
 
-            // 🧾 Auditoría
+            // ðŸ§¾ AuditorÃ­a
             $table->timestamps();
 
-            // 🔐 Claves foráneas
-            $table->foreign('empresa_id')->references('id')->on('empresa');
-            $table->foreign('sucursal_id')->references('empresa_id')->on('sucursal');
-            $table->foreign('caja_id')->references('id')->on('caja');
-            $table->foreign('user_id')->references('id')->on('users');
+            // ðŸ” Claves forÃ¡neas
         });
     }
 

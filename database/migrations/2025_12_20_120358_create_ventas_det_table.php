@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -15,14 +15,12 @@ return new class extends Migration
 
             // FK a cabecera de venta
             $table->unsignedBigInteger('ventas_cab_id');
-            $table->foreign('ventas_cab_id')
                 ->references('id')->on('ventas_cab')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
 
             // Item vendido
             $table->unsignedBigInteger('item_id');
-            $table->foreign('item_id')
                 ->references('id')->on('items')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
@@ -33,12 +31,11 @@ return new class extends Migration
 
             // Impuesto
             $table->unsignedBigInteger('tipo_impuesto_id');
-            $table->foreign('tipo_impuesto_id')
                 ->references('id')->on('tipo_impuesto')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
 
-            // PK compuesta (una línea por item)
+            // PK compuesta (una lÃ­nea por item)
             $table->primary(['ventas_cab_id', 'item_id']);
 
             $table->timestamps();

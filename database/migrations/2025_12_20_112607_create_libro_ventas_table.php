@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -17,7 +17,7 @@ return new class extends Migration
             $table->decimal('libV_monto', 10, 2);
             $table->date('libV_fecha');
 
-            // Condición de pago
+            // CondiciÃ³n de pago
             $table->string('condicion_pago', 20)->nullable();
             $table->string('libV_cuota', 100)->nullable();
 
@@ -32,13 +32,11 @@ return new class extends Migration
             $table->string('tip_imp_nom', 100)->nullable();
 
             // FK cliente
-            $table->foreign('clientes_id')
                 ->references('id')->on('clientes')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
 
             // FK tipo impuesto
-            $table->foreign('tipo_impuesto_id')
                 ->references('id')->on('tipo_impuesto')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,14 +13,12 @@ return new class extends Migration
     {
         Schema::create('cobros_det', function (Blueprint $table) {
              $table->unsignedBigInteger('cobros_cab_id');
-            $table->foreign('cobros_cab_id')
                 ->references('id')->on('cobros_cab')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
 
             // Item vendido
             $table->unsignedBigInteger('item_id');
-            $table->foreign('item_id')
                 ->references('id')->on('items')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
@@ -31,12 +29,11 @@ return new class extends Migration
 
             // Impuesto
             $table->unsignedBigInteger('tipo_impuesto_id');
-            $table->foreign('tipo_impuesto_id')
                 ->references('id')->on('tipo_impuesto')
                 ->onDelete('restrict')
                 ->onUpdate('cascade');
 
-            // PK compuesta (una línea por item)
+            // PK compuesta (una lÃ­nea por item)
             $table->primary(['cobros_cab_id', 'item_id']);
             $table->timestamps();
         });

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -19,15 +19,10 @@ return new class extends Migration
             $table->string('soli_cab_prioridad');
             $table->string('soli_cab_estado',50);
             $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('clientes_id')->nullable(); 
-            $table->foreign('clientes_id')->references('id')->on('clientes')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('empresa_id');
-            $table->foreign('empresa_id')->references('id')->on('empresa')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('sucursal_id');
-            $table->foreign('sucursal_id')->references('empresa_id')->on('sucursal')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('tipo_servicio_id');
-            $table->foreign('tipo_servicio_id')->references('id')->on('tipo_servicio')->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

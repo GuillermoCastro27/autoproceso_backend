@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table("orden_compra_cab", function(Blueprint $table){
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('restrict')->onUpdate('cascade');
          });
     }
 

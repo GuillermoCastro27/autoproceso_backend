@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -12,33 +12,30 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('contrato_serv_det', function (Blueprint $table) {
-            // 🔹 Relación con cabecera
+            // ðŸ”¹ RelaciÃ³n con cabecera
             $table->unsignedBigInteger('contrato_serv_cab_id');
-            $table->foreign('contrato_serv_cab_id')
                   ->references('id')->on('contrato_serv_cab')
                   ->onDelete('restrict')->onUpdate('cascade');
 
-            // 🔹 Relación con ítems
+            // ðŸ”¹ RelaciÃ³n con Ã­tems
             $table->unsignedBigInteger('item_id');
-            $table->foreign('item_id')
                   ->references('id')->on('items')
                   ->onDelete('restrict')->onUpdate('cascade');
 
-            // 🔹 Relación con tipo de impuesto
+            // ðŸ”¹ RelaciÃ³n con tipo de impuesto
             $table->unsignedBigInteger('tipo_impuesto_id');
-            $table->foreign('tipo_impuesto_id')
                   ->references('id')->on('tipo_impuesto')
                   ->onDelete('restrict')->onUpdate('cascade');
 
-            // 🔹 Datos principales
+            // ðŸ”¹ Datos principales
             $table->decimal('contrato_serv_det_cantidad', 15, 2);
             $table->decimal('contrato_serv_det_costo', 15, 2);
             $table->integer('contrato_serv_det_cantidad_stock')->default(0);
 
-            // 🔹 Clave primaria compuesta
+            // ðŸ”¹ Clave primaria compuesta
             $table->primary(['contrato_serv_cab_id', 'item_id']);
 
-            // 🔹 Timestamps
+            // ðŸ”¹ Timestamps
             $table->timestamps();
         });
     }

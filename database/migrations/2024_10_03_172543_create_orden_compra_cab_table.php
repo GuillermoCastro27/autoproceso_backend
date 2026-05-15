@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -19,13 +19,9 @@ return new class extends Migration
             $table->integer('ord_comp_cant_cuota');
             $table->unsignedBigInteger('user_id')->nullable();
             $table->unsignedBigInteger('presupuesto_id');
-            $table->foreign('presupuesto_id')->references('id')->on('presupuestos')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('proveedor_id');
-            $table->foreign('proveedor_id')->references('id')->on('proveedores')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('empresa_id');
-            $table->foreign('empresa_id')->references('id')->on('empresa')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('sucursal_id');
-            $table->foreign('sucursal_id')->references('empresa_id')->on('sucursal')->onDelete('restrict')->onUpdate('cascade');
             $table->timestamps();
         });
     }

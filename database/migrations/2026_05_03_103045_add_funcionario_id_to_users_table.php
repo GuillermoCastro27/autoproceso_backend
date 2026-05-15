@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->unsignedBigInteger('funcionario_id')->nullable()->after('id');
-            $table->foreign('funcionario_id')->references('id')->on('funcionario')->onDelete('set null')->onUpdate('cascade');
         });
     }
 

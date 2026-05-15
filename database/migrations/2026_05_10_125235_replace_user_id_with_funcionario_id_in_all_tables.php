@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -39,7 +39,6 @@ return new class extends Migration
         foreach ($this->tables as $table) {
             Schema::table($table, function (Blueprint $t) {
                 $t->unsignedBigInteger('funcionario_id')->nullable()->after('user_id');
-                $t->foreign('funcionario_id')->references('id')->on('funcionario')->nullOnDelete();
             });
         }
 
@@ -67,7 +66,6 @@ return new class extends Migration
         foreach ($this->tables as $table) {
             Schema::table($table, function (Blueprint $t) {
                 $t->unsignedBigInteger('user_id')->nullable()->after('funcionario_id');
-                $t->foreign('user_id')->references('id')->on('users')->nullOnDelete();
             });
 
             DB::statement("

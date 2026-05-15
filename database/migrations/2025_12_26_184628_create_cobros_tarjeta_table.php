@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
 
             // =========================
-            // 🔗 RELACIONES
+            // ðŸ”— RELACIONES
             // =========================
             $table->unsignedBigInteger('cobros_cab_id');
             $table->unsignedBigInteger('entidad_emisora_id')->nullable();
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedBigInteger('entidad_adherida_id')->nullable();
 
             // =========================
-            // 💳 DATOS DE TARJETA
+            // ðŸ’³ DATOS DE TARJETA
             // =========================
             $table->string('nro_tarjeta', 20)->nullable();
             $table->date('fecha_vencimiento')->nullable();
@@ -34,22 +34,18 @@ return new class extends Migration
             $table->timestamps();
 
             // =========================
-            // 🔑 CLAVES FORÁNEAS
+            // ðŸ”‘ CLAVES FORÃNEAS
             // =========================
-            $table->foreign('cobros_cab_id')
                 ->references('id')
                 ->on('cobros_cab')
                 ->onDelete('cascade');
 
-            $table->foreign('entidad_emisora_id')
                 ->references('id')
                 ->on('entidad_emisora');
 
-            $table->foreign('marca_tarjeta_id')
                 ->references('id')
                 ->on('marca_tarjeta');
 
-            $table->foreign('entidad_adherida_id')
                 ->references('id')
                 ->on('entidad_adherida');
         });

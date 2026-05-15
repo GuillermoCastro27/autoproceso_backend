@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -17,7 +17,6 @@ return new class extends Migration
             $table->string('suc_telefono',50);
             $table->string('suc_correo',250);
             $table->unsignedBigInteger('empresa_id');
-            $table->foreign('empresa_id')->references('id')->on('empresa')->onDelete('restrict')->onUpdate('cascade');
             $table->primary(['empresa_id']);
             $table->timestamps();
         });

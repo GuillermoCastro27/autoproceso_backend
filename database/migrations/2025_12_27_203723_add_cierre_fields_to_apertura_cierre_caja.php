@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,17 +10,16 @@ return new class extends Migration
     {
         Schema::table('apertura_cierre_caja', function (Blueprint $table) {
 
-            // 🕒 Datos de cierre
+            // ðŸ•’ Datos de cierre
             $table->timestamp('fecha_cierre')->nullable();
             $table->unsignedBigInteger('user_cierre_id')->nullable();
 
-            // 💰 Totales de cierre
+            // ðŸ’° Totales de cierre
             $table->decimal('monto_efectivo_cierre', 14, 2)->nullable();
             $table->decimal('monto_tarjeta_cierre', 14, 2)->nullable();
             $table->decimal('monto_cheque_cierre', 14, 2)->nullable();
 
-            // 🔐 FK usuario cierre
-            $table->foreign('user_cierre_id')
+            // ðŸ” FK usuario cierre
                   ->references('id')
                   ->on('users');
         });
