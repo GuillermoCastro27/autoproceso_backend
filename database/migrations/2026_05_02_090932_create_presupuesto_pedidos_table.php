@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('presupuesto_pedidos', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('presupuesto_id')->constrained('presupuestos')->cascadeOnDelete();
-            $table->foreignId('pedido_id')->constrained('pedidos')->cascadeOnDelete();
+            $table->unsignedBigInteger('presupuesto_id')->constrained('presupuestos')->cascadeOnDelete();
+            $table->unsignedBigInteger('pedido_id')->constrained('pedidos')->cascadeOnDelete();
             $table->timestamp('pres_prov_ped_fecha_registro')->nullable();
             $table->timestamps();
         });

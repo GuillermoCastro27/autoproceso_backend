@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,7 +10,6 @@ return new class extends Migration
     {
         Schema::table('accesos', function (Blueprint $table) {
             $table->foreignId('mod_id')->nullable()->after('perfil_id')
-                  ->constrained('modulos')->cascadeOnDelete();
             $table->timestamp('acc_fecha')->nullable()->after('acc_estado');
         });
     }

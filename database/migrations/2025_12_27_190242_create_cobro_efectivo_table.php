@@ -10,8 +10,7 @@ return new class extends Migration {
         Schema::create('cobro_efectivo', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('cobros_cab_id')
-                  ->constrained('cobros_cab')
+            $table->unsignedBigInteger('cobros_cab_id');
 
             $table->decimal('monto_efectivo', 15, 2)
                   ->check('monto_efectivo >= 0');
