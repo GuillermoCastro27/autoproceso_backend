@@ -14,6 +14,7 @@ class ReclamoCliCabController extends Controller
     private static function portalUrl(): string
     {
         return rtrim(env('PORTAL_SEGUIMIENTO_URL', 'http://localhost/taller_front/seguimiento_reclamo/index.html'), '/');
+    }
 
     // -------------------------------------------------------
     // Construye el array de datos para el email
