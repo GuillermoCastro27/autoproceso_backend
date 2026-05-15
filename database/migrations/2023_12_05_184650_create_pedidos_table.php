@@ -16,8 +16,7 @@ return new class extends Migration
             $table->timestamp('ped_vence');
             $table->string('ped_pbservaciones', 200);
             $table->string('ped_estado', 50);
-            $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('restrict')->onUpdate('cascade');
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->timestamps();
         });
     }
