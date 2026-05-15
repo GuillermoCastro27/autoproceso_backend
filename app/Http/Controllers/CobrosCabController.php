@@ -426,13 +426,6 @@ public function update(Request $r, $id)
         ]);
 
         // ==================================================
-        // 🔹 Obtener forma de cobro
-        // ==================================================
-        $forma = DB::table('forma_cobro')
-            ->where('id', $r->forma_cobro_id)
-            ->value('for_cob_descripcion');
-
-        // ==================================================
         // 🔹 Validar suma de medios
         // ==================================================
         $totalMedios =
@@ -445,91 +438,55 @@ public function update(Request $r, $id)
         }
 
         // ==================================================
-        // 🔹 SINCRONIZAR CABECERA SEGÚN FORMA
+        // 🔹 TARJETA (DETALLE) — independiente de forma_cobro
         // ==================================================
-        if ($forma === 'Tarjeta') {
-
-            $cobro->update([
-                'entidad_emisora_id'  => $r->entidad_emisora_tarjeta_id,
-                'marca_tarjeta_id'    => $r->marca_tarjeta_tarjeta_id,
-                'entidad_adherida_id' => $r->entidad_adherida_tarjeta_id,
-            ]);
-
-        } elseif ($forma === 'Cheque') {
-
-            $cobro->update([
-                'entidad_emisora_id'  => $r->entidad_emisora_cheque_id,
-                'marca_tarjeta_id'    => null,
-                'entidad_adherida_id' => null,
-            ]);
-
-        } else { // EFECTIVO
-
-            $cobro->update([
-                'entidad_emisora_id'  => null,
-                'marca_tarjeta_id'    => null,
-                'entidad_adherida_id' => null,
-            ]);
-        }
-
-        // ==================================================
-        // 🔹 TARJETA (DETALLE)
-        // ==================================================
-        if ($forma === 'Tarjeta' && (float)$r->monto_tarjeta > 0) {
-
-            $dataTarjeta = [
-                'entidad_emisora_tarjeta_id'  => $r->entidad_emisora_tarjeta_id,
-                'marca_tarjeta_tarjeta_id'    => $r->marca_tarjeta_tarjeta_id,
-                'entidad_adherida_tarjeta_id' => $r->entidad_adherida_tarjeta_id,
-                'nro_tarjeta'                 => $r->nro_tarjeta,
-                'fecha_vencimiento'           => $r->fecha_venc_tarjeta,
-                'nro_voucher'                 => $r->nro_voucher_tarjeta,
-                'monto_tarjeta'               => $r->monto_tarjeta,
-                'updated_at'                  => now(),
-            ];
+        if ((float)($r->monto_tarjeta ?? 0) > 0) {
 
             DB::table('cobros_tarjeta')->updateOrInsert(
                 ['cobros_cab_id' => $id],
-                array_merge($dataTarjeta, ['created_at' => now()])
+                [
+                    'entidad_emisora_tarjeta_id'  => $r->entidad_emisora_tarjeta_id,
+                    'marca_tarjeta_tarjeta_id'    => $r->marca_tarjeta_tarjeta_id,
+                    'entidad_adherida_tarjeta_id' => $r->entidad_adherida_tarjeta_id,
+                    'nro_tarjeta'                 => $r->nro_tarjeta,
+                    'fecha_vencimiento'           => $r->fecha_venc_tarjeta,
+                    'nro_voucher'                 => $r->nro_voucher_tarjeta,
+                    'monto_tarjeta'               => $r->monto_tarjeta,
+                    'updated_at'                  => now(),
+                    'created_at'                  => now(),
+                ]
             );
 
         } else {
-            DB::table('cobros_tarjeta')
-                ->where('cobros_cab_id', $id)
-                ->delete();
+            DB::table('cobros_tarjeta')->where('cobros_cab_id', $id)->delete();
         }
 
         // ==================================================
-        // 🔹 CHEQUE (DETALLE)
+        // 🔹 CHEQUE (DETALLE) — independiente de forma_cobro
         // ==================================================
-        if ($forma === 'Cheque' && (float)$r->monto_cheque > 0) {
-
-            $dataCheque = [
-                'entidad_emisora_cheque_id' => $r->entidad_emisora_cheque_id,
-                'nro_cheque'                => $r->nro_cheque,
-                'fecha_vencimiento'         => $r->fecha_venc_cheque,
-                'monto_cheque'              => $r->monto_cheque,
-                'updated_at'                => now(),
-            ];
+        if ((float)($r->monto_cheque ?? 0) > 0) {
 
             DB::table('cobros_cheque')->updateOrInsert(
                 ['cobros_cab_id' => $id],
-                array_merge($dataCheque, [
-                    'estado_cheque' => 'RECIBIDO',
-                    'created_at'    => now(),
-                ])
+                [
+                    'entidad_emisora_cheque_id' => $r->entidad_emisora_cheque_id,
+                    'nro_cheque'                => $r->nro_cheque,
+                    'fecha_vencimiento'         => $r->fecha_venc_cheque,
+                    'monto_cheque'              => $r->monto_cheque,
+                    'estado_cheque'             => 'RECIBIDO',
+                    'updated_at'                => now(),
+                    'created_at'                => now(),
+                ]
             );
 
         } else {
-            DB::table('cobros_cheque')
-                ->where('cobros_cab_id', $id)
-                ->delete();
+            DB::table('cobros_cheque')->where('cobros_cab_id', $id)->delete();
         }
 
         // ==================================================
-        // 🔹 EFECTIVO (DETALLE)
+        // 🔹 EFECTIVO (DETALLE) — independiente de forma_cobro
         // ==================================================
-        if ($forma === 'Efectivo' && (float)$r->monto_efectivo > 0) {
+        if ((float)($r->monto_efectivo ?? 0) > 0) {
 
             DB::table('cobro_efectivo')->updateOrInsert(
                 ['cobros_cab_id' => $id],
@@ -541,9 +498,7 @@ public function update(Request $r, $id)
             );
 
         } else {
-            DB::table('cobro_efectivo')
-                ->where('cobros_cab_id', $id)
-                ->delete();
+            DB::table('cobro_efectivo')->where('cobros_cab_id', $id)->delete();
         }
 
         DB::commit();

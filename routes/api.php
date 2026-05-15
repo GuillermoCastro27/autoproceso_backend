@@ -104,6 +104,9 @@ Route::post('forgot-password', [ForgotPasswordController::class, 'forgotPassword
 Route::post('reset-password',  [ForgotPasswordController::class, 'resetPassword']);
 Route::post('/2fa/email/validar', [TwoFactorController::class, 'validarCodigoEmail'])->middleware('throttle:5,1');
 
+// Portal de seguimiento de reclamos (acceso público para clientes)
+Route::get('reclamoclicab/seguimiento/{token}', [ReclamoCliCabController::class, 'seguimiento']);
+
 /*
 |--------------------------------------------------------------------------
 | AUTENTICADO (sin permiso específico)

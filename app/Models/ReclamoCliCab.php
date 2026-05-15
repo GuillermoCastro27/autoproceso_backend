@@ -22,7 +22,8 @@ class ReclamoCliCab extends Model implements Auditable
         'empresa_id',
         'sucursal_id',
         'funcionario_id',
-        'venta_cab_id'
+        'venta_cab_id',
+        'token_seguimiento',
     ];
     protected $table = 'reclamo_cli_cab';
 }
