@@ -17,8 +17,7 @@ return new class extends Migration
             $table->timestamp('ord_comp_fecha');
             $table->string('ord_comp_estado', 50);
             $table->integer('ord_comp_cant_cuota');
-            $table->unsignedBigInteger('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('restrict')->onUpdate('cascade');
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->unsignedBigInteger('presupuesto_id');
             $table->foreign('presupuesto_id')->references('id')->on('presupuestos')->onDelete('restrict')->onUpdate('cascade');
             $table->unsignedBigInteger('proveedor_id');

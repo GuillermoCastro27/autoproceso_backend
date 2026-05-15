@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('presupuestos', function (Blueprint $table) {
-            $table->timestamp('pre_vence')->nullable();
-        });
+        if (Schema::hasTable('presupuestos') && !Schema::hasColumn('presupuestos', 'pre_vence')) {
+            Schema::table('presupuestos', function (Blueprint $table) {
+                $table->timestamp('pre_vence')->nullable();
+            });
+        }
     }
 };
