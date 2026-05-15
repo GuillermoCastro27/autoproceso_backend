@@ -19,7 +19,12 @@ return [
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => ['http://localhost', 'https://localhost'],
+    'allowed_origins' => [
+        'http://localhost',
+        'https://localhost',
+        'https://web-production-f58ca.up.railway.app',
+        'https://*.netlify.app',
+    ],
 
     'allowed_origins_patterns' => [],
 
