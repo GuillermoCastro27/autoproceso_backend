@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class NotasVentCab extends Model
+class NotasVentCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
     protected $table = 'notas_vent_cab';
 
     protected $fillable = [
@@ -20,7 +23,7 @@ class NotasVentCab extends Model
         'nota_vene_condicion_pago',
         'clientes_id',
         'ventas_cab_id',
-        'user_id',
+        'funcionario_id',
         'empresa_id',
         'sucursal_id'
     ];

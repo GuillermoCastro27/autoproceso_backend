@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class VentasCab extends Model
+class VentasCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
     protected $table = 'ventas_cab';
 
     // Define los campos que se pueden asignar masivamente
@@ -17,7 +20,7 @@ class VentasCab extends Model
         'vent_estado',
         'vent_cant_cuota',
         'condicion_pago',
-        'user_id',
+        'funcionario_id',
         'pedidos_ventas_id',
         'clientes_id',
         'empresa_id',

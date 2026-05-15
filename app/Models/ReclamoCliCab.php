@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class ReclamoCliCab extends Model
+class ReclamoCliCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
     protected $fillable = [
         'rec_cli_cab_fecha',
         'rec_cli_cab_fecha_inicio',
@@ -18,7 +21,7 @@ class ReclamoCliCab extends Model
         'clientes_id',
         'empresa_id',
         'sucursal_id',
-        'user_id',
+        'funcionario_id',
         'venta_cab_id'
     ];
     protected $table = 'reclamo_cli_cab';

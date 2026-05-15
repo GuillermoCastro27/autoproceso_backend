@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class CobrosCab extends Model
+class CobrosCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
     protected $table = 'cobros_cab';
     protected $fillable = [
         'cobro_fecha',
@@ -21,7 +24,7 @@ class CobrosCab extends Model
         'forma_cobro_id',
         'clientes_id',
         'ventas_cab_id',
-        'user_id',
+        'funcionario_id',
         'caja_id',
         'empresa_id',
         'sucursal_id',

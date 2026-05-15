@@ -9,7 +9,6 @@ use App\Models\CtasCobrar;
 use App\Models\LibroVentas;
 use App\Models\Cliente;
 use App\Models\Stock;
-use App\Models\Deposito;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -41,14 +40,14 @@ class NotasVentCabController extends Controller
             c.cli_direccion,
             c.cli_telefono,
             c.cli_correo,
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
             s.suc_razon_social,
             e.emp_razon_social,
             nvc.created_at
         FROM notas_vent_cab nvc
-        JOIN users u ON u.id = nvc.user_id
+        JOIN funcionario f ON f.id = nvc.funcionario_id
         JOIN clientes c ON c.id = nvc.clientes_id
-        JOIN sucursal s ON s.empresa_id = nvc.sucursal_id
+        JOIN sucursal s ON s.id = nvc.sucursal_id
         JOIN empresa e ON e.id = nvc.empresa_id
         LEFT JOIN ventas_cab vc ON vc.id = nvc.ventas_cab_id
     ");
@@ -77,7 +76,7 @@ class NotasVentCabController extends Controller
             'nota_vene_condicion_pago' => 'required|string',
             'clientes_id' => 'required|integer',
             'ventas_cab_id' => 'required|integer',
-            'user_id' => 'required|integer',
+            'funcionario_id' => 'nullable',
             'empresa_id' => 'required|integer',
             'sucursal_id' => 'required|integer'
         ]);
@@ -85,6 +84,7 @@ class NotasVentCabController extends Controller
         DB::beginTransaction();
 
         try {
+            $datos['funcionario_id'] = auth()->user()->funcionario_id;
             $nota = NotasVentCab::create($datos);
 
             // Cambiar estado de la venta
@@ -100,11 +100,12 @@ class NotasVentCabController extends Controller
 
                 foreach ($detalles as $det) {
                     NotasVentDet::create([
-                        'notas_vent_cab_id' => $nota->id,
-                        'item_id' => $det->item_id,
-                        'tipo_impuesto_id' => $det->tipo_impuesto_id,
+                        'notas_vent_cab_id'       => $nota->id,
+                        'item_id'                 => $det->item_id,
+                        'tipo_impuesto_id'        => $det->tipo_impuesto_id,
                         'notas_vent_det_cantidad' => $det->vent_det_cantidad,
-                        'notas_vent_det_precio' => $det->vent_det_precio
+                        'notas_vent_det_precio'   => $det->vent_det_precio,
+                        'deposito_id'             => $det->deposito_id ?? null,
                     ]);
                 }
             }
@@ -192,25 +193,21 @@ class NotasVentCabController extends Controller
             // ===============================
             // AJUSTE DE STOCK
             // ===============================
-            $stock = Stock::firstOrCreate(
-                ['item_id' => $detalle->item_id],
-                ['cantidad' => 0]
-            );
-
             if ($nota->nota_vent_tipo === 'Crédito') {
-                // DEVOLUCIÓN
-                $stock->cantidad += $detalle->notas_vent_det_cantidad;
+                // DEVOLUCIÓN: suma stock
+                $this->agregarAlStock(
+                    $detalle->deposito_id,
+                    $detalle->item_id,
+                    $detalle->notas_vent_det_cantidad
+                );
             } else {
-                // DÉBITO
-                if ($stock->cantidad < $detalle->notas_vent_det_cantidad) {
-                    throw new \Exception(
-                        'Stock insuficiente para item ID ' . $detalle->item_id
-                    );
-                }
-                $stock->cantidad -= $detalle->notas_vent_det_cantidad;
+                // DÉBITO: resta stock
+                $this->restarDeStock(
+                    $detalle->deposito_id,
+                    $detalle->item_id,
+                    $detalle->notas_vent_det_cantidad
+                );
             }
-
-            $stock->save();
         }
 
         // ===============================
@@ -280,49 +277,28 @@ class NotasVentCabController extends Controller
 }
 
 
-protected function sumarStockYDeposito($itemId, $cantidad)
+protected function agregarAlStock($depositoId, $itemId, $cantidad)
 {
-    $stock = Stock::firstOrCreate(['item_id' => $itemId], ['cantidad' => 0]);
-    $deposito = Deposito::firstOrCreate(['item_id' => $itemId], ['cantidad' => 0]);
-
-    $limite = 30;
-    $espacio = $limite - $stock->cantidad;
-
-    $aStock = min($cantidad, $espacio);
-    $stock->cantidad += $aStock;
+    $stock = Stock::firstOrCreate(
+        ['deposito_id' => $depositoId, 'item_id' => $itemId],
+        ['cantidad' => 0]
+    );
+    $stock->cantidad += $cantidad;
     $stock->save();
-
-    $resto = $cantidad - $aStock;
-    if ($resto > 0) {
-        $deposito->cantidad += $resto;
-        $deposito->save();
-    }
 }
 
-protected function restarStockYDeposito($itemId, $cantidad)
+protected function restarDeStock($depositoId, $itemId, $cantidad)
 {
-    $stock = Stock::where('item_id', $itemId)->first();
-    $deposito = Deposito::where('item_id', $itemId)->first();
+    $stock = Stock::where('deposito_id', $depositoId)
+        ->where('item_id', $itemId)
+        ->first();
 
-    $restante = $cantidad;
-
-    if ($deposito && $deposito->cantidad > 0) {
-        $aRestar = min($deposito->cantidad, $restante);
-        $deposito->cantidad -= $aRestar;
-        $deposito->save();
-        $restante -= $aRestar;
-    }
-
-    if ($restante > 0 && $stock && $stock->cantidad > 0) {
-        $aRestar = min($stock->cantidad, $restante);
-        $stock->cantidad -= $aRestar;
-        $stock->save();
-        $restante -= $aRestar;
-    }
-
-    if ($restante > 0) {
+    if (!$stock || $stock->cantidad < $cantidad) {
         throw new \Exception("Stock insuficiente para el item ID $itemId.");
     }
+
+    $stock->cantidad -= $cantidad;
+    $stock->save();
 }
 public function update(Request $r, $id)
 {
@@ -359,7 +335,6 @@ public function update(Request $r, $id)
         'nota_vene_condicion_pago' => 'required|string|max:20',
         'clientes_id' => 'required|integer',
         'ventas_cab_id' => 'required|integer',
-        'user_id' => 'required|integer',
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer'
     ]);
@@ -422,15 +397,17 @@ public function anular(Request $r, $id)
                 // ===============================
                 // 🔹 STOCK (INVERSO A CONFIRMAR)
                 // ===============================
-                if ($tipoNota === 'Debito') {
+                if ($tipoNota === 'Débito') {
                     // En confirmar restó → al anular suma
-                    $this->sumarStockYDeposito(
+                    $this->agregarAlStock(
+                        $det->deposito_id,
                         $det->item_id,
                         $det->notas_vent_det_cantidad
                     );
                 } elseif ($tipoNota === 'Crédito') {
                     // En confirmar sumó → al anular resta
-                    $this->restarStockYDeposito(
+                    $this->restarDeStock(
+                        $det->deposito_id,
                         $det->item_id,
                         $det->notas_vent_det_cantidad
                     );
@@ -462,6 +439,13 @@ public function anular(Request $r, $id)
 
                 $cuota->save();
             }
+        }
+
+        // Revertir VentasCab a CONFIRMADO
+        $venta = VentasCab::find($nota->ventas_cab_id);
+        if ($venta) {
+            $venta->vent_estado = 'CONFIRMADO';
+            $venta->save();
         }
 
         DB::commit();

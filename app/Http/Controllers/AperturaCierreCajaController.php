@@ -12,9 +12,9 @@ class AperturaCierreCajaController extends Controller
 {
     return DB::table('apertura_cierre_caja as acc')
         ->join('empresa as e', 'e.id', '=', 'acc.empresa_id')
-        ->join('sucursal as s', 's.empresa_id', '=', 'acc.sucursal_id')
+        ->join('sucursal as s', 's.id', '=', 'acc.sucursal_id')
         ->join('caja as c', 'c.id', '=', 'acc.caja_id')
-        ->join('users as u', 'u.id', '=', 'acc.user_id')
+        ->join('funcionario as f', 'f.id', '=', 'acc.funcionario_id')
         ->select(
             'acc.id',
 
@@ -24,8 +24,8 @@ class AperturaCierreCajaController extends Controller
 
             // Cierre (puede venir null)
             DB::raw("
-                CASE 
-                    WHEN acc.fecha_cierre IS NOT NULL 
+                CASE
+                    WHEN acc.fecha_cierre IS NOT NULL
                     THEN TO_CHAR(acc.fecha_cierre, 'DD/MM/YYYY HH24:MI:SS')
                     ELSE ''
                 END as fecha_cierre
@@ -43,7 +43,7 @@ class AperturaCierreCajaController extends Controller
             'e.emp_razon_social as emp_razon_social',
             's.suc_razon_social as suc_razon_social',
             'c.caja_descripcion as caja_descripcion',
-            'u.name as usuario'
+            DB::raw("f.fun_nom || ' ' || f.fun_apellido as usuario")
         )
         ->orderBy('acc.fecha_apertura', 'desc')
         ->get();
@@ -54,7 +54,6 @@ class AperturaCierreCajaController extends Controller
         'empresa_id'      => 'required|integer',
         'sucursal_id'     => 'required|integer',
         'caja_id'         => 'required|integer',
-        'user_id'         => 'required|integer',
         'fecha_apertura'  => 'required|date',
         'monto_apertura'  => 'required|numeric|min:0'
     ]);
@@ -76,7 +75,7 @@ class AperturaCierreCajaController extends Controller
         'empresa_id'      => $request->empresa_id,
         'sucursal_id'     => $request->sucursal_id,
         'caja_id'         => $request->caja_id,
-        'user_id'         => $request->user_id,
+        'funcionario_id'  => auth()->user()->funcionario_id,
         'fecha_apertura' => $request->fecha_apertura,
         'monto_apertura' => $request->monto_apertura,
         'estado'          => 'ABIERTA'
@@ -200,12 +199,12 @@ class AperturaCierreCajaController extends Controller
 {
     return DB::table('apertura_cierre_caja as acc')
         ->join('caja as c', 'c.id', '=', 'acc.caja_id')
-        ->join('users as u', 'u.id', '=', 'acc.user_id')
+        ->join('funcionario as f', 'f.id', '=', 'acc.funcionario_id')
         ->select(
             'acc.id as apertura_cierre_caja_id',
             'c.caja_descripcion',
             DB::raw("TO_CHAR(acc.fecha_apertura, 'DD/MM/YYYY HH24:MI:SS') as fecha_apertura"),
-            'u.name as usuario'
+            DB::raw("f.fun_nom || ' ' || f.fun_apellido as usuario")
         )
         ->where('acc.estado', 'ABIERTA')
         ->orderBy('acc.fecha_apertura', 'desc')
@@ -215,9 +214,9 @@ public function buscarAbiertasArqueo()
 {
     return DB::table('apertura_cierre_caja as acc')
         ->join('empresa as e', 'e.id', '=', 'acc.empresa_id')
-        ->join('sucursal as s', 's.empresa_id', '=', 'acc.sucursal_id')
+        ->join('sucursal as s', 's.id', '=', 'acc.sucursal_id')
         ->join('caja as c', 'c.id', '=', 'acc.caja_id')
-        ->join('users as u', 'u.id', '=', 'acc.user_id')
+        ->join('funcionario as f', 'f.id', '=', 'acc.funcionario_id')
         ->select(
             'acc.id as apertura_cierre_caja_id',
             'acc.id as empresa_id',
@@ -226,7 +225,7 @@ public function buscarAbiertasArqueo()
             's.suc_razon_social',
             'c.caja_descripcion',
             DB::raw("TO_CHAR(acc.fecha_apertura, 'DD/MM/YYYY HH24:MI:SS') as fecha_apertura"),
-            'u.name as usuario'
+            DB::raw("f.fun_nom || ' ' || f.fun_apellido as usuario")
         )
         ->where('acc.estado', 'ABIERTA')
         ->orderBy('acc.id', 'desc')

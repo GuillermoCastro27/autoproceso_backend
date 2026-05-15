@@ -1,0 +1,36 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Quitar marca_id y modelo_id de items (ahora se gestiona por tablas pivot)
+        Schema::table('items', function (Blueprint $table) {
+            $table->dropForeign(['marca_id']);
+            $table->dropForeign(['modelo_id']);
+            $table->dropColumn(['marca_id', 'modelo_id']);
+        });
+
+        // Hacer nullable los campos descrip en las tablas pivot (campo auxiliar, no requerido desde UI)
+        DB::statement('ALTER TABLE item_marca ALTER COLUMN item_marca_descrip DROP NOT NULL');
+        DB::statement('ALTER TABLE item_modelo ALTER COLUMN item_modelo_descrip DROP NOT NULL');
+    }
+
+    public function down(): void
+    {
+        Schema::table('items', function (Blueprint $table) {
+            $table->unsignedInteger('marca_id')->nullable();
+            $table->unsignedInteger('modelo_id')->nullable();
+            $table->foreign('marca_id')->references('id')->on('marca');
+            $table->foreign('modelo_id')->references('id')->on('modelo');
+        });
+
+        DB::statement('ALTER TABLE item_marca ALTER COLUMN item_marca_descrip SET NOT NULL');
+        DB::statement('ALTER TABLE item_modelo ALTER COLUMN item_modelo_descrip SET NOT NULL');
+    }
+};

@@ -7,16 +7,25 @@ use Illuminate\Database\Eloquent\Model;
 
 class Stock extends Model
 {
-    protected $table = 'stock'; // Nombre de la tabla
-    protected $primaryKey = 'stock_id'; // Definir la clave primaria
+    protected $table = 'stock';
+    protected $primaryKey = null;
+    public $incrementing = false;
 
-    public $incrementing = true; // Indicar que es autoincremental (si aplica)
-    protected $keyType = 'int'; // Laravel usa 'int' incluso para bigint
+    protected $fillable = [
+        'deposito_id',
+        'item_id',
+        'cantidad',
+        'cantidad_minima',
+        'cantidad_maxima',
+    ];
 
-    protected $fillable = ['item_id', 'cantidad', 'created_at', 'updated_at'];
-
-    public function pedidosDetalles()
+    public function deposito()
     {
-        return $this->hasMany(PedidosDetalle::class, 'stock_id', 'stock_id');
+        return $this->belongsTo(Deposito::class, 'deposito_id', 'id');
+    }
+
+    public function item()
+    {
+        return $this->belongsTo(Item::class, 'item_id', 'id');
     }
 }

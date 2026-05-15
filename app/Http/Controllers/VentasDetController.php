@@ -13,12 +13,14 @@ class VentasDetController extends Controller
             SELECT
                 vd.ventas_cab_id,
                 vd.item_id,
+                vd.deposito_id,
 
                 i.item_decripcion,
                 vd.vent_det_cantidad,
                 vd.vent_det_precio,
 
                 ti.tip_imp_nom,
+                d.dep_nombre,
 
                 (vd.vent_det_cantidad * vd.vent_det_precio) AS subtotal,
 
@@ -33,6 +35,7 @@ class VentasDetController extends Controller
             FROM ventas_det vd
             JOIN items i ON i.id = vd.item_id
             JOIN tipo_impuesto ti ON ti.id = vd.tipo_impuesto_id
+            LEFT JOIN deposito d ON d.id = vd.deposito_id
             WHERE vd.ventas_cab_id = ?
         ", [$ventas_cab_id]);
     }

@@ -23,9 +23,8 @@ class PromocionesCabController extends Controller
                 s.suc_razon_social,
                 pc.empresa_id,
                 e.emp_razon_social,
-                pc.user_id,
-                u.name,
-                u.login,
+                pc.funcionario_id,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
                 pc.tipo_promociones_id,
                 tp.tipo_prom_nombre AS tipo_prom_nombre,
                 tp.tipo_prom_modo AS tipo_prom_modo,
@@ -33,9 +32,9 @@ class PromocionesCabController extends Controller
                 pc.created_at,
                 pc.updated_at
             FROM promociones_cab pc
-            JOIN sucursal s ON s.empresa_id = pc.sucursal_id
+            JOIN sucursal s ON s.id = pc.sucursal_id
             JOIN empresa e  ON e.id = pc.empresa_id
-            JOIN users u    ON u.id = pc.user_id
+            JOIN funcionario f ON f.id = pc.funcionario_id
             JOIN tipo_promociones tp ON tp.id = pc.tipo_promociones_id
             ORDER BY pc.id DESC;
         ");
@@ -51,11 +50,12 @@ class PromocionesCabController extends Controller
             'prom_cab_fecha_fin' => 'required',
             'prom_cab_estado' => 'required',
             'tipo_promociones_id' => 'required',
-            'user_id' => 'required',
+            'funcionario_id' => 'nullable',
             'empresa_id' => 'required',
             'sucursal_id' => 'required'
         ]);
 
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $promocioncab = PromocionesCab::create($datosValidados);
         $promocioncab->save();
 
@@ -84,7 +84,7 @@ class PromocionesCabController extends Controller
             'prom_cab_fecha_fin' => 'required',
             'prom_cab_estado' => 'required',
             'tipo_promociones_id' => 'required',
-            'user_id' => 'required',
+            'funcionario_id' => 'nullable',
             'empresa_id' => 'required',
             'sucursal_id' => 'required'
         ]);
@@ -116,7 +116,7 @@ class PromocionesCabController extends Controller
             'prom_cab_fecha_fin' => 'required',
             'prom_cab_estado' => 'required',
             'tipo_promociones_id' => 'required',
-            'user_id' => 'required',
+            'funcionario_id' => 'nullable',
             'empresa_id' => 'required',
             'sucursal_id' => 'required'
         ]);
@@ -148,7 +148,7 @@ class PromocionesCabController extends Controller
             'prom_cab_fecha_fin' => 'required',
             'prom_cab_estado' => 'required',
             'tipo_promociones_id' => 'required',
-            'user_id' => 'required',
+            'funcionario_id' => 'nullable',
             'empresa_id' => 'required',
             'sucursal_id' => 'required'
         ]);
@@ -164,8 +164,8 @@ class PromocionesCabController extends Controller
 
    public function buscar(Request $r)
 {
-    $texto = $r->input('texto');
-    $userId = $r->input('user_id');
+    $texto  = $r->input('texto');
+    $funcId = $r->input('funcionario_id');
 
     // 🔹 Primero: anula automáticamente las vencidas
     DB::update("
@@ -187,9 +187,8 @@ class PromocionesCabController extends Controller
             pc.prom_cab_estado,
             pc.tipo_promociones_id,
             tp.tipo_prom_nombre AS tipo_prom_nombre,
-            u.id AS user_id,
-            u.name AS encargado,
-            u.login,
+            f.id AS funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
             pc.empresa_id,
             e.emp_razon_social,
             pc.sucursal_id,
@@ -197,13 +196,13 @@ class PromocionesCabController extends Controller
             'PROMOCIÓN NRO: ' || TO_CHAR(pc.id, '0000000') || 
             ' (' || pc.prom_cab_nombre || ')' AS prom_cab_nombre
         FROM promociones_cab pc
-        JOIN users u ON u.id = pc.user_id
+        JOIN funcionario f ON f.id = pc.funcionario_id
         JOIN empresa e ON e.id = pc.empresa_id
-        JOIN sucursal s ON s.empresa_id = pc.sucursal_id
+        JOIN sucursal s ON s.id = pc.sucursal_id
         JOIN tipo_promociones tp ON tp.id = pc.tipo_promociones_id
         WHERE 
             pc.prom_cab_estado = 'CONFIRMADO'
-            AND u.id = {$userId}
+            AND pc.funcionario_id = {$funcId}
             AND CURRENT_TIMESTAMP BETWEEN pc.prom_cab_fecha_inicio AND pc.prom_cab_fecha_fin
             AND (
                 pc.prom_cab_nombre ILIKE '%{$texto}%'

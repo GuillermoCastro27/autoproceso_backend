@@ -73,11 +73,11 @@ class RecepcionCabController extends Controller
             'SOLICITUD NRO: ' || to_char(sc.id, '0000000') AS solicitudes,
 
             -- Encargado
-            u.name AS encargado
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario
 
         FROM recep_cab rc
-        JOIN users u ON u.id = rc.user_id
-        JOIN sucursal s ON s.empresa_id = rc.sucursal_id
+        JOIN funcionario f ON f.id = rc.funcionario_id
+        JOIN sucursal s ON s.id = rc.sucursal_id
         JOIN empresa e ON e.id = rc.empresa_id
         JOIN solicitudes_cab sc ON sc.id = rc.solicitudes_cab_id
         JOIN clientes c ON c.id = sc.clientes_id
@@ -104,10 +104,11 @@ public function store(Request $r){
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
             'tipo_vehiculo_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $recepcioncab = RecepcionCab::create($datosValidados);
         $recepcioncab->save();
 
@@ -171,7 +172,7 @@ public function store(Request $r){
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
             'tipo_vehiculo_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -202,11 +203,19 @@ public function store(Request $r){
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
             'tipo_vehiculo_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
         $recepcioncab->update($datosValidados);
+
+        // Revertir SolicitudCab a CONFIRMADO
+        $solicitud = SolicitudCab::find($recepcioncab->solicitudes_cab_id);
+        if ($solicitud) {
+            $solicitud->soli_cab_estado = 'CONFIRMADO';
+            $solicitud->save();
+        }
+
         return response()->json([
             'mensaje'=>'Registro anulado con exito',
             'tipo'=>'success',
@@ -233,7 +242,7 @@ public function store(Request $r){
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
             'tipo_vehiculo_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -253,9 +262,8 @@ public function store(Request $r){
             rc.recep_cab_prioridad,
             rc.recep_cab_kilometraje,
             rc.recep_cab_nivel_combustible,
-            rc.user_id,
-            u.name AS encargado,
-            u.login,
+            rc.funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
             rc.created_at,
             rc.updated_at,
 
@@ -303,10 +311,10 @@ public function store(Request $r){
             ' (' || rc.recep_cab_observaciones || ')' AS recepcion
 
         FROM recep_cab rc
-        JOIN users u        ON u.id = rc.user_id
+        JOIN funcionario f  ON f.id = rc.funcionario_id
         JOIN clientes c     ON c.id = rc.clientes_id
         JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
-        JOIN sucursal s     ON s.empresa_id = rc.sucursal_id
+        JOIN sucursal s     ON s.id = rc.sucursal_id
         JOIN empresa e      ON e.id = rc.empresa_id
         JOIN tipo_vehiculo tv ON tv.id = rc.tipo_vehiculo_id
         JOIN marca m        ON m.id = tv.marca_id
@@ -314,8 +322,8 @@ public function store(Request $r){
 
         WHERE 
             rc.recep_cab_estado = 'CONFIRMADO'
-            AND rc.user_id = {$r->user_id}
-            AND u.name ILIKE '%{$r->name}%'
+            AND rc.funcionario_id = {$r->funcionario_id}
+            AND (f.fun_nom || ' ' || f.fun_apellido) ILIKE '%{$r->name}%'
     ");
 }
 }

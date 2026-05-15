@@ -4,243 +4,309 @@ namespace App\Http\Controllers;
 
 use App\Models\Pedido;
 use App\Models\Presupuesto;
+use App\Models\PresupuestoPedido;
 use App\Models\PresupuestosDetalle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PresupuestoController extends Controller
 {
-    public function read(){
-        return DB::select("select 
-        p.*,
-        TO_CHAR(p.pre_fecha, 'dd/mm/yyyy HH24:mi:ss') AS pre_fecha,
-        to_char(p.pre_vence, ' dd/mm/yyy HH24:mi:ss ') as pre_vence,
-        p2.prov_razonsocial,
-        p2.prov_ruc,
-        p2.prov_telefono,
-        p2.prov_correo,
-        p.sucursal_id,
-        s.suc_razon_social as suc_razon_social,
-        p.empresa_id,
-        e.emp_razon_social AS emp_razon_social,
-        'PEDIDO NRO: '||to_char(p.pedido_id , '0000000')||' VENCE EL:'||to_char(p3.ped_vence, 'dd/mm/yyy HH24:mi:ss')||' ('||p3.ped_pbservaciones||')' as pedido,
-        to_char(p.pedido_id , '0000000') as nro_pedido,
-        u.name,
-        u.login 
-        from presupuestos p 
-        join proveedores p2 on p2.id = p.proveedor_id 
-        JOIN 
-            sucursal s ON s.empresa_id = p.sucursal_id
-        JOIN 
-            empresa e ON e.id = p.empresa_id
-        join pedidos p3 on p3.id = p.pedido_id 
-        join users u on u.id = p.user_id;");
+    public function read()
+    {
+        return DB::select("
+            SELECT
+                p.*,
+                TO_CHAR(p.pre_fecha, 'dd/mm/yyyy HH24:mi:ss') AS pre_fecha,
+                TO_CHAR(p.pre_vence, 'dd/mm/yyyy HH24:mi:ss') AS pre_vence,
+                p2.prov_razonsocial,
+                p2.prov_ruc,
+                p2.prov_telefono,
+                p2.prov_correo,
+                s.suc_razon_social,
+                e.emp_razon_social,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+                (
+                    SELECT STRING_AGG(
+                        'PEDIDO NRO: ' || TO_CHAR(ped.id, '0000000') ||
+                        ' VENCE: ' || TO_CHAR(ped.ped_vence, 'dd/mm/yyyy') ||
+                        ' (' || ped.ped_pbservaciones || ')',
+                        ' | '
+                    )
+                    FROM presupuesto_pedidos pp
+                    JOIN pedidos ped ON ped.id = pp.pedido_id
+                    WHERE pp.presupuesto_id = p.id
+                ) AS pedidos
+            FROM presupuestos p
+            JOIN proveedores p2 ON p2.id = p.proveedor_id
+            JOIN sucursal s     ON s.id = p.sucursal_id
+            JOIN empresa e      ON e.id = p.empresa_id
+            JOIN funcionario f  ON f.id = p.funcionario_id
+            ORDER BY p.id DESC
+        ");
     }
 
-    public function store(Request $r){
-        $datosValidados = $r->validate([
-            'pre_observaciones'=>'required',
-            'pre_estado'=>'required',
-            'pre_fecha'=>'required',
-            'pre_vence'=>'required',
-            'proveedor_id'=>'required',
-            'pedido_id'=>'required',
-            'user_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
+    public function store(Request $r)
+    {
+        $r->validate([
+            'pre_observaciones' => 'required',
+            'pre_estado'        => 'required',
+            'pre_fecha'         => 'required',
+            'pre_vence'         => 'required',
+            'proveedor_id'      => 'required',
+            'pedidos_ids'       => 'required',
+            'empresa_id'        => 'required',
+            'sucursal_id'       => 'required',
         ]);
-        $presupuesto = Presupuesto::create($datosValidados);
-        $presupuesto->save();
 
+        $pedidoIds = json_decode($r->pedidos_ids, true);
 
-        $pedido = Pedido::find($r->pedido_id);
-        $pedido->ped_estado ="PROCESADO";
-        $pedido ->save();
-
-        $detalles = DB::select("select 
-        pd.*,
-        i.item_costo 
-        from pedidos_detalles pd
-        join items i ON i.id = pd.item_id 
-        where pedidos_id = $r->pedido_id;");
-
-        foreach ($detalles as $dp){
-           $presupuestosDetalle = new PresupuestosDetalle();
-           $presupuestosDetalle->presupuesto_id = $presupuesto->id;
-           $presupuestosDetalle->item_id = $dp->item_id;
-           $presupuestosDetalle->det_costo = $dp->item_costo;
-           $presupuestosDetalle->det_cantidad = $dp->det_cantidad;
-           $presupuestosDetalle->save();
-        }
-
-        return response()->json([
-            'mensaje'=>'Registro creado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuesto
-        ],200);
-    }
-
-    public function update(Request $r, $id){
-        $presupuesto = Presupuesto::find($id);
-        if(!$presupuesto){
+        if (empty($pedidoIds) || !is_array($pedidoIds)) {
             return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+                'mensaje' => 'Debe seleccionar al menos un pedido',
+                'tipo'    => 'error'
+            ], 422);
         }
-        $datosValidados = $r->validate([
-            'pre_observaciones'=>'required',
-            'pre_estado'=>'required',
-            'pre_fecha'=>'required',
-            'pre_vence'=>'required',
-            'proveedor_id'=>'required',
-            'pedido_id'=>'required',
-            'user_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
+
+        $presupuesto = Presupuesto::create([
+            'pre_observaciones' => $r->pre_observaciones,
+            'pre_estado'        => $r->pre_estado,
+            'pre_fecha'         => $r->pre_fecha,
+            'pre_vence'         => $r->pre_vence,
+            'proveedor_id'      => $r->proveedor_id,
+            'funcionario_id'    => auth()->user()->funcionario_id,
+            'empresa_id'        => $r->empresa_id,
+            'sucursal_id'       => $r->sucursal_id,
         ]);
-        $presupuesto->update($datosValidados);
+
+        $itemsAcumulados = [];
+
+        foreach ($pedidoIds as $pedidoId) {
+            PresupuestoPedido::create([
+                'presupuesto_id'                => $presupuesto->id,
+                'pedido_id'                     => $pedidoId,
+                'pres_prov_ped_fecha_registro'  => now(),
+            ]);
+
+            $pedido = Pedido::find($pedidoId);
+            $pedido->ped_estado = 'PROCESADO';
+            $pedido->save();
+
+            $detalles = DB::select("
+                SELECT pd.*, pd.deposito_id, i.item_costo
+                FROM pedidos_detalles pd
+                JOIN items i ON i.id = pd.item_id
+                WHERE pd.pedidos_id = ?
+            ", [$pedidoId]);
+
+            foreach ($detalles as $dp) {
+                $key = $dp->item_id . '_' . ($dp->deposito_id ?? 'null');
+                if (isset($itemsAcumulados[$key])) {
+                    $itemsAcumulados[$key]['det_cantidad'] += $dp->det_cantidad;
+                } else {
+                    $itemsAcumulados[$key] = [
+                        'item_id'      => $dp->item_id,
+                        'deposito_id'  => $dp->deposito_id,
+                        'det_costo'    => $dp->item_costo,
+                        'det_cantidad' => $dp->det_cantidad,
+                    ];
+                }
+            }
+        }
+
+        foreach ($itemsAcumulados as $item) {
+            $detalle = new PresupuestosDetalle();
+            $detalle->presupuesto_id = $presupuesto->id;
+            $detalle->item_id        = $item['item_id'];
+            $detalle->deposito_id    = $item['deposito_id'];
+            $detalle->det_costo      = $item['det_costo'];
+            $detalle->det_cantidad   = $item['det_cantidad'];
+            $detalle->save();
+        }
+
         return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuesto
-        ],200);
+            'mensaje'  => 'Registro creado con éxito',
+            'tipo'     => 'success',
+            'registro' => $presupuesto
+        ]);
+    }
+
+    public function update(Request $r, $id)
+    {
+        $presupuesto = Presupuesto::find($id);
+        if (!$presupuesto) {
+            return response()->json([
+                'mensaje' => 'Registro no encontrado',
+                'tipo'    => 'error'
+            ], 404);
+        }
+
+        $r->validate([
+            'pre_observaciones' => 'required',
+            'pre_estado'        => 'required',
+            'pre_fecha'         => 'required',
+            'pre_vence'         => 'required',
+            'proveedor_id'      => 'required',
+            'empresa_id'        => 'required',
+            'sucursal_id'       => 'required',
+        ]);
+
+        $presupuesto->update($r->only([
+            'pre_observaciones', 'pre_estado', 'pre_fecha',
+            'pre_vence', 'proveedor_id', 'empresa_id', 'sucursal_id'
+        ]));
+
+        return response()->json([
+            'mensaje'  => 'Registro modificado con éxito',
+            'tipo'     => 'success',
+            'registro' => $presupuesto
+        ]);
     }
 
     public function anular(Request $r, $id)
     {
         $presupuesto = Presupuesto::find($id);
-
         if (!$presupuesto) {
             return response()->json([
                 'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
+                'tipo'    => 'error'
             ], 404);
         }
 
-        // Solo validamos lo que realmente necesitamos al anular
-        $datosValidados = $r->validate([
-            'pre_observaciones' => 'required',
-        ]);
+        $r->validate(['pre_observaciones' => 'required']);
 
-        // Cambiar estado del presupuesto a ANULADO
-        $presupuesto->pre_estado = 'ANULADO';
-        $presupuesto->pre_observaciones = $datosValidados['pre_observaciones'];
+        $presupuesto->pre_estado        = 'ANULADO';
+        $presupuesto->pre_observaciones = $r->pre_observaciones;
         $presupuesto->save();
 
-        // Volver el pedido a CONFIRMADO
-        if ($presupuesto->pedido_id) {
-            $pedido = Pedido::find($presupuesto->pedido_id);
+        // Revertir todos los pedidos vinculados a CONFIRMADO
+        $vinculados = PresupuestoPedido::where('presupuesto_id', $id)->get();
+        foreach ($vinculados as $vínculo) {
+            $pedido = Pedido::find($vínculo->pedido_id);
             if ($pedido) {
-                $pedido->ped_estado = "CONFIRMADO";
+                $pedido->ped_estado = 'CONFIRMADO';
                 $pedido->save();
             }
         }
 
         return response()->json([
-            'mensaje' => 'Presupuesto anulado con éxito',
-            'tipo' => 'success',
+            'mensaje'  => 'Presupuesto anulado con éxito',
+            'tipo'     => 'success',
             'registro' => $presupuesto
-        ], 200);
-    }
-    public function confirmar(Request $r, $id){
-        $presupuesto = Presupuesto::find($id);
-        if(!$presupuesto){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'pre_observaciones'=>'required',
-            'pre_estado'=>'required',
-            'pre_fecha'=>'required',
-            'pre_vence'=>'required',
-            'proveedor_id'=>'required',
-            'pedido_id'=>'required',
-            'user_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
         ]);
-        $presupuesto->update($datosValidados);
-        return response()->json([
-            'mensaje'=>'Registro confirmado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuesto
-        ],200);
     }
-    public function buscar(Request $r) {
-        $userId = $r->input('user_id'); // Obtener el valor desde la request
-        $userName = $r->input('name');  // Obtener el valor del nombre
-    
+
+    public function confirmar(Request $r, $id)
+    {
+        $presupuesto = Presupuesto::find($id);
+        if (!$presupuesto) {
+            return response()->json([
+                'mensaje' => 'Registro no encontrado',
+                'tipo'    => 'error'
+            ], 404);
+        }
+
+        $r->validate([
+            'pre_observaciones' => 'required',
+            'pre_estado'        => 'required',
+            'pre_fecha'         => 'required',
+            'pre_vence'         => 'required',
+            'proveedor_id'      => 'required',
+            'empresa_id'        => 'required',
+            'sucursal_id'       => 'required',
+        ]);
+
+        $presupuesto->update($r->only([
+            'pre_observaciones', 'pre_estado', 'pre_fecha',
+            'pre_vence', 'proveedor_id', 'empresa_id', 'sucursal_id'
+        ]));
+
+        return response()->json([
+            'mensaje'  => 'Registro confirmado con éxito',
+            'tipo'     => 'success',
+            'registro' => $presupuesto
+        ]);
+    }
+
+    public function buscar(Request $r)
+    {
         return DB::select("
-            SELECT 
+            SELECT
                 p.id AS presupuesto_id,
                 TO_CHAR(p.pre_vence, 'dd/mm/yyyy HH24:mi:ss') AS pre_vence,
                 p.pre_observaciones,
                 p.pre_estado,
-                p.user_id,     
+                p.funcionario_id,
                 p.sucursal_id,
-                s.suc_razon_social as suc_razon_social,
+                s.suc_razon_social,
                 p.empresa_id,
-                e.emp_razon_social AS emp_razon_social,
+                e.emp_razon_social,
                 p.created_at,
                 p.updated_at,
-                u.name, 
-                u.email,
+                f.fun_nom || ' ' || f.fun_apellido AS encargado,
                 p.proveedor_id,
                 prov.prov_razonsocial,
                 prov.prov_ruc,
                 prov.prov_telefono,
                 prov.prov_correo,
-                'PRESUPUESTO NRO: ' || TO_CHAR(p.id, '0000000') || ' VENCE EL: ' || TO_CHAR(p.pre_vence, 'dd/mm/yyyy HH24:mi:ss') || ' (' || p.pre_observaciones || ')' AS presupuesto
-            FROM 
-                presupuestos p
-            JOIN 
-                users u ON u.id = p.user_id
-            JOIN 
-            sucursal s ON s.empresa_id = p.sucursal_id
-            JOIN 
-            empresa e ON e.id = p.empresa_id
-            JOIN 
-                proveedores prov ON prov.id = p.proveedor_id
-            WHERE 
-                p.pre_estado = 'CONFIRMADO'
-            AND 
-                p.user_id = ?
-            AND 
-                u.name ILIKE ?
-        ", [$userId, '%' . $userName . '%']); // Utilizar bindings seguros
+                'PRESUPUESTO NRO: ' || TO_CHAR(p.id, '0000000') ||
+                ' VENCE EL: ' || TO_CHAR(p.pre_vence, 'dd/mm/yyyy HH24:mi:ss') ||
+                ' (' || p.pre_observaciones || ')' AS presupuesto
+            FROM presupuestos p
+            JOIN funcionario f   ON f.id = p.funcionario_id
+            JOIN sucursal s      ON s.id = p.sucursal_id
+            JOIN empresa e       ON e.id = p.empresa_id
+            JOIN proveedores prov ON prov.id = p.proveedor_id
+            WHERE p.pre_estado = 'CONFIRMADO'
+              AND p.funcionario_id = ?
+        ", [$r->funcionario_id]);
     }
-    public function buscarInforme(Request $r)
-{
-    $desde = $r->query('desde');
-    $hasta = $r->query('hasta');
 
-    return DB::select("
-        SELECT 
-            p.id,
-            TO_CHAR(p.pre_fecha, 'dd/mm/yyyy') AS fecha,
-            TO_CHAR(p.pre_vence, 'dd/mm/yyyy') AS entrega,
-            p.pre_observaciones AS observaciones,
-            p.pre_estado AS estado,
-            u.name AS encargado,
-            s.suc_razon_social AS sucursal,
-            e.emp_razon_social AS empresa,
-            prov.prov_razonsocial AS proveedor,
-            prov.prov_ruc AS ruc,
-            'PRESUPUESTO DE PEDIDO NRO: ' || TO_CHAR(p.pedido_id, '0000000') || 
-            ' VENCE EL: ' || TO_CHAR(p3.ped_vence, 'dd/mm/yyyy') || 
-            ' (' || p3.ped_pbservaciones || ')' AS pedido
-        FROM presupuestos p
-        JOIN users u ON u.id = p.user_id
-        JOIN pedidos p3 ON p3.id = p.pedido_id
-        JOIN sucursal s ON s.empresa_id = p.sucursal_id
-        JOIN empresa e ON e.id = p.empresa_id
-        JOIN proveedores prov ON prov.id = p.proveedor_id
-        WHERE p.pre_estado = 'PROCESADO'
-            AND p.pre_fecha BETWEEN ? AND ?
-        ORDER BY p.pre_fecha ASC
-    ", [$desde, $hasta]);
-}            
+    public function readPedidos($presupuesto_id)
+    {
+        return DB::select("
+            SELECT
+                pp.id,
+                pp.pedido_id,
+                pp.pres_prov_ped_fecha_registro,
+                TO_CHAR(p.ped_fecha, 'dd/mm/yyyy') AS ped_fecha,
+                TO_CHAR(p.ped_vence, 'dd/mm/yyyy') AS ped_vence,
+                p.ped_pbservaciones,
+                p.ped_estado
+            FROM presupuesto_pedidos pp
+            JOIN pedidos p ON p.id = pp.pedido_id
+            WHERE pp.presupuesto_id = ?
+            ORDER BY pp.id
+        ", [$presupuesto_id]);
+    }
+
+    public function buscarInforme(Request $r)
+    {
+        return DB::select("
+            SELECT
+                p.id,
+                TO_CHAR(p.pre_fecha, 'dd/mm/yyyy') AS fecha,
+                TO_CHAR(p.pre_vence, 'dd/mm/yyyy') AS entrega,
+                p.pre_observaciones AS observaciones,
+                p.pre_estado AS estado,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+                s.suc_razon_social AS sucursal,
+                e.emp_razon_social AS empresa,
+                prov.prov_razonsocial AS proveedor,
+                prov.prov_ruc AS ruc,
+                (
+                    SELECT STRING_AGG('PEDIDO NRO: ' || TO_CHAR(ped.id, '0000000'), ' | ')
+                    FROM presupuesto_pedidos pp
+                    JOIN pedidos ped ON ped.id = pp.pedido_id
+                    WHERE pp.presupuesto_id = p.id
+                ) AS pedidos
+            FROM presupuestos p
+            JOIN funcionario f    ON f.id = p.funcionario_id
+            JOIN sucursal s       ON s.id = p.sucursal_id
+            JOIN empresa e        ON e.id = p.empresa_id
+            JOIN proveedores prov ON prov.id = p.proveedor_id
+            WHERE p.pre_estado = 'PROCESADO'
+              AND p.pre_fecha BETWEEN ? AND ?
+            ORDER BY p.pre_fecha ASC
+        ", [$r->query('desde'), $r->query('hasta')]);
+    }
 }

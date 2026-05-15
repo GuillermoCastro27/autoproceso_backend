@@ -4,17 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class OrdenServCab extends Model
+class OrdenServCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
      protected $fillable = [
         'ord_serv_fecha',
         'ord_serv_fecha_vence',
         'ord_serv_estado',
         'ord_serv_tipo',
         'ord_serv_observaciones',
-        'user_id',
+        'funcionario_id',
         'presupuesto_serv_cab_id',
         'clientes_id',
         'equipo_trabajo_id',

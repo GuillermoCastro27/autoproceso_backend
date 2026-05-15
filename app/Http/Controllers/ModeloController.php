@@ -8,9 +8,9 @@ use Illuminate\Http\Request;
 
 class ModeloController extends Controller
 {
-    public function read()
+    public function read(Request $r)
 {
-    $data = Modelo::select(
+    $q = Modelo::select(
         'modelo.id',
         'modelo.modelo_nom',
         'modelo.modelo_tipo',
@@ -18,10 +18,16 @@ class ModeloController extends Controller
         'modelo.marca_id',
         'marca.marc_nom AS marc_nom'
     )
-    ->join('marca', 'marca.id', '=', 'modelo.marca_id')
-    ->get();
+    ->join('marca', 'marca.id', '=', 'modelo.marca_id');
 
-    return response()->json($data);
+    if ($r->filled('modelo_nom')) {
+        $q->where('modelo.modelo_nom', 'ILIKE', '%' . $r->modelo_nom . '%');
+    }
+    if ($r->filled('excluir_tipo')) {
+        $q->where('modelo.modelo_tipo', '!=', $r->excluir_tipo);
+    }
+
+    return response()->json($q->orderBy('modelo.modelo_nom')->get());
 }
     public function store(Request $r){
         $datosValidados = $r->validate([

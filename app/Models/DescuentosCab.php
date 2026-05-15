@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class DescuentosCab extends Model
+class DescuentosCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
     protected $table = 'descuentos_cab';
 
     protected $fillable = [
@@ -19,7 +22,7 @@ class DescuentosCab extends Model
         'desc_cab_estado',
         'desc_cab_porcentaje',
         'desc_cab_monto',
-        'user_id',
+        'funcionario_id',
         'empresa_id',
         'sucursal_id',
         'tipo_descuentos_id',

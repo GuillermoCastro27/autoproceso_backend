@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class CompraCab extends Model
+class CompraCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
     protected $table = 'compra_cab';
 
     // Define los campos que se pueden asignar masivamente
@@ -17,11 +20,13 @@ class CompraCab extends Model
         'comp_estado',
         'comp_cant_cuota',
         'condicion_pago',
-        'user_id',
+        'comp_timbrado',
+        'funcionario_id',
         'orden_compra_cab_id',
         'proveedor_id',
         'empresa_id',
-        'sucursal_id'
+        'sucursal_id',
+        'deposito_id',
     ];
     public function proveedor()
 {

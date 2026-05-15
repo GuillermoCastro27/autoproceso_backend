@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class AperturaCierreCaja extends Model
+class AperturaCierreCaja extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
 
     protected $table = 'apertura_cierre_caja';
 
@@ -16,7 +19,7 @@ class AperturaCierreCaja extends Model
         'empresa_id',
         'sucursal_id',
         'caja_id',
-        'user_id',
+        'funcionario_id',
         'fecha_apertura',
         'monto_apertura',
 
@@ -35,11 +38,6 @@ class AperturaCierreCaja extends Model
     // =========================
     // 🔹 Relaciones (opcional)
     // =========================
-
-    public function usuarioApertura()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
 
     public function usuarioCierre()
     {

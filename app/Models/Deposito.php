@@ -12,15 +12,17 @@ class Deposito extends Model
     protected $table = 'deposito'; // Nombre de la tabla en la BD
 
     protected $fillable = [
-        'item_id',
-        'cantidad'
+        'dep_nombre',
+        'sucursal_id',
     ];
 
-    /**
-     * Relación con la tabla Item (un depósito pertenece a un item).
-     */
-    public function item()
+    public function sucursal()
     {
-        return $this->belongsTo(Item::class, 'item_id', 'id');
+        return $this->belongsTo(Sucursal::class, 'sucursal_id', 'empresa_id');
+    }
+
+    public function stocks()
+    {
+        return $this->hasMany(Stock::class, 'deposito_id', 'id');
     }
 }

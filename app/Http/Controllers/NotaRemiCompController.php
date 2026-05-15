@@ -18,27 +18,27 @@ class NotaRemiCompController extends Controller
         s.suc_razon_social AS suc_razon_social,
         nrc.empresa_id,
         e.emp_razon_social AS emp_razon_social,
-        nrc.user_id ,
+        nrc.funcionario_id,
         nrc.created_at ,
         nrc.updated_at ,
-        u.name, 
-        u.login  
-        from nota_remi_comp nrc 
-        JOIN 
-        sucursal s ON s.empresa_id = nrc.sucursal_id
-        JOIN 
-        empresa e ON e.id = nrc.empresa_id 
-        join users u on u.id = nrc.user_id;");
+        f.fun_nom || ' ' || f.fun_apellido AS funcionario
+        from nota_remi_comp nrc
+        JOIN
+        sucursal s ON s.id = nrc.sucursal_id
+        JOIN
+        empresa e ON e.id = nrc.empresa_id
+        JOIN funcionario f ON f.id = nrc.funcionario_id;");
     }
     public function store(Request $r){
         $datosValidados = $r->validate([
             'nota_remi_fecha'=>'required',
             'nota_remi_observaciones'=>'required',
             'nota_remi_estado'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $notaremicomp = NotaRemiComp::create($datosValidados);
         $notaremicomp->save();
         return response()->json([
@@ -59,7 +59,7 @@ class NotaRemiCompController extends Controller
             'nota_remi_fecha'=>'required',
             'nota_remi_observaciones'=>'required',
             'nota_remi_estado'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -82,7 +82,7 @@ class NotaRemiCompController extends Controller
             'nota_remi_fecha'=>'required',
             'nota_remi_observaciones'=>'required',
             'nota_remi_estado'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -105,7 +105,7 @@ class NotaRemiCompController extends Controller
             'nota_remi_fecha'=>'required',
             'nota_remi_observaciones'=>'required',
             'nota_remi_estado'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -127,12 +127,12 @@ class NotaRemiCompController extends Controller
             TO_CHAR(nrc.nota_remi_fecha, 'dd/mm/yyyy') AS fecha,
             nrc.nota_remi_observaciones AS observaciones,
             nrc.nota_remi_estado AS estado,
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
             s.suc_razon_social AS sucursal,
             e.emp_razon_social AS empresa
         FROM nota_remi_comp nrc
-        JOIN users u ON u.id = nrc.user_id
-        JOIN sucursal s ON s.empresa_id = nrc.sucursal_id
+        JOIN funcionario f ON f.id = nrc.funcionario_id
+        JOIN sucursal s ON s.id = nrc.sucursal_id
         JOIN empresa e ON e.id = nrc.empresa_id
         WHERE nrc.nota_remi_estado = 'CONFIRMADO'
         AND nrc.nota_remi_fecha BETWEEN ? AND ?

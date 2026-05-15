@@ -20,16 +20,16 @@ class AjusteCabController extends Controller
             s.suc_razon_social AS suc_razon_social,
             ac.empresa_id,
             e.emp_razon_social AS emp_razon_social,
-            ac.user_id,
+            ac.funcionario_id,
             ac.motivo_ajuste_id,
             ma.descripcion AS descripcion,
             ac.created_at,
             ac.updated_at,
-            u.name
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario
         FROM ajuste_cab ac
-        JOIN sucursal s ON s.empresa_id = ac.sucursal_id
+        JOIN sucursal s ON s.id = ac.sucursal_id
         JOIN empresa e ON e.id = ac.empresa_id
-        JOIN users u ON u.id = ac.user_id
+        JOIN funcionario f ON f.id = ac.funcionario_id
         JOIN motivo_ajuste ma ON ma.id = ac.motivo_ajuste_id;");
     }
 
@@ -38,12 +38,13 @@ class AjusteCabController extends Controller
             'ajus_cab_fecha' => 'required',
             'ajus_cab_estado' => 'required',
             'tipo_ajuste' => 'required',
-            'user_id' => 'required',
+            'funcionario_id' => 'nullable',
             'empresa_id' => 'required',
             'sucursal_id' => 'required',
             'motivo_ajuste_id' => 'required'
         ]);
 
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $ajustecab = AjusteCab::create($datosValidados);
         $ajustecab->save();
 
@@ -67,7 +68,6 @@ class AjusteCabController extends Controller
             'ajus_cab_fecha' => 'required',
             'ajus_cab_estado' => 'required',
             'tipo_ajuste' => 'required',
-            'user_id' => 'required',
             'empresa_id' => 'required',
             'sucursal_id' => 'required',
             'motivo_ajuste_id' => 'required'
@@ -96,7 +96,6 @@ class AjusteCabController extends Controller
         'ajus_cab_fecha' => 'required',
         'ajus_cab_estado' => 'required',
         'tipo_ajuste' => 'required',
-        'user_id' => 'required',
         'empresa_id' => 'required',
         'sucursal_id' => 'required',
         'motivo_ajuste_id' => 'required'
@@ -165,7 +164,6 @@ class AjusteCabController extends Controller
             'ajus_cab_fecha'     => 'required',
             'ajus_cab_estado'    => 'required',
             'tipo_ajuste'        => 'required', // valores esperados: 'Entrada' o 'Salida'
-            'user_id'            => 'required',
             'empresa_id'         => 'required',
             'sucursal_id'        => 'required',
             'motivo_ajuste_id'   => 'required'
@@ -277,13 +275,13 @@ class AjusteCabController extends Controller
             TO_CHAR(ac.ajus_cab_fecha, 'dd/mm/yyyy') AS fecha,
             ac.ajus_cab_estado AS estado,
             ac.tipo_ajuste AS tipo,
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
             s.suc_razon_social AS sucursal,
             e.emp_razon_social AS empresa,
             ma.descripcion AS motivo
         FROM ajuste_cab ac
-        JOIN users u ON u.id = ac.user_id
-        JOIN sucursal s ON s.empresa_id = ac.sucursal_id
+        JOIN funcionario f ON f.id = ac.funcionario_id
+        JOIN sucursal s ON s.id = ac.sucursal_id
         JOIN empresa e ON e.id = ac.empresa_id
         JOIN motivo_ajuste ma ON ma.id = ac.motivo_ajuste_id
         WHERE ac.ajus_cab_estado = 'CONFIRMADO'

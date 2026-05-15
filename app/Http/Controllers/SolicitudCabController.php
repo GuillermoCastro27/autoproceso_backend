@@ -34,18 +34,17 @@ class SolicitudCabController extends Controller
                 sc.tipo_servicio_id,
                 ts.tipo_serv_nombre,
 
-                sc.user_id,
-                u.name,
-                u.login,
+                sc.funcionario_id,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
 
                 sc.created_at,
                 sc.updated_at
             FROM solicitudes_cab sc
-            JOIN sucursal s ON s.empresa_id = sc.sucursal_id
+            JOIN sucursal s ON s.id = sc.sucursal_id
             JOIN empresa e ON e.id = sc.empresa_id
             JOIN clientes c ON c.id = sc.clientes_id
             JOIN tipo_servicio ts ON ts.id = sc.tipo_servicio_id
-            JOIN users u ON u.id = sc.user_id
+            JOIN funcionario f ON f.id = sc.funcionario_id
             ORDER BY sc.id DESC");
     }
     public function store(Request $r){
@@ -57,10 +56,11 @@ class SolicitudCabController extends Controller
             'soli_cab_estado'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $solicitudcab = SolicitudCab::create($datosValidados);
         $solicitudcab->save();
         return response()->json([
@@ -85,7 +85,7 @@ class SolicitudCabController extends Controller
             'soli_cab_estado'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -112,7 +112,7 @@ class SolicitudCabController extends Controller
             'soli_cab_estado'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -139,7 +139,7 @@ class SolicitudCabController extends Controller
             'soli_cab_estado'=>'required',
             'clientes_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -157,9 +157,8 @@ class SolicitudCabController extends Controller
             sc.soli_cab_observaciones,
             sc.soli_cab_estado,
             sc.soli_cab_prioridad,
-            sc.user_id,
-            u.name AS encargado,
-            u.login,
+            sc.funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
             sc.created_at,
             sc.updated_at,
 
@@ -188,14 +187,14 @@ class SolicitudCabController extends Controller
 
         FROM 
             solicitudes_cab sc
-        JOIN users u ON u.id = sc.user_id
+        JOIN funcionario f ON f.id = sc.funcionario_id
         JOIN clientes c ON c.id = sc.clientes_id
         JOIN tipo_servicio ts ON ts.id = sc.tipo_servicio_id
-        JOIN sucursal s ON s.empresa_id = sc.sucursal_id
+        JOIN sucursal s ON s.id = sc.sucursal_id
         JOIN empresa e ON e.id = sc.empresa_id
         WHERE 
             sc.soli_cab_estado = 'CONFIRMADO'
-    and sc.user_id = {$r->user_id} and u.name ilike'%{$r->name}%'");
+    and sc.funcionario_id = {$r->funcionario_id} and (f.fun_nom || ' ' || f.fun_apellido) ilike'%{$r->name}%'");
     }
     public function buscarInforme(Request $request)
 {
@@ -209,12 +208,12 @@ class SolicitudCabController extends Controller
             to_char(p.ped_vence, 'dd/mm/yyyy') AS entrega,
             p.ped_pbservaciones AS observaciones,
             p.ped_estado AS estado,
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
             s.suc_razon_social AS sucursal,
             e.emp_razon_social AS empresa
         FROM pedidos p
-        JOIN users u ON u.id = p.user_id
-        JOIN sucursal s ON s.empresa_id = p.sucursal_id
+        JOIN funcionario f ON f.id = p.funcionario_id
+        JOIN sucursal s ON s.id = p.sucursal_id
         JOIN empresa e ON e.id = p.empresa_id
         WHERE p.ped_estado = 'PROCESADO'
             AND p.ped_fecha BETWEEN ? AND ?

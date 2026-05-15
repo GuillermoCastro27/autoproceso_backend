@@ -65,13 +65,16 @@ class ContratoServCabController extends Controller
             ts.id AS tipo_servicio_id,
             ts.tipo_serv_nombre AS tipo_serv_nombre,
 
+            -- Orden de servicio vinculada
+            csc.orden_serv_cab_id,
+
             -- Usuario
-            u.name AS encargado
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario
 
         FROM contrato_serv_cab csc
-            JOIN users u           ON u.id = csc.user_id
+            JOIN funcionario f     ON f.id = csc.funcionario_id
             JOIN empresa e         ON e.id = csc.empresa_id
-            JOIN sucursal s        ON s.empresa_id = csc.sucursal_id
+            JOIN sucursal s        ON s.id = csc.sucursal_id
             JOIN tipo_servicio ts  ON ts.id = csc.tipo_servicio_id
             JOIN clientes cli      ON cli.id = csc.clientes_id
             JOIN tipo_contrato tc  ON tc.id = csc.tipo_contrato_id
@@ -120,7 +123,8 @@ public function store(Request $r)
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
         'tipo_servicio_id' => 'required|integer',
-        'user_id' => 'required|integer'
+        'funcionario_id' => 'nullable',
+        'orden_serv_cab_id' => 'nullable|integer|exists:orden_serv_cab,id',
     ]);
 
     // 🔹 3. Coherencia lógica adicional
@@ -158,7 +162,8 @@ public function store(Request $r)
         'sucursal_id' => $r->sucursal_id,
         'clientes_id' => $r->clientes_id,
         'tipo_servicio_id' => $r->tipo_servicio_id,
-        'user_id' => $r->user_id
+        'funcionario_id' => auth()->user()->funcionario_id,
+        'orden_serv_cab_id' => $r->orden_serv_cab_id ?: null,
     ]);
 
     // 🔹 5. Respuesta
@@ -220,7 +225,7 @@ public function update(Request $r, $id)
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
         'tipo_servicio_id' => 'required|integer',
-        'user_id' => 'required|integer'
+        'orden_serv_cab_id' => 'nullable|integer|exists:orden_serv_cab,id',
     ]);
 
     // 🔹 Coherencia lógica final
@@ -257,7 +262,7 @@ public function update(Request $r, $id)
         'sucursal_id' => $r->sucursal_id,
         'clientes_id' => $r->clientes_id,
         'tipo_servicio_id' => $r->tipo_servicio_id,
-        'user_id' => $r->user_id
+        'orden_serv_cab_id' => $r->orden_serv_cab_id ?: null,
     ]);
 
     return response()->json([
@@ -325,8 +330,7 @@ public function anular(Request $r, $id)
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
-        'tipo_servicio_id' => 'required|integer',
-        'user_id' => 'required|integer'
+        'tipo_servicio_id' => 'required|integer'
     ]);
 
     // 🔹 Actualizar todo + estado ANULADO
@@ -399,8 +403,7 @@ public function confirmar(Request $r, $id)
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
         'clientes_id' => 'required|integer',
-        'tipo_servicio_id' => 'required|integer',
-        'user_id' => 'required|integer'
+        'tipo_servicio_id' => 'required|integer'
     ]);
 
     // 🔹 Actualizar todo + estado CONFIRMADO

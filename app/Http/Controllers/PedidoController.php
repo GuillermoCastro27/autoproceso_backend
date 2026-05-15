@@ -16,7 +16,7 @@ class PedidoController extends Controller
             'ped_fecha'        => 'required',
             'ped_pbservaciones'=> 'required',
             'ped_estado'       => 'required',
-            'user_id'          => 'required',
+            'funcionario_id'   => 'nullable',
             'empresa_id'       => 'required',
             'sucursal_id'      => 'required',
         ]);
@@ -48,43 +48,49 @@ class PedidoController extends Controller
                 s.suc_razon_social,
                 p.empresa_id,
                 e.emp_razon_social,
-                p.user_id,
+                p.funcionario_id,
                 p.created_at,
                 p.updated_at,
-                u.name,
-                u.login
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario
             FROM pedidos p
-            JOIN sucursal s ON s.empresa_id = p.sucursal_id
+            JOIN sucursal s ON s.id = p.sucursal_id
             JOIN empresa e  ON e.id = p.empresa_id
-            JOIN users u    ON u.id = p.user_id;
+            JOIN funcionario f ON f.id = p.funcionario_id;
         ");
     }
 
-    public function store(Request $r)
-    {
-        $pedido = Pedido::create($this->validarPedido($r));
+   public function store(Request $r)
+{
+    DB::unprepared("SET myapp.usuario_id = '".(auth()->id() ?? 0)."'");
+    DB::unprepared("SET myapp.usuario_nom = '".(auth()->user()->name ?? 'SIN USUARIO')."'");
+    DB::unprepared("SET myapp.ip = '".request()->ip()."'");
+    DB::unprepared("SET myapp.url = '".request()->fullUrl()."'");
 
-        return response()->json([
-            'mensaje'  => 'Registro creado con éxito',
-            'tipo'     => 'success',
-            'registro' => $pedido
-        ], 200);
-    }
+    $datos = $this->validarPedido($r);
+    $datos['funcionario_id'] = auth()->user()->funcionario_id;
+    $pedido = Pedido::create($datos);
+
+    return response()->json([
+        'mensaje'  => 'Registro creado con éxito',
+        'tipo'     => 'success',
+        'registro' => $pedido
+    ], 200);
+}
 
     public function update(Request $r, $id)
-    {
-        $pedido = $this->buscarPedido($id);
-        if (!$pedido instanceof Pedido) return $pedido; // Devuelve error si no existe
+{
 
-        $pedido->update($this->validarPedido($r));
+    $pedido = $this->buscarPedido($id);
+    if (!$pedido instanceof Pedido) return $pedido;
 
-        return response()->json([
-            'mensaje'  => 'Registro modificado con éxito',
-            'tipo'     => 'success',
-            'registro' => $pedido
-        ], 200);
-    }
+    $pedido->update($this->validarPedido($r));
 
+    return response()->json([
+        'mensaje'  => 'Registro modificado con éxito',
+        'tipo'     => 'success',
+        'registro' => $pedido
+    ], 200);
+}
     public function anular(Request $r, $id)
     {
         $pedido = $this->buscarPedido($id);
@@ -113,32 +119,18 @@ class PedidoController extends Controller
         ], 200);
     }
 
-    public function eliminar($id)
-    {
-        $pedido = $this->buscarPedido($id);
-        if (!$pedido instanceof Pedido) return $pedido;
-
-        $pedido->delete();
-
-        return response()->json([
-            'mensaje' => 'Registro eliminado con éxito',
-            'tipo'    => 'success'
-        ], 200);
-    }
-
     public function buscar(Request $r)
     {
-        return DB::select("
-            SELECT 
+        $sql = "
+            SELECT
                 p.id,
                 TO_CHAR(p.ped_vence, 'dd/mm/yyyy HH24:mi:ss') AS ped_vence,
                 p.ped_pbservaciones,
                 p.ped_estado,
-                p.user_id,
+                p.funcionario_id,
                 p.created_at,
                 p.updated_at,
-                u.name,
-                u.login,
+                f.fun_nom || ' ' || f.fun_apellido AS encargado,
                 p.id AS pedido_id,
                 'PEDIDO NRO: ' || TO_CHAR(p.id, '0000000') || ' (' || p.ped_pbservaciones || ')' AS pedido,
                 p.sucursal_id,
@@ -146,13 +138,21 @@ class PedidoController extends Controller
                 p.empresa_id,
                 e.emp_razon_social
             FROM pedidos p
-            JOIN users u   ON u.id = p.user_id
-            JOIN sucursal s ON s.empresa_id = p.sucursal_id
+            JOIN funcionario f ON f.id = p.funcionario_id
+            JOIN sucursal s ON s.id = p.sucursal_id
             JOIN empresa e  ON e.id = p.empresa_id
             WHERE p.ped_estado = 'CONFIRMADO'
-              AND p.user_id = ?
-              AND u.name ILIKE ?
-        ", [$r->user_id, "%{$r->name}%"]);
+              AND CAST(p.id AS TEXT) LIKE ?
+        ";
+
+        $params = ["%{$r->numero}%"];
+
+        if ($r->filled('funcionario_id')) {
+            $sql .= " AND p.funcionario_id = ?";
+            $params[] = $r->funcionario_id;
+        }
+
+        return DB::select($sql, $params);
     }
 
     public function buscarInforme(Request $request)
@@ -164,12 +164,12 @@ class PedidoController extends Controller
                 TO_CHAR(p.ped_vence, 'dd/mm/yyyy') AS entrega,
                 p.ped_pbservaciones AS observaciones,
                 p.ped_estado AS estado,
-                u.name AS encargado,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
                 s.suc_razon_social AS sucursal,
                 e.emp_razon_social AS empresa
             FROM pedidos p
-            JOIN users u   ON u.id = p.user_id
-            JOIN sucursal s ON s.empresa_id = p.sucursal_id
+            JOIN funcionario f ON f.id = p.funcionario_id
+            JOIN sucursal s ON s.id = p.sucursal_id
             JOIN empresa e  ON e.id = p.empresa_id
             WHERE p.ped_estado = 'PROCESADO'
               AND p.ped_fecha BETWEEN ? AND ?

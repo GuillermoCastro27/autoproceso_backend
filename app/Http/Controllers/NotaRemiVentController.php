@@ -39,25 +39,23 @@ class NotaRemiVentController extends Controller
             TO_CHAR(nrv.ventas_cab_id, '0000000') AS nro_venta,
 
             -- Usuario
-            u.name,
-            u.login
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario
 
         FROM nota_remi_vent nrv
 
-        JOIN clientes c 
+        JOIN clientes c
             ON c.id = nrv.clientes_id
 
-        JOIN sucursal s 
-            ON s.empresa_id = nrv.sucursal_id
+        JOIN sucursal s
+            ON s.id = nrv.sucursal_id
 
-        JOIN empresa e 
+        JOIN empresa e
             ON e.id = nrv.empresa_id
 
-        LEFT JOIN ventas_cab v 
+        LEFT JOIN ventas_cab v
             ON v.id = nrv.ventas_cab_id
 
-        JOIN users u 
-            ON u.id = nrv.user_id
+        JOIN funcionario f ON f.id = nrv.funcionario_id
 
         ORDER BY nrv.id DESC
     ");
@@ -75,7 +73,7 @@ public function store(Request $r)
         'clientes_id'   => 'required|integer',
         'ventas_cab_id' => 'required|integer',
 
-        'user_id'     => 'required|integer',
+        'funcionario_id' => 'nullable',
         'empresa_id'  => 'required|integer',
         'sucursal_id' => 'required|integer',
     ]);
@@ -87,6 +85,7 @@ public function store(Request $r)
         // ===============================
         // 🔹 CABECERA NOTA REMISIÓN
         // ===============================
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $notaRemision = NotaRemiVent::create($datosValidados);
         $notaRemision->save();
 
@@ -158,7 +157,6 @@ public function update(Request $r, $id)
         'nota_remi_vent_observaciones' => 'required|string',
         'clientes_id'                 => 'required|integer',
         'ventas_cab_id'               => 'required|integer',
-        'user_id'                     => 'required|integer',
         'empresa_id'                  => 'required|integer',
         'sucursal_id'                 => 'required|integer'
     ]);

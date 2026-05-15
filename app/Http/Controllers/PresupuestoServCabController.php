@@ -51,7 +51,7 @@ class PresupuestoServCabController extends Controller
             'DIAGNOSTICO NRO: ' || TO_CHAR(dg.id, '0000000') AS diagnostico,
 
             -- Usuario encargado
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
 
             -- Tipo de Vehículo
             tv.id AS tipo_vehiculo_id,
@@ -85,9 +85,9 @@ class PresupuestoServCabController extends Controller
             COALESCE(tp.tipo_prom_valor, 0) AS tipo_prom_valor
 
         FROM presupuesto_serv_cab psc
-        JOIN users u             ON u.id = psc.user_id 
+        JOIN funcionario f       ON f.id = psc.funcionario_id
         JOIN empresa e           ON e.id = psc.empresa_id
-        JOIN sucursal s          ON s.empresa_id = psc.sucursal_id
+        JOIN sucursal s          ON s.id = psc.sucursal_id
         JOIN diagnostico_cab dg  ON dg.id = psc.diagnostico_cab_id
         JOIN clientes c          ON c.id = dg.clientes_id
         JOIN tipo_diagnostico td2 ON td2.id = dg.tipo_diagnostico_id
@@ -117,7 +117,7 @@ public function store(Request $r){
             'pres_serv_cab_fecha'=>'required',
             'pres_serv_cab_fecha_vence'=>'required',
             'pres_serv_cab_estado'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required',
             'diagnostico_cab_id'=>'required',
@@ -127,6 +127,7 @@ public function store(Request $r){
             'descuentos_cab_id'=>'nullable|integer',
             'clientes_id'=>'required'
         ]);
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $presupuestoservcab = PresupuestoServCab::create($datosValidados);
         $presupuestoservcab->save();
 
@@ -182,7 +183,7 @@ public function store(Request $r){
             'pres_serv_cab_fecha'=>'required',
             'pres_serv_cab_fecha_vence'=>'required',
             'pres_serv_cab_estado'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required',
             'diagnostico_cab_id'=>'required',
@@ -215,7 +216,7 @@ public function store(Request $r){
             'pres_serv_cab_fecha' => 'required',
             'pres_serv_cab_fecha_vence' => 'required',
             'pres_serv_cab_estado' => 'required',
-            'user_id' => 'required',
+            'funcionario_id' => 'nullable',
             'empresa_id' => 'required',
             'sucursal_id' => 'required',
             'diagnostico_cab_id' => 'required',
@@ -232,6 +233,13 @@ public function store(Request $r){
             'pres_serv_cab_estado' => 'ANULADO',
             'updated_at' => now(),
         ]);
+
+        // Revertir DiagnosticoCab a CONFIRMADO
+        $diagnostico = DiagnosticoCab::find($presupuestoservcab->diagnostico_cab_id);
+        if ($diagnostico) {
+            $diagnostico->diag_cab_estado = 'CONFIRMADO';
+            $diagnostico->save();
+        }
 
         return response()->json([
             'mensaje' => 'Presupuesto anulado con éxito',
@@ -252,7 +260,7 @@ public function store(Request $r){
             'pres_serv_cab_fecha'=>'required',
             'pres_serv_cab_fecha_vence'=>'required',
             'pres_serv_cab_estado'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required',
             'diagnostico_cab_id'=>'required',
@@ -278,9 +286,8 @@ public function store(Request $r){
             psc.pres_serv_cab_fecha,
             psc.pres_serv_cab_fecha_vence,
             psc.pres_serv_cab_estado,
-            psc.user_id,
-            u.name AS encargado,
-            u.login,
+            psc.funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
 
             -- 🧾 Cliente
             c.id AS clientes_id,
@@ -328,9 +335,9 @@ public function store(Request $r){
 
         FROM 
             presupuesto_serv_cab psc
-        JOIN users u ON u.id = psc.user_id
+        JOIN funcionario f ON f.id = psc.funcionario_id
         JOIN empresa e ON e.id = psc.empresa_id
-        JOIN sucursal s ON s.empresa_id = psc.sucursal_id
+        JOIN sucursal s ON s.id = psc.sucursal_id
         JOIN diagnostico_cab dg ON dg.id = psc.diagnostico_cab_id
         JOIN clientes c ON c.id = psc.clientes_id
         JOIN tipo_diagnostico td ON td.id = dg.tipo_diagnostico_id
@@ -340,8 +347,8 @@ public function store(Request $r){
 
         WHERE 
             psc.pres_serv_cab_estado = 'CONFIRMADO'
-        AND psc.user_id = {$r->user_id}
-        AND u.name ILIKE '%{$r->name}%'
+        AND psc.funcionario_id = {$r->funcionario_id}
+        AND (f.fun_nom || ' ' || f.fun_apellido) ILIKE '%{$r->name}%'
 
         ORDER BY psc.id DESC
     ");
@@ -404,7 +411,7 @@ public function readById($id)
 
         -- Relaciones obligatorias
         JOIN empresa e   ON e.id = psc.empresa_id
-        JOIN sucursal s  ON s.empresa_id = psc.sucursal_id
+        JOIN sucursal s  ON s.id = psc.sucursal_id
         JOIN clientes c  ON c.id = psc.clientes_id
 
         -- Relaciones opcionales

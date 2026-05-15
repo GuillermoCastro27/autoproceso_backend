@@ -4,10 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\CompositeKeyAuditable;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class VentasDet extends Model
+class VentasDet extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait, CompositeKeyAuditable {
+        CompositeKeyAuditable::transformAudit insteadof AuditableTrait;
+    }
+    protected array $auditKeyColumns = ['ventas_cab_id', 'item_id'];
 
     protected $table = 'ventas_det';
 
@@ -19,7 +26,8 @@ class VentasDet extends Model
         'item_id',
         'vent_det_cantidad',
         'vent_det_precio',
-        'tipo_impuesto_id'
+        'tipo_impuesto_id',
+        'deposito_id',
     ];
 
     /*

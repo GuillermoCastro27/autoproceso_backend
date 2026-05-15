@@ -32,18 +32,17 @@ class ReclamoCliCabController extends Controller
             c.cli_telefono,
             c.cli_correo,
 
-            rcc.user_id,
-            u.name AS encargado,
-            u.login,
+            rcc.funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
 
             rcc.created_at,
             rcc.updated_at
 
         FROM reclamo_cli_cab rcc
-        JOIN sucursal s ON s.empresa_id = rcc.sucursal_id
+        JOIN sucursal s ON s.id = rcc.sucursal_id
         JOIN empresa e ON e.id = rcc.empresa_id
         JOIN clientes c ON c.id = rcc.clientes_id
-        JOIN users u ON u.id = rcc.user_id
+        JOIN funcionario f ON f.id = rcc.funcionario_id
         ORDER BY rcc.id DESC");
     }
     public function store(Request $r){
@@ -55,10 +54,11 @@ class ReclamoCliCabController extends Controller
             'rec_cli_cab_prioridad'=>'required',
             'rec_cli_cab_estado'=>'required',
             'clientes_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $reclamoclicab = ReclamoCliCab::create($datosValidados);
         $reclamoclicab->save();
         return response()->json([
@@ -83,7 +83,6 @@ class ReclamoCliCabController extends Controller
             'rec_cli_cab_prioridad'=>'required',
             'rec_cli_cab_estado'=>'required',
             'clientes_id'=>'required',
-            'user_id'=>'required',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);

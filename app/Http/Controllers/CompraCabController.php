@@ -33,20 +33,20 @@ class CompraCabController extends Controller
             p.prov_correo,
             e.emp_razon_social,
             s.suc_razon_social,
-            u.name AS encargado,
-            COALESCE('ORDEN DE COMPRA NRO: ' || to_char(occ.id, '0000000'), 'SIN ORDEN DE COMPRA') || 
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+            COALESCE('ORDEN DE COMPRA NRO: ' || to_char(occ.id, '0000000'), 'SIN ORDEN DE COMPRA') ||
             COALESCE(' VENCE EL: ' || to_char(occ.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') AS ordencompra
-        FROM 
+        FROM
             compra_cab c
-        JOIN 
+        JOIN
             proveedores p ON p.id = c.proveedor_id
-        JOIN 
+        JOIN
             empresa e ON e.id = c.empresa_id
-        JOIN 
-            sucursal s ON s.empresa_id = c.sucursal_id
-        JOIN 
-            users u ON u.id = c.user_id
-        LEFT JOIN 
+        JOIN
+            sucursal s ON s.id = c.sucursal_id
+        JOIN
+            funcionario f ON f.id = c.funcionario_id
+        LEFT JOIN
             orden_compra_cab occ ON occ.id = c.orden_compra_cab_id;
         ");
     }    
@@ -64,17 +64,19 @@ class CompraCabController extends Controller
         // Validación de datos
         $datosValidados = $r->validate([
             'comp_intervalo_fecha_vence' => 'nullable|date',
-            'comp_fecha' => 'nullable|date',
-            'comp_estado' => 'required',
-            'comp_cant_cuota' => 'nullable|integer',
-            'condicion_pago' => 'required',
-            'user_id' => 'required',
-            'orden_compra_cab_id'=>'required',
-            'proveedor_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
+            'comp_fecha'                 => 'nullable|date',
+            'comp_estado'                => 'required',
+            'comp_cant_cuota'            => 'nullable|integer',
+            'condicion_pago'             => 'required',
+            'comp_timbrado'              => 'nullable|string|max:20',
+            'funcionario_id'             => 'nullable',
+            'orden_compra_cab_id'        => 'required',
+            'proveedor_id'               => 'required',
+            'empresa_id'                 => 'required',
+            'sucursal_id'                => 'required'
         ]);
-    
+
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         // Crear la cabecera de la compra
         $compracab = CompraCab::create($datosValidados);
     
@@ -92,11 +94,12 @@ class CompraCabController extends Controller
             // Insertar los detalles en la tabla compra_det
             foreach ($detalles as $detalle) {
                 CompraDet::create([
-                    'compra_cab_id' => $compracab->id,
-                    'item_id' => $detalle->item_id,
-                    'comp_det_cantidad' => $detalle->orden_compra_det_cantidad,
-                    'comp_det_costo' => $detalle->orden_compra_det_costo,
+                    'compra_cab_id'    => $compracab->id,
+                    'item_id'          => $detalle->item_id,
+                    'comp_det_cantidad'=> $detalle->orden_compra_det_cantidad,
+                    'comp_det_costo'   => $detalle->orden_compra_det_costo,
                     'tipo_impuesto_id' => $detalle->tipo_impuesto_id,
+                    'deposito_id'      => $detalle->deposito_id,
                 ]);
             }
         }
@@ -120,16 +123,16 @@ class CompraCabController extends Controller
         $r->merge(['comp_intervalo_fecha_vence' => null, 'comp_cant_cuota' => null]);
     }
         $datosValidados = $r->validate([
-            'comp_intervalo_fecha_vence'=>'nullable|date',
-            'comp_fecha'=>'nullable|date',
-            'comp_estado'=>'required',
-            'comp_cant_cuota'=>'nullable|integer',
-            'condicion_pago'=>'required',
-            'user_id'=>'required',
-            'orden_compra_cab_id'=>'required',
-            'proveedor_id'=>'required',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required'
+            'comp_intervalo_fecha_vence' => 'nullable|date',
+            'comp_fecha'                 => 'nullable|date',
+            'comp_estado'                => 'required',
+            'comp_cant_cuota'            => 'nullable|integer',
+            'condicion_pago'             => 'required',
+            'comp_timbrado'              => 'nullable|string|max:20',
+            'orden_compra_cab_id'        => 'required',
+            'proveedor_id'               => 'required',
+            'empresa_id'                 => 'required',
+            'sucursal_id'                => 'required'
         ]);
         if ($r->condicion_pago === 'CONTADO') {
             $datosValidados['comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
@@ -173,7 +176,7 @@ class CompraCabController extends Controller
         'comp_estado'                => 'required',
         'comp_cant_cuota'            => 'nullable|integer',
         'condicion_pago'             => 'required',
-        'user_id'                    => 'required',
+        'comp_timbrado'              => 'nullable|string|max:20',
         'orden_compra_cab_id'        => 'required',
         'proveedor_id'               => 'required',
         'empresa_id'                 => 'required',
@@ -214,33 +217,16 @@ class CompraCabController extends Controller
             ]);
         }
 
-        // Stock y Depósito
         $detallesCompra = CompraDet::where('compra_cab_id', $compracab->id)->get();
         foreach ($detallesCompra as $detalle) {
-            $cantidadAnular = $detalle->comp_det_cantidad;
-            $stock = Stock::where('item_id', $detalle->item_id)->first();
+            if (!$detalle->deposito_id) continue;
 
+            $stock = Stock::where('deposito_id', $detalle->deposito_id)
+                          ->where('item_id', $detalle->item_id)
+                          ->first();
             if ($stock) {
-                if ($stock->cantidad >= $cantidadAnular) {
-                    $stock->cantidad -= $cantidadAnular;
-                    $stock->save();
-                } else {
-                    $restante = $cantidadAnular - $stock->cantidad;
-                    $stock->cantidad = 0;
-                    $stock->save();
-
-                    $deposito = Deposito::where('item_id', $detalle->item_id)->first();
-                    if ($deposito) {
-                        $deposito->cantidad = max(0, $deposito->cantidad - $restante);
-                        $deposito->save();
-                    }
-                }
-            } else {
-                $deposito = Deposito::where('item_id', $detalle->item_id)->first();
-                if ($deposito) {
-                    $deposito->cantidad = max(0, $deposito->cantidad - $cantidadAnular);
-                    $deposito->save();
-                }
+                $stock->cantidad = max(0, $stock->cantidad - $detalle->comp_det_cantidad);
+                $stock->save();
             }
         }
 
@@ -251,13 +237,11 @@ class CompraCabController extends Controller
         $mensaje = 'Registro anulado correctamente. La compra estaba pendiente, no se generaron movimientos de Stock, Libro de Compras ni Ctas por Pagar.';
     }
 
-    // Verificar si existe la orden de compra relacionada
-    $ordencompracab = OrdenCompraCab::find($r->orden_compra_cab_id);
-    if (!$ordencompracab) {
-        return response()->json([
-            'mensaje' => 'Orden de compra no encontrada',
-            'tipo'    => 'error',
-        ], 404);
+    // Revertir Orden de Compra a CONFIRMADO
+    $ordencompracab = OrdenCompraCab::find($compracab->orden_compra_cab_id);
+    if ($ordencompracab) {
+        $ordencompracab->ord_comp_estado = 'CONFIRMADO';
+        $ordencompracab->save();
     }
 
     return response()->json([
@@ -339,15 +323,15 @@ public function confirmar(Request $r, $id) {
     // Validaciones y preparación de datos
     $datosValidados = $r->validate([
         'comp_intervalo_fecha_vence' => 'nullable|date',
-        'comp_fecha' => 'nullable|date',
-        'comp_estado' => 'required',
-        'comp_cant_cuota' => 'nullable|integer',
-        'condicion_pago' => 'required',
-        'user_id' => 'required',
-        'orden_compra_cab_id' => 'required',
-        'proveedor_id' => 'required',
-        'empresa_id' => 'required',
-        'sucursal_id' => 'required'
+        'comp_fecha'                 => 'nullable|date',
+        'comp_estado'                => 'required',
+        'comp_cant_cuota'            => 'nullable|integer',
+        'condicion_pago'             => 'required',
+        'comp_timbrado'              => 'nullable|string|max:20',
+        'orden_compra_cab_id'        => 'required',
+        'proveedor_id'               => 'required',
+        'empresa_id'                 => 'required',
+        'sucursal_id'                => 'required'
     ]);
 
     // Actualizar estado de la compra a "RECIBIDO"
@@ -359,90 +343,44 @@ public function confirmar(Request $r, $id) {
     $resultadoCalculo = $this->calcularTotal($r, $id);
     $totalConImpuesto = str_replace(',', '', $resultadoCalculo->getData()->totalConImpuesto);
 
-    // Definir estado y fecha de la siguiente cuota
-    $estado = 'Pendiente';
-    $fechaCuota = now();
+    $cuotas    = ($compracab->condicion_pago === 'CONTADO') ? 1 : max(1, (int)($compracab->comp_cant_cuota ?? 1));
+    $montoCuota = round((float)$totalConImpuesto / $cuotas, 2);
+    $fechaBase  = $compracab->comp_fecha ?? now();
 
-    if ($r->condicion_pago === 'CONTADO') {
-        $estado = 'Pagada';
-    } elseif ($r->condicion_pago === 'CREDITO' && $r->comp_intervalo_fecha_vence) {
-        $fechaCuota = now()->addDays($r->comp_intervalo_fecha_vence);
+    for ($i = 1; $i <= $cuotas; $i++) {
+        $fechaVencimiento = ($compracab->condicion_pago === 'CONTADO')
+            ? $fechaBase
+            : \Carbon\Carbon::parse($fechaBase)->addMonths($i);
+
+        CtasPagar::create([
+            'compra_cab_id'  => $compracab->id,
+            'nro_cuota'      => $i,
+            'cta_pag_monto'  => $montoCuota,
+            'cta_pag_fecha'  => $fechaVencimiento,
+            'cta_pag_cuota'  => $cuotas,
+            'cta_pag_estado' => ($compracab->condicion_pago === 'CONTADO') ? 'Pagada' : 'Pendiente',
+            'condicion_pago' => $compracab->condicion_pago,
+        ]);
     }
 
-    // Crear registro en CtasPagar
-    CtasPagar::create([
-        'compra_cab_id' => $compracab->id,
-        'cta_pag_monto' => $totalConImpuesto,
-        'cta_pag_fecha' => $fechaCuota,
-        'cta_pag_cuota' => $r->comp_cant_cuota ?? 1,
-        'cta_pag_estado' => $estado,
-        'condicion_pago' => $r->condicion_pago
-    ]);
-
-    // Obtener los detalles de compra y actualizar stock y depósito
     $detallesCompra = CompraDet::where('compra_cab_id', $compracab->id)->get();
 
     foreach ($detallesCompra as $detalle) {
-        $stock = Stock::where('item_id', $detalle->item_id)->first();
-        $cantidadNueva = $detalle->comp_det_cantidad;
+        if (!$detalle->deposito_id) continue;
+
+        $stock = Stock::where('deposito_id', $detalle->deposito_id)
+                      ->where('item_id', $detalle->item_id)
+                      ->first();
 
         if ($stock) {
-            // Calcular espacio disponible en stock
-            $espacioDisponible = 30 - $stock->cantidad;
-
-            if ($cantidadNueva <= $espacioDisponible) {
-                // Si cabe en stock, solo sumamos
-                $stock->cantidad += $cantidadNueva;
-                $stock->save();
-            } else {
-                // Si supera 30, guardar el excedente en depósito
-                $stock->cantidad = 30;
-                $stock->save();
-
-                $cantidadExcedente = $cantidadNueva - $espacioDisponible;
-                $deposito = Deposito::where('item_id', $detalle->item_id)->first();
-
-                if ($deposito) {
-                    // Si el item ya está en depósito, solo actualizamos la cantidad
-                    $deposito->cantidad += $cantidadExcedente;
-                    $deposito->save();
-                } else {
-                    // Si no existe en depósito, creamos el registro
-                    Deposito::create([
-                        'item_id' => $detalle->item_id,
-                        'cantidad' => $cantidadExcedente
-                    ]);
-                }
-            }
+            $stock->cantidad += $detalle->comp_det_cantidad;
+            $stock->save();
         } else {
-            // Si no hay stock registrado, se crea
-            if ($cantidadNueva <= 30) {
-                Stock::create([
-                    'item_id' => $detalle->item_id,
-                    'cantidad' => $cantidadNueva
-                ]);
-            } else {
-                // Si la cantidad supera 30, guardar en stock y el excedente en depósito
-                Stock::create([
-                    'item_id' => $detalle->item_id,
-                    'cantidad' => 30
-                ]);
-
-                $cantidadExcedente = $cantidadNueva - 30;
-                $deposito = Deposito::where('item_id', $detalle->item_id)->first();
-
-                if ($deposito) {
-                    // Si el item ya está en depósito, sumamos la cantidad
-                    $deposito->cantidad += $cantidadExcedente;
-                    $deposito->save();
-                } else {
-                    // Si no existe en depósito, lo creamos
-                    Deposito::create([
-                        'item_id' => $detalle->item_id,
-                        'cantidad' => $cantidadExcedente
-                    ]);
-                }
-            }
+            Stock::create([
+                'deposito_id' => $detalle->deposito_id,
+                'item_id'     => $detalle->item_id,
+                'cantidad'    => $detalle->comp_det_cantidad,
+            ]);
         }
     }
 
@@ -489,11 +427,11 @@ public function confirmar(Request $r, $id) {
 }
 public function buscar(Request $r)
 {
-    $userId = $r->input('user_id'); // Obtener el valor desde la request
-    $userName = $r->input('name');  // Obtener el valor del nombre
+    $funcId   = $r->input('funcionario_id');
+    $funcName = $r->input('name');
 
     return DB::select("
-        SELECT 
+        SELECT
             cc.id AS compra_cab_id,
             TO_CHAR(cc.comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS comp_fecha,
             COALESCE(to_char(cc.comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') AS comp_intervalo_fecha_vence,
@@ -504,11 +442,10 @@ public function buscar(Request $r)
             s.suc_razon_social AS suc_razon_social,
             cc.empresa_id,
             e.emp_razon_social AS emp_razon_social,
-            cc.user_id,
+            cc.funcionario_id,
             cc.created_at,
             cc.updated_at,
-            u.name,
-            u.email,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
             cc.proveedor_id,
             prov.prov_razonsocial,
             prov.prov_ruc,
@@ -517,24 +454,24 @@ public function buscar(Request $r)
             'COMPRA NRO: ' || TO_CHAR(cc.id, '0000000') || ' VENCE EL: ' || TO_CHAR(cc.comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS compra,
             COALESCE(to_char(cc.comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') as nota_comp_intervalo_fecha_vence,
             COALESCE(cc.comp_cant_cuota::varchar, '0') as nota_comp_cantidad_cuota,
-            cc.condicion_pago
-        FROM 
+            COALESCE(cc.comp_timbrado, '') AS comp_timbrado
+        FROM
             compra_cab cc
-        JOIN 
-            users u ON u.id = cc.user_id
-        JOIN 
-            sucursal s ON s.empresa_id = cc.sucursal_id
-        JOIN 
+        JOIN
+            funcionario f ON f.id = cc.funcionario_id
+        JOIN
+            sucursal s ON s.id = cc.sucursal_id
+        JOIN
             empresa e ON e.id = cc.empresa_id
-        JOIN 
+        JOIN
             proveedores prov ON prov.id = cc.proveedor_id
-        WHERE 
+        WHERE
             cc.comp_estado = 'RECIBIDO'
-        AND 
-            cc.user_id = ?
-        AND 
-            u.name ILIKE ?
-    ", [$userId, '%' . $userName . '%']);
+        AND
+            cc.funcionario_id = ?
+        AND
+            (f.fun_nom || ' ' || f.fun_apellido) ILIKE ?
+    ", [$funcId, '%' . $funcName . '%']);
 }
 public function buscarInforme(Request $r)
 {
@@ -553,20 +490,20 @@ public function buscarInforme(Request $r)
             cc.comp_estado AS estado,
             cc.condicion_pago,
             COALESCE(cc.comp_cant_cuota::varchar, '0') AS cuotas,
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
             s.suc_razon_social AS sucursal,
             e.emp_razon_social AS empresa,
             prov.prov_razonsocial AS proveedor,
             prov.prov_ruc AS ruc,
-            'ORDEN DE COMPRA NRO: ' || TO_CHAR(occ.id, '0000000') || 
-            CASE 
-                WHEN occ.ord_comp_intervalo_fecha_vence IS NOT NULL 
-                THEN ' VENCE EL: ' || TO_CHAR(occ.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS') 
-                ELSE ' N/A' 
+            'ORDEN DE COMPRA NRO: ' || TO_CHAR(occ.id, '0000000') ||
+            CASE
+                WHEN occ.ord_comp_intervalo_fecha_vence IS NOT NULL
+                THEN ' VENCE EL: ' || TO_CHAR(occ.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS')
+                ELSE ' N/A'
             END AS ordencompra
         FROM compra_cab cc
-        JOIN users u ON u.id = cc.user_id
-        JOIN sucursal s ON s.empresa_id = cc.sucursal_id
+        JOIN funcionario f ON f.id = cc.funcionario_id
+        JOIN sucursal s ON s.id = cc.sucursal_id
         JOIN empresa e ON e.id = cc.empresa_id
         LEFT JOIN orden_compra_cab occ ON occ.id = cc.orden_compra_cab_id
         LEFT JOIN presupuestos p ON p.id = occ.presupuesto_id

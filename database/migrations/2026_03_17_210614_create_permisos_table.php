@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('diagnostico_cab', function (Blueprint $table) {
-            $table->unsignedBigInteger('tipo_servicio_id')->nullable();
-            $table->foreign('tipo_servicio_id')->references('id')->on('tipo_servicio');
+        Schema::create('permisos', function (Blueprint $table) {
+            $table->id();
+            $table->string("per_nombre",100);
+            $table->string("per_descripcion",10);
+            $table->timestamps();
         });
     }
 
@@ -22,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('diagnostico_cab', function (Blueprint $table) {
-            //
-        });
+        Schema::dropIfExists('permisos');
     }
 };

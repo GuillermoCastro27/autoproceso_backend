@@ -67,11 +67,11 @@ class DiagnosticoCabController extends Controller
             'RECEPCION NRO: ' || to_char(rc.id, '0000000') AS recepcion,
 
             -- Encargado
-            u.name AS encargado
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario
 
-        FROM diagnostico_cab dc 
-        JOIN users u ON u.id = dc.user_id
-        JOIN sucursal s ON s.empresa_id = dc.sucursal_id
+        FROM diagnostico_cab dc
+        JOIN funcionario f ON f.id = dc.funcionario_id
+        JOIN sucursal s ON s.id = dc.sucursal_id
         JOIN empresa e ON e.id = dc.empresa_id
 
         JOIN recep_cab rc ON rc.id = dc.recep_cab_id
@@ -103,10 +103,11 @@ public function store(Request $r){
             'tipo_diagnostico_id'=>'required',
             'tipo_vehiculo_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $diagnosticocab = DiagnosticoCab::create($datosValidados);
         $diagnosticocab->save();
 
@@ -170,7 +171,7 @@ public function store(Request $r){
             'tipo_diagnostico_id'=>'required',
             'tipo_vehiculo_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -201,11 +202,19 @@ public function store(Request $r){
             'tipo_diagnostico_id'=>'required',
             'tipo_vehiculo_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
         $diagnosticocab->update($datosValidados);
+
+        // Revertir RecepcionCab a CONFIRMADO
+        $recepcion = RecepcionCab::find($diagnosticocab->recep_cab_id);
+        if ($recepcion) {
+            $recepcion->recep_cab_estado = 'CONFIRMADO';
+            $recepcion->save();
+        }
+
         return response()->json([
             'mensaje'=>'Registro anulado con exito',
             'tipo'=>'success',
@@ -232,7 +241,7 @@ public function store(Request $r){
             'tipo_diagnostico_id'=>'required',
             'tipo_vehiculo_id'=>'required',
             'tipo_servicio_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -246,7 +255,7 @@ public function store(Request $r){
     public function buscar(Request $r)
 {
     $texto  = $r->input('texto');
-    $userId = $r->input('user_id');
+    $funcId = $r->input('funcionario_id');
 
     return DB::select("
         SELECT 
@@ -282,8 +291,8 @@ public function store(Request $r){
             s.suc_razon_social,
 
             -- Encargado
-            u.id AS user_id,
-            u.name AS encargado,
+            f.id AS funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
 
             tv.id AS tipo_vehiculo_id,
             tv.tip_veh_nombre,
@@ -300,9 +309,9 @@ public function store(Request $r){
             ' (' || td.tipo_diag_nombre || ')' AS diagnostico
 
         FROM diagnostico_cab dc
-        JOIN users u        ON u.id = dc.user_id
+        JOIN funcionario f  ON f.id = dc.funcionario_id
         JOIN empresa e      ON e.id = dc.empresa_id
-        JOIN sucursal s     ON s.empresa_id = dc.sucursal_id
+        JOIN sucursal s     ON s.id = dc.sucursal_id
         JOIN clientes c     ON c.id = dc.clientes_id
 
         LEFT JOIN tipo_diagnostico td ON td.id = dc.tipo_diagnostico_id
@@ -317,7 +326,7 @@ public function store(Request $r){
 
         WHERE 
             dc.diag_cab_estado IN ('CONFIRMADO')
-            AND u.id = {$userId}
+            AND dc.funcionario_id = {$funcId}
             AND (
                 c.cli_nombre ILIKE '%{$texto}%'
                 OR c.cli_apellido ILIKE '%{$texto}%'

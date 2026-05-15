@@ -76,7 +76,7 @@ class CobrosCabController extends Controller
             -- =========================
             -- Usuario
             -- =========================
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
 
             -- =========================
             -- Caja (DESDE APERTURA)
@@ -102,8 +102,8 @@ class CobrosCabController extends Controller
         JOIN forma_cobro fc ON fc.id = cc.forma_cobro_id
         JOIN clientes cli   ON cli.id = cc.clientes_id
         JOIN empresa e      ON e.id  = cc.empresa_id
-        JOIN sucursal s     ON s.empresa_id  = cc.sucursal_id
-        JOIN users u        ON u.id  = cc.user_id
+        JOIN sucursal s     ON s.id  = cc.sucursal_id
+        JOIN funcionario f  ON f.id = cc.funcionario_id
 
         JOIN apertura_cierre_caja ac ON ac.id = cc.apertura_cierre_caja_id
         JOIN caja ca                ON ca.id = ac.caja_id
@@ -124,7 +124,6 @@ public function store(Request $r)
         'cobro_fecha' => 'required|date',
         'forma_cobro_id' => 'required|integer|exists:forma_cobro,id',
         'clientes_id' => 'required|integer|exists:clientes,id',
-        'user_id' => 'required|integer|exists:users,id',
         'cobro_importe' => 'required|numeric|min:0.01',
         'apertura_cierre_caja_id' => 'required|integer|exists:apertura_cierre_caja,id',
 
@@ -231,7 +230,7 @@ public function store(Request $r)
             'forma_cobro_id' => $r->forma_cobro_id,
             'clientes_id' => $r->clientes_id,
             'ventas_cab_id' => $ventaId,
-            'user_id' => $r->user_id,
+            'funcionario_id' => auth()->user()->funcionario_id,
 
             'caja_id' => $acc->caja_id,
             'empresa_id' => $acc->empresa_id,

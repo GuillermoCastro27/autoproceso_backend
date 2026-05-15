@@ -19,13 +19,13 @@ class ArqueoCajaController extends Controller
 
         // 🔗 Empresa y Sucursal (DESDE apertura)
         ->join('empresa as e', 'e.id', '=', 'acc.empresa_id')
-        ->join('sucursal as s', 's.empresa_id', '=', 'acc.sucursal_id')
+        ->join('sucursal as s', 's.id', '=', 'acc.sucursal_id')
 
         // 🔗 Caja
         ->join('caja as c', 'c.id', '=', 'acc.caja_id')
 
-        // 🔗 Usuario que genera el arqueo
-        ->join('users as u', 'u.id', '=', 'a.user_id')
+        // 🔗 Funcionario que genera el arqueo
+        ->join('funcionario as f2', 'f2.id', '=', 'a.funcionario_id')
 
         // 🔗 Cobros confirmados de esa apertura
         ->leftJoin('cobros_cab as cc', function ($join) {
@@ -64,7 +64,7 @@ class ArqueoCajaController extends Controller
             'e.emp_razon_social as emp_razon_social',
             's.suc_razon_social as suc_razon_social',
             'c.caja_descripcion as caja_descripcion',
-            'u.name as usuario'
+            DB::raw("f2.fun_nom || ' ' || f2.fun_apellido as usuario")
         )
 
         ->groupBy(
@@ -75,7 +75,8 @@ class ArqueoCajaController extends Controller
             'e.emp_razon_social',
             's.suc_razon_social',
             'c.caja_descripcion',
-            'u.name'
+            'f2.fun_nom',
+            'f2.fun_apellido'
         )
 
         ->orderBy('a.id', 'desc')
@@ -87,7 +88,6 @@ class ArqueoCajaController extends Controller
     $r->validate([
         'arqueo_fecha'            => 'required|date',
         'apertura_cierre_caja_id' => 'required|exists:apertura_cierre_caja,id',
-        'user_id'                 => 'required|exists:users,id',
         'tipo_arqueo'             => 'required|in:EFECTIVO,CHEQUE,TARJETA,TOTAL'
     ]);
 
@@ -118,7 +118,7 @@ class ArqueoCajaController extends Controller
         $arqueo = ArqueoCaja::create([
             'arqueo_fecha'            => $r->arqueo_fecha,
             'apertura_cierre_caja_id' => $r->apertura_cierre_caja_id,
-            'user_id'                 => $r->user_id,
+            'funcionario_id'          => auth()->user()->funcionario_id,
             'tipo_arqueo'             => $r->tipo_arqueo,
             'estado'                  => 'PENDIENTE'
         ]);

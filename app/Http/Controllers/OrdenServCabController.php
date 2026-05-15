@@ -70,12 +70,12 @@ class OrdenServCabController extends Controller
             s.suc_razon_social,
 
             -- Encargado
-            u.name AS encargado
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario
 
         FROM orden_serv_cab osc
-        JOIN users u              ON u.id = osc.user_id
+        JOIN funcionario f        ON f.id = osc.funcionario_id
         JOIN empresa e            ON e.id = osc.empresa_id
-        JOIN sucursal s           ON s.empresa_id = osc.sucursal_id
+        JOIN sucursal s           ON s.id = osc.sucursal_id
         
         -- Relaciones directas ahora sí existen
         JOIN clientes c           ON c.id = osc.clientes_id
@@ -101,7 +101,7 @@ public function store(Request $r)
         'ord_serv_fecha' => 'required',
         'ord_serv_estado' => 'required',
         'ord_serv_tipo' => 'required',
-        'user_id' => 'required',
+        'funcionario_id' => 'nullable',
         'presupuesto_serv_cab_id' => 'required',
         'clientes_id' => 'required',
         'empresa_id' => 'required',
@@ -112,6 +112,7 @@ public function store(Request $r)
         'equipo_trabajo_id' => 'required'
     ]);
 
+    $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
     // Crear la Orden de Servicio
     $ordenservcab = OrdenServCab::create($datosValidados);
 
@@ -177,7 +178,7 @@ public function update(Request $r, $id)
         'ord_serv_fecha' => 'required',
         'ord_serv_estado' => 'required',
         'ord_serv_tipo' => 'required',
-        'user_id' => 'required',
+        'funcionario_id' => 'nullable',
         'presupuesto_serv_cab_id' => 'required',
         'clientes_id' => 'required',
         'empresa_id' => 'required',
@@ -213,7 +214,7 @@ public function update(Request $r, $id)
         'ord_serv_fecha' => 'required',
         'ord_serv_estado' => 'required',
         'ord_serv_tipo' => 'required',
-        'user_id' => 'required',
+        'funcionario_id' => 'nullable',
         'presupuesto_serv_cab_id' => 'required',
         'clientes_id' => 'required',
         'empresa_id' => 'required',
@@ -225,6 +226,13 @@ public function update(Request $r, $id)
     ]);
 
     $ordenservcab->update($datosValidados);
+
+    // Revertir PresupuestoServCab a CONFIRMADO
+    $presupuestoServ = PresupuestoServCab::find($ordenservcab->presupuesto_serv_cab_id);
+    if ($presupuestoServ) {
+        $presupuestoServ->pres_serv_cab_estado = 'CONFIRMADO';
+        $presupuestoServ->save();
+    }
 
     return response()->json([
         'mensaje' => 'Orden de servicio anulada con éxito',
@@ -249,7 +257,7 @@ public function update(Request $r, $id)
         'ord_serv_fecha' => 'required',
         'ord_serv_estado' => 'required',
         'ord_serv_tipo' => 'required',
-        'user_id' => 'required',
+        'funcionario_id' => 'nullable',
         'presupuesto_serv_cab_id' => 'required',
         'clientes_id' => 'required',
         'empresa_id' => 'required',
@@ -276,9 +284,8 @@ public function update(Request $r, $id)
             rc.recep_cab_prioridad,
             rc.recep_cab_kilometraje,
             rc.recep_cab_nivel_combustible,
-            rc.user_id,
-            u.name AS encargado,
-            u.login,
+            rc.funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
             rc.created_at,
             rc.updated_at,
 
@@ -307,13 +314,13 @@ public function update(Request $r, $id)
 
         FROM 
             recep_cab rc 
-        JOIN users u ON u.id = rc.user_id
+        JOIN funcionario f ON f.id = rc.funcionario_id
         JOIN clientes c ON c.id = rc.clientes_id
         JOIN tipo_servicio ts ON ts.id = rc.tipo_servicio_id
-        JOIN sucursal s ON s.empresa_id = rc.sucursal_id
+        JOIN sucursal s ON s.id = rc.sucursal_id
         JOIN empresa e ON e.id = rc.empresa_id
         WHERE 
             rc.recep_cab_estado = 'CONFIRMADO'
-    and rc.user_id = {$r->user_id} and u.name ilike'%{$r->name}%'");
+    and rc.funcionario_id = {$r->funcionario_id} and (f.fun_nom || ' ' || f.fun_apellido) ilike'%{$r->name}%'");
     }
 }

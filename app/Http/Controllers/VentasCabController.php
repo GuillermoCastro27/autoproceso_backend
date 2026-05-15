@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\VentasCab;
 use App\Models\VentasDet;
 use App\Models\PedidoVentas;
+use App\Models\OrdenServCab;
+use App\Models\OrdenServVenta;
 use App\Models\Clientes;
 use App\Models\LibroVentas;
 use App\Models\CtasCobrar;
@@ -45,7 +47,7 @@ class VentasCabController extends Controller
             s.suc_razon_social,
 
             -- Usuario
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
 
             -- Pedido de venta
             COALESCE(
@@ -55,19 +57,19 @@ class VentasCabController extends Controller
 
         FROM ventas_cab v
 
-        JOIN clientes c 
+        JOIN clientes c
             ON c.id = v.clientes_id
 
-        JOIN empresa e 
+        JOIN empresa e
             ON e.id = v.empresa_id
 
-        JOIN sucursal s 
-            ON s.empresa_id = v.sucursal_id
+        JOIN sucursal s
+            ON s.id = v.sucursal_id
 
-        JOIN users u 
-            ON u.id = v.user_id
+        JOIN funcionario f
+            ON f.id = v.funcionario_id
 
-        LEFT JOIN pedidos_ventas pv 
+        LEFT JOIN pedidos_ventas pv
             ON pv.id = v.pedidos_ventas_id
     ");
 }
@@ -93,18 +95,27 @@ public function store(Request $r)
         'vent_estado' => 'required',
         'vent_cant_cuota' => 'nullable|integer',
         'condicion_pago' => 'required',
-        'user_id' => 'required',
-        'pedidos_ventas_id' => 'required',
+        'funcionario_id' => 'nullable',
+        'pedidos_ventas_id' => 'nullable|integer',
+        'orden_serv_cab_id' => 'nullable|integer|exists:orden_serv_cab,id',
+        'contrato_serv_cab_id' => 'nullable|integer|exists:contrato_serv_cab,id',
         'clientes_id' => 'required',
         'empresa_id' => 'required',
         'sucursal_id' => 'required'
     ]);
 
+    $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
+
+    // Extraer campos que no van en ventas_cab antes de crear
+    $ordenServCabId    = $r->orden_serv_cab_id ?: null;
+    $contratoServCabId = $r->contrato_serv_cab_id ?: null;
+    unset($datosValidados['orden_serv_cab_id'], $datosValidados['contrato_serv_cab_id']);
+
     // Crear cabecera de venta
     $ventacab = VentasCab::create($datosValidados);
 
-    // Buscar pedido de venta (OJO: tu modelo se llama PedidoVentas, no PedidoVentas)
-    $pedidoVenta = PedidoVentas::find($r->pedidos_ventas_id);
+    // Buscar pedido de venta (solo si se proporcionó)
+    $pedidoVenta = $r->pedidos_ventas_id ? PedidoVentas::find($r->pedidos_ventas_id) : null;
 
     if ($pedidoVenta) {
 
@@ -131,11 +142,36 @@ public function store(Request $r)
             VentasDet::create([
                 'ventas_cab_id'     => $ventacab->id,
                 'item_id'           => $detalle->item_id,
-                'vent_det_cantidad' => $detalle->det_cantidad,  // <-- AJUSTÁ si tu columna tiene otro nombre
-                'vent_det_precio'   => $item->item_precio,      // <-- PRECIO desde ITEMS
-                'tipo_impuesto_id'  => $item->tipo_impuesto_id  // <-- IVA desde ITEMS
+                'vent_det_cantidad' => $detalle->det_cantidad,
+                'vent_det_precio'   => $item->item_precio,
+                'tipo_impuesto_id'  => $item->tipo_impuesto_id,
+                'deposito_id'       => $detalle->deposito_id ?? null,
             ]);
         }
+    }
+
+    // Si viene de una orden de servicio: copiar detalles y crear vínculo
+    if ($ordenServCabId) {
+        $detallesOrden = DB::table('orden_serv_det')
+            ->where('orden_serv_cab_id', $ordenServCabId)
+            ->get();
+
+        foreach ($detallesOrden as $det) {
+            VentasDet::create([
+                'ventas_cab_id'     => $ventacab->id,
+                'item_id'           => $det->item_id,
+                'vent_det_cantidad' => $det->orden_serv_det_cantidad,
+                'vent_det_precio'   => $det->orden_serv_det_costo,
+                'tipo_impuesto_id'  => $det->tipo_impuesto_id,
+                'deposito_id'       => null,
+            ]);
+        }
+
+        OrdenServVenta::create([
+            'ventas_cab_id'        => $ventacab->id,
+            'orden_serv_cab_id'    => $ordenServCabId,
+            'contrato_serv_cab_id' => $contratoServCabId,
+        ]);
     }
 
     return response()->json([
@@ -177,8 +213,7 @@ public function update(Request $r, $id)
         'vent_estado' => 'required',
         'vent_cant_cuota' => 'nullable|integer',
         'condicion_pago' => 'required',
-        'user_id' => 'required',
-        'pedidos_ventas_id' => 'required',
+        'pedidos_ventas_id' => 'nullable|integer',
         'clientes_id' => 'required',
         'empresa_id' => 'required',
         'sucursal_id' => 'required'
@@ -242,30 +277,30 @@ public function anular(Request $r, $id)
         $detallesVenta = VentasDet::where('ventas_cab_id', $ventacab->id)->get();
 
         foreach ($detallesVenta as $detalle) {
+            if (!$detalle->deposito_id) continue;
 
-            $cantidad = $detalle->vent_det_cantidad;
-
-            // Primero devolver a stock
-            $stock = Stock::where('item_id', $detalle->item_id)->first();
-
+            $stock = Stock::where('deposito_id', $detalle->deposito_id)
+                          ->where('item_id', $detalle->item_id)
+                          ->first();
             if ($stock) {
-                $stock->cantidad += $cantidad;
+                $stock->cantidad += $detalle->vent_det_cantidad;
                 $stock->save();
-            } else {
-                // Si no existía stock, creamos
-                Stock::create([
-                    'item_id'  => $detalle->item_id,
-                    'cantidad' => $cantidad
-                ]);
             }
-
-            // Si manejás depósito, podés ajustar aquí si corresponde
         }
 
         $mensaje = 'Venta anulada. Libro de Ventas, Ctas a Cobrar y Stock actualizados.';
 
     } else {
         $mensaje = 'Venta anulada correctamente. No se generaron movimientos contables ni de stock.';
+    }
+
+    // Revertir PedidoVentas a CONFIRMADO
+    if ($ventacab->pedidos_ventas_id) {
+        $pedidoVentas = PedidoVentas::find($ventacab->pedidos_ventas_id);
+        if ($pedidoVentas) {
+            $pedidoVentas->ped_ven_estado = 'CONFIRMADO';
+            $pedidoVentas->save();
+        }
     }
 
     return response()->json([
@@ -307,7 +342,6 @@ public function confirmar(Request $r, $id)
         'vent_estado' => 'required',
         'vent_cant_cuota' => 'nullable|integer',
         'condicion_pago' => 'required',
-        'user_id' => 'required',
         'clientes_id' => 'required',
         'empresa_id' => 'required',
         'sucursal_id' => 'required'
@@ -384,31 +418,14 @@ for ($i = 1; $i <= $cuotas; $i++) {
     $detallesVenta = VentasDet::where('ventas_cab_id', $ventacab->id)->get();
 
     foreach ($detallesVenta as $detalle) {
+        if (!$detalle->deposito_id) continue;
 
-        $cantidad = $detalle->vent_det_cantidad;
-        $stock = Stock::where('item_id', $detalle->item_id)->first();
-
+        $stock = Stock::where('deposito_id', $detalle->deposito_id)
+                      ->where('item_id', $detalle->item_id)
+                      ->first();
         if ($stock) {
-            if ($stock->cantidad >= $cantidad) {
-                $stock->cantidad -= $cantidad;
-                $stock->save();
-            } else {
-                $restante = $cantidad - $stock->cantidad;
-                $stock->cantidad = 0;
-                $stock->save();
-
-                $deposito = Deposito::where('item_id', $detalle->item_id)->first();
-                if ($deposito) {
-                    $deposito->cantidad = max(0, $deposito->cantidad - $restante);
-                    $deposito->save();
-                }
-            }
-        } else {
-            $deposito = Deposito::where('item_id', $detalle->item_id)->first();
-            if ($deposito) {
-                $deposito->cantidad = max(0, $deposito->cantidad - $cantidad);
-                $deposito->save();
-            }
+            $stock->cantidad = max(0, $stock->cantidad - $detalle->vent_det_cantidad);
+            $stock->save();
         }
     }
 
@@ -448,7 +465,7 @@ public function buscarVentas(Request $r)
             e.emp_razon_social,
 
             -- Sucursal
-            s.empresa_id AS sucursal_id,
+            s.id AS sucursal_id,
             s.suc_razon_social
 
         FROM ventas_cab v
@@ -460,7 +477,7 @@ public function buscarVentas(Request $r)
             ON e.id = v.empresa_id
 
         JOIN sucursal s 
-            ON s.empresa_id = v.sucursal_id
+            ON s.id = v.sucursal_id
 
         WHERE v.vent_estado = 'CONFIRMADO'
 
@@ -522,7 +539,7 @@ public function buscarVentasNota(Request $r)
             e.emp_razon_social,
 
             -- Sucursal
-            s.empresa_id AS sucursal_id,
+            s.id AS sucursal_id,
             s.suc_razon_social
 
         FROM ventas_cab v
@@ -534,7 +551,7 @@ public function buscarVentasNota(Request $r)
             ON e.id = v.empresa_id
 
         JOIN sucursal s 
-            ON s.empresa_id = v.sucursal_id
+            ON s.id = v.sucursal_id
 
         WHERE v.vent_estado = 'CONFIRMADO'
 

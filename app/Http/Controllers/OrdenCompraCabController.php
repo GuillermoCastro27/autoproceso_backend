@@ -31,13 +31,12 @@ class OrdenCompraCabController extends Controller
             e.emp_razon_social AS emp_razon_social,
             pr.id AS presupuesto_id,
             'PRESUPUESTO NRO: ' || to_char(pr.id, '0000000') || ' VENCE EL: ' || COALESCE(to_char(pr.pre_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') || ' (' || pr.pre_observaciones || ')' AS presupuesto,
-            u.name AS encargado  
-        FROM 
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario
+        FROM
             orden_compra_cab o
+        JOIN funcionario f ON f.id = o.funcionario_id
         JOIN 
-            users u ON u.id = o.user_id
-        JOIN 
-            sucursal s ON s.empresa_id = o.sucursal_id
+            sucursal s ON s.id = o.sucursal_id
         JOIN 
             empresa e ON e.id = o.empresa_id
         JOIN 
@@ -58,12 +57,12 @@ public function store(Request $r) {
     }
 
     $datosValidados = $r->validate([
-        'ord_comp_intervalo_fecha_vence' => 'nullable|date',
+        'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
         'ord_comp_fecha' => 'required|date',
         'ord_comp_estado' => 'required',
-        'ord_comp_cant_cuota' => 'nullable|integer',
-        'user_id' => 'required|integer',
-        'presupuesto_id' => 'required|integer', // Cambiado a presupuestos_id
+        'ord_comp_cant_cuota' => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
+        'funcionario_id' => 'nullable',
+        'presupuesto_id' => 'required|integer',
         'proveedor_id' => 'required|integer',
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
@@ -71,10 +70,11 @@ public function store(Request $r) {
     ]);
 
     if ($r->condicion_pago === 'CONTADO') {
-        $datosValidados['ord_comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-        $datosValidados['ord_comp_cant_cuota'] = null; // Establece null si es "CONTADO"
+        $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
+        $datosValidados['ord_comp_cant_cuota'] = null;
     }
 
+    $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
     $ordencompracab = OrdenCompraCab::create($datosValidados);
     $ordencompracab->save();
 
@@ -110,7 +110,8 @@ public function store(Request $r) {
         $ordencompradet->item_id = $ocd->item_id;
         $ordencompradet->orden_compra_det_costo = $ocd->orden_compra_det_costo;
         $ordencompradet->orden_compra_det_cantidad = $ocd->orden_compra_det_cantidad;
-        $ordencompradet->tipo_impuesto_id = $ocd->tipo_impuesto_id; 
+        $ordencompradet->tipo_impuesto_id = $ocd->tipo_impuesto_id;
+        $ordencompradet->deposito_id = $ocd->deposito_id;
         $ordencompradet->save();
     }
 
@@ -141,12 +142,11 @@ public function store(Request $r) {
     }
 
     $datosValidados = $r->validate([
-        'ord_comp_intervalo_fecha_vence' => 'nullable|date',
+        'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
         'ord_comp_fecha' => 'required|date',
         'ord_comp_estado' => 'required',
-        'ord_comp_cant_cuota' => 'nullable|integer',
-        'user_id' => 'required|integer',
-        'presupuesto_id' => 'required|integer', // Cambiado a presupuestos_id
+        'ord_comp_cant_cuota' => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
+        'presupuesto_id' => 'required|integer',
         'proveedor_id' => 'required|integer',
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
@@ -154,12 +154,12 @@ public function store(Request $r) {
     ]);
 
     if ($r->condicion_pago === 'CONTADO') {
-        $datosValidados['ord_comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-        $datosValidados['ord_comp_cant_cuota'] = null; // Establece null si es "CONTADO"
+        $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
+        $datosValidados['ord_comp_cant_cuota'] = null;
     }
 
     $ordencompracab->update($datosValidados);
-    
+
     return response()->json([
         'mensaje' => 'Registro modificado con éxito',
         'tipo' => 'success',
@@ -186,11 +186,10 @@ public function anular(Request $r, $id){
     }
 
     $datosValidados = $r->validate([
-        'ord_comp_intervalo_fecha_vence' => 'nullable|date',
+        'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
         'ord_comp_fecha' => 'required|date',
         'ord_comp_estado' => 'required',
-        'ord_comp_cant_cuota' => 'nullable|integer',
-        'user_id' => 'required|integer',
+        'ord_comp_cant_cuota' => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
         'presupuesto_id' => 'required|integer',
         'proveedor_id' => 'required|integer',
         'empresa_id' => 'required|integer',
@@ -243,12 +242,11 @@ public function confirmar(Request $r, $id) {
     }
 
     $datosValidados = $r->validate([
-        'ord_comp_intervalo_fecha_vence' => 'nullable|date',
+        'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
         'ord_comp_fecha' => 'required|date',
         'ord_comp_estado' => 'required',
-        'ord_comp_cant_cuota' => 'nullable|integer',
-        'user_id' => 'required|integer',
-        'presupuesto_id' => 'required|integer', // Cambiado a presupuestos_id
+        'ord_comp_cant_cuota' => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
+        'presupuesto_id' => 'required|integer',
         'proveedor_id' => 'required|integer',
         'empresa_id' => 'required|integer',
         'sucursal_id' => 'required|integer',
@@ -256,8 +254,8 @@ public function confirmar(Request $r, $id) {
     ]);
 
     if ($r->condicion_pago === 'CONTADO') {
-        $datosValidados['ord_comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-        $datosValidados['ord_comp_cant_cuota'] = null; // Establece null si es "CONTADO"
+        $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
+        $datosValidados['ord_comp_cant_cuota'] = null;
     }
 
     $ordencompracab->update($datosValidados);
@@ -271,11 +269,11 @@ public function confirmar(Request $r, $id) {
 }
 public function buscar(Request $r,)
 {
-    $userId = $r->input('user_id'); // Obtener el valor desde la request
-    $userName = $r->input('name');  // Obtener el valor del nombre
+    $funcId   = $r->input('funcionario_id');
+    $funcName = $r->input('name');
 
     return DB::select("
-        SELECT 
+        SELECT
             o.id AS orden_compra_cab_id,
             TO_CHAR(o.ord_comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS ord_comp_fecha,
             COALESCE(to_char(o.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') AS ord_comp_intervalo_fecha_vence,
@@ -286,11 +284,10 @@ public function buscar(Request $r,)
             s.suc_razon_social AS suc_razon_social,
             o.empresa_id,
             e.emp_razon_social AS emp_razon_social,
-            o.user_id,
+            o.funcionario_id,
             o.created_at,
             o.updated_at,
-            u.name, 
-            u.email,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
             o.proveedor_id,
             prov.prov_razonsocial,
             prov.prov_ruc,
@@ -299,23 +296,23 @@ public function buscar(Request $r,)
             'ORDEN COMPRA NRO: ' || TO_CHAR(o.id, '0000000') || ' VENCE EL: ' || TO_CHAR(o.ord_comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS ordencompra,
             COALESCE(to_char(o.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') as comp_intervalo_fecha_vence,
             COALESCE(o.ord_comp_cant_cuota::varchar, '0') as comp_cantidad_cuota
-        FROM 
+        FROM
             orden_compra_cab o
-        JOIN 
-            users u ON u.id = o.user_id
-        JOIN 
-            sucursal s ON s.empresa_id = o.sucursal_id
-        JOIN 
+        JOIN
+            funcionario f ON f.id = o.funcionario_id
+        JOIN
+            sucursal s ON s.id = o.sucursal_id
+        JOIN
             empresa e ON e.id = o.empresa_id
-        JOIN 
+        JOIN
             proveedores prov ON prov.id = o.proveedor_id
-        WHERE 
+        WHERE
             o.ord_comp_estado = 'CONFIRMADO'
-        AND 
-            o.user_id = ?
-        AND 
-            u.name ILIKE ?
-    ", [$userId, '%' . $userName . '%']); // Utilizar bindings para evitar SQL Injection
+        AND
+            o.funcionario_id = ?
+        AND
+            (f.fun_nom || ' ' || f.fun_apellido) ILIKE ?
+    ", [$funcId, '%' . $funcName . '%']); // Utilizar bindings para evitar SQL Injection
 }
 public function buscarInforme(Request $r)
 {
@@ -330,17 +327,17 @@ public function buscarInforme(Request $r)
             o.ord_comp_estado AS estado,
             o.condicion_pago,
             COALESCE(o.ord_comp_cant_cuota::varchar, '0') AS cuotas,
-            u.name AS encargado,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
             s.suc_razon_social AS sucursal,
             e.emp_razon_social AS empresa,
             prov.prov_razonsocial AS proveedor,
             prov.prov_ruc AS ruc,
-            'PRESUPUESTO NRO: ' || TO_CHAR(pr.id, '0000000') || 
-            ' VENCE EL: ' || COALESCE(TO_CHAR(pr.pre_vence, 'dd/mm/yyyy'), 'N/A') || 
+            'PRESUPUESTO NRO: ' || TO_CHAR(pr.id, '0000000') ||
+            ' VENCE EL: ' || COALESCE(TO_CHAR(pr.pre_vence, 'dd/mm/yyyy'), 'N/A') ||
             ' (' || pr.pre_observaciones || ')' AS presupuesto
         FROM orden_compra_cab o
-        JOIN users u ON u.id = o.user_id
-        JOIN sucursal s ON s.empresa_id = o.sucursal_id
+        JOIN funcionario f ON f.id = o.funcionario_id
+        JOIN sucursal s ON s.id = o.sucursal_id
         JOIN empresa e ON e.id = o.empresa_id
         JOIN presupuestos pr ON pr.id = o.presupuesto_id
         JOIN proveedores prov ON prov.id = pr.proveedor_id

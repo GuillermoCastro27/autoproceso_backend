@@ -19,4 +19,10 @@ class PerfilController extends Controller
             'registro'=>$perfil
         ]);
     }
+    public function buscar(Request $request)
+{
+    return Perfil::where('pref_descripcion', 'ILIKE', '%' . $request->q . '%')
+        ->orderBy('pref_descripcion')
+        ->get();
+}
 }

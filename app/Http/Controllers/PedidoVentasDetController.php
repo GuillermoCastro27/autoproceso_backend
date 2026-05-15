@@ -11,14 +11,17 @@ class PedidoVentasDetController extends Controller
     public function read($id)
     {
         return DB::select("
-            SELECT 
+            SELECT
                 pvd.pedidos_ventas_id,
                 pvd.item_id,
                 pvd.det_cantidad,
                 pvd.cantidad_stock,
-                i.item_decripcion
+                pvd.deposito_id,
+                i.item_decripcion,
+                d.dep_nombre
             FROM pedidos_ventas_det pvd
             JOIN items i ON i.id = pvd.item_id
+            LEFT JOIN deposito d ON d.id = pvd.deposito_id
             WHERE pvd.pedidos_ventas_id = ?
         ", [$id]);
     }
@@ -30,6 +33,7 @@ class PedidoVentasDetController extends Controller
             'item_id'           => 'required',
             'det_cantidad'      => 'required|integer',
             'cantidad_stock'    => 'required|integer',
+            'deposito_id'       => 'nullable|integer|exists:deposito,id',
         ]);
 
         $detalle = new PedidoVentasDet();
@@ -37,6 +41,7 @@ class PedidoVentasDetController extends Controller
         $detalle->item_id           = $data['item_id'];
         $detalle->det_cantidad      = $data['det_cantidad'];
         $detalle->cantidad_stock    = $data['cantidad_stock'];
+        $detalle->deposito_id       = $data['deposito_id'] ?? null;
         $detalle->save();
 
         return response()->json([
@@ -52,7 +57,8 @@ class PedidoVentasDetController extends Controller
             ->where('item_id', $r->item_id)
             ->update([
                 'det_cantidad'   => intval($r->det_cantidad),
-                'cantidad_stock' => intval($r->cantidad_stock)
+                'cantidad_stock' => intval($r->cantidad_stock),
+                'deposito_id'    => $r->deposito_id ?: null,
             ]);
 
         $detalle = DB::select("

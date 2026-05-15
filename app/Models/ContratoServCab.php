@@ -4,15 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 use App\Models\Empresa;
 use App\Models\Sucursal;
 use App\Models\Cliente;
 use App\Models\TipoServicio;
-use App\Models\User;
-
-class ContratoServCab extends Model
+class ContratoServCab extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait;
 
     protected $table = 'contrato_serv_cab';
 
@@ -39,7 +40,8 @@ class ContratoServCab extends Model
         'clientes_id',
         'tipo_servicio_id',
         'tipo_contrato_id',
-        'user_id'
+        'funcionario_id',
+        'orden_serv_cab_id',
     ];
     public function tipoContrato()
 {
@@ -67,8 +69,4 @@ class ContratoServCab extends Model
         return $this->belongsTo(TipoServicio::class, 'tipo_servicio_id');
     }
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
 }

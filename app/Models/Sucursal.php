@@ -18,9 +18,6 @@ class Sucursal extends Model
 
     protected $table = 'sucursal';
 
-    // Declarar empresa_id como clave primaria
-    protected $primaryKey = 'empresa_id';
-
-    // Si la clave primaria no es un auto-incremental
-    public $incrementing = false;
+    protected $primaryKey = 'id';
+    public $incrementing = true;
 }

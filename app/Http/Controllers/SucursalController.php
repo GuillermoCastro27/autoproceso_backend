@@ -53,8 +53,8 @@ class SucursalController extends Controller
         }
     }
 
-    public function update(Request $r, $empresa_id){
-        $sucursal = Sucursal::where('empresa_id', $empresa_id)->first();
+    public function update(Request $r, $id){
+        $sucursal = Sucursal::find($id);
         if(!$sucursal){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',
@@ -75,9 +75,9 @@ class SucursalController extends Controller
             'registro'=> $sucursal
         ],200);
     }
-    
-    public function destroy($empresa_id){
-        $sucursal = Sucursal::where('empresa_id', $empresa_id)->first();
+
+    public function destroy($id){
+        $sucursal = Sucursal::find($id);
         if(!$sucursal){
             return response()->json([
                 'mensaje'=>'Registro no encontrado',

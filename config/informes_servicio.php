@@ -1,0 +1,153 @@
+<?php
+
+return [
+
+    'recepcion' => [
+        'titulo'    => 'Listado de Recepciones',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',           'label' => 'Código'],
+            ['key' => 'fecha',        'label' => 'Fecha'],
+            ['key' => 'cliente',      'label' => 'Cliente'],
+            ['key' => 'tipo_servicio','label' => 'Tipo Servicio'],
+            ['key' => 'vehiculo',     'label' => 'Vehículo'],
+            ['key' => 'prioridad',    'label' => 'Prioridad'],
+            ['key' => 'kilometraje',  'label' => 'Kilometraje'],
+            ['key' => 'funcionario',  'label' => 'Encargado'],
+            ['key' => 'empresa',      'label' => 'Empresa'],
+            ['key' => 'sucursal',     'label' => 'Sucursal'],
+            ['key' => 'estado',       'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'diagnostico' => [
+        'titulo'    => 'Listado de Diagnósticos',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',               'label' => 'Código'],
+            ['key' => 'fecha',            'label' => 'Fecha'],
+            ['key' => 'cliente',          'label' => 'Cliente'],
+            ['key' => 'tipo_diagnostico', 'label' => 'Tipo Diagnóstico'],
+            ['key' => 'tipo_servicio',    'label' => 'Tipo Servicio'],
+            ['key' => 'vehiculo',         'label' => 'Vehículo'],
+            ['key' => 'prioridad',        'label' => 'Prioridad'],
+            ['key' => 'funcionario',      'label' => 'Encargado'],
+            ['key' => 'empresa',          'label' => 'Empresa'],
+            ['key' => 'sucursal',         'label' => 'Sucursal'],
+            ['key' => 'estado',           'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'presupuesto_serv' => [
+        'titulo'    => 'Listado de Presupuestos de Servicio',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',           'label' => 'Código'],
+            ['key' => 'fecha',        'label' => 'Fecha'],
+            ['key' => 'vence',        'label' => 'Vencimiento'],
+            ['key' => 'cliente',      'label' => 'Cliente'],
+            ['key' => 'tipo_servicio','label' => 'Tipo Servicio'],
+            ['key' => 'vehiculo',     'label' => 'Vehículo'],
+            ['key' => 'funcionario',  'label' => 'Encargado'],
+            ['key' => 'empresa',      'label' => 'Empresa'],
+            ['key' => 'sucursal',     'label' => 'Sucursal'],
+            ['key' => 'estado',       'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'orden_servicio' => [
+        'titulo'    => 'Listado de Órdenes de Servicio',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',               'label' => 'Código'],
+            ['key' => 'fecha',            'label' => 'Fecha'],
+            ['key' => 'vence',            'label' => 'Vencimiento'],
+            ['key' => 'cliente',          'label' => 'Cliente'],
+            ['key' => 'tipo_diagnostico', 'label' => 'Tipo Diagnóstico'],
+            ['key' => 'vehiculo',         'label' => 'Vehículo'],
+            ['key' => 'tipo',             'label' => 'Tipo'],
+            ['key' => 'funcionario',      'label' => 'Encargado'],
+            ['key' => 'empresa',          'label' => 'Empresa'],
+            ['key' => 'sucursal',         'label' => 'Sucursal'],
+            ['key' => 'estado',           'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'contrato' => [
+        'titulo'    => 'Listado de Contratos de Servicio',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',             'label' => 'Código'],
+            ['key' => 'fecha',          'label' => 'Fecha'],
+            ['key' => 'cliente',        'label' => 'Cliente'],
+            ['key' => 'tipo_servicio',  'label' => 'Tipo Servicio'],
+            ['key' => 'tipo_contrato',  'label' => 'Tipo Contrato'],
+            ['key' => 'condicion_pago', 'label' => 'Condición'],
+            ['key' => 'cuotas',         'label' => 'Cuotas'],
+            ['key' => 'funcionario',    'label' => 'Encargado'],
+            ['key' => 'empresa',        'label' => 'Empresa'],
+            ['key' => 'sucursal',       'label' => 'Sucursal'],
+            ['key' => 'estado',         'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'reclamo' => [
+        'titulo'    => 'Listado de Reclamos de Clientes',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',          'label' => 'Código'],
+            ['key' => 'fecha',       'label' => 'Fecha'],
+            ['key' => 'cliente',     'label' => 'Cliente'],
+            ['key' => 'prioridad',   'label' => 'Prioridad'],
+            ['key' => 'observacion', 'label' => 'Observación'],
+            ['key' => 'funcionario', 'label' => 'Encargado'],
+            ['key' => 'empresa',     'label' => 'Empresa'],
+            ['key' => 'sucursal',    'label' => 'Sucursal'],
+            ['key' => 'estado',      'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'promociones' => [
+        'titulo'    => 'Listado de Promociones',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',             'label' => 'Código'],
+            ['key' => 'nombre',         'label' => 'Nombre'],
+            ['key' => 'tipo_promocion', 'label' => 'Tipo'],
+            ['key' => 'fecha_inicio',   'label' => 'Fecha Inicio'],
+            ['key' => 'fecha_fin',      'label' => 'Fecha Fin'],
+            ['key' => 'observaciones',  'label' => 'Observaciones'],
+            ['key' => 'funcionario',    'label' => 'Encargado'],
+            ['key' => 'empresa',        'label' => 'Empresa'],
+            ['key' => 'sucursal',       'label' => 'Sucursal'],
+            ['key' => 'estado',         'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'descuentos' => [
+        'titulo'    => 'Listado de Descuentos',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',             'label' => 'Código'],
+            ['key' => 'nombre',         'label' => 'Nombre'],
+            ['key' => 'tipo_descuento', 'label' => 'Tipo'],
+            ['key' => 'porcentaje',     'label' => 'Porcentaje (%)'],
+            ['key' => 'fecha_inicio',   'label' => 'Fecha Inicio'],
+            ['key' => 'fecha_fin',      'label' => 'Fecha Fin'],
+            ['key' => 'observaciones',  'label' => 'Observaciones'],
+            ['key' => 'funcionario',    'label' => 'Encargado'],
+            ['key' => 'empresa',        'label' => 'Empresa'],
+            ['key' => 'sucursal',       'label' => 'Sucursal'],
+            ['key' => 'estado',         'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+];

@@ -4,10 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\CompositeKeyAuditable;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class ReclamoCliDet extends Model
+class ReclamoCliDet extends Model implements Auditable
 {
     use HasFactory;
+    use AuditableTrait, CompositeKeyAuditable {
+        CompositeKeyAuditable::transformAudit insteadof AuditableTrait;
+    }
+    protected array $auditKeyColumns = ['reclamo_cli_cab_id', 'item_id'];
     protected $fillable =[
         'reclamo_cli_cab_id',
         'item_id',
@@ -16,9 +23,7 @@ class ReclamoCliDet extends Model
         'rec_cli_det_costo',
         'rec_cli_det_cantidad_stock'
     ];
-    protected $primaryKey =[
-        'reclamo_cli_cab_id',
-        'item_id'];
+    protected $primaryKey = null;
     public $incrementing = false;
     protected $table = 'reclamo_cli_det';
 }

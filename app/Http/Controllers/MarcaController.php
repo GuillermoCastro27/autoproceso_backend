@@ -7,11 +7,16 @@ use Illuminate\Http\Request;
 
 class MarcaController extends Controller
 {
-    public function read()
+    public function read(Request $r)
     {
-        return response()->json(
-            Marca::select('id', 'marc_nom as marc_nom', 'mar_tipo as mar_tipo')->get()
-        );
+        $q = Marca::select('id', 'marc_nom', 'mar_tipo');
+        if ($r->filled('marc_nom')) {
+            $q->where('marc_nom', 'ILIKE', '%' . $r->marc_nom . '%');
+        }
+        if ($r->filled('excluir_tipo')) {
+            $q->where('mar_tipo', '!=', $r->excluir_tipo);
+        }
+        return response()->json($q->orderBy('marc_nom')->get());
     }
     public function store(Request $r){
         $datosValidados = $r->validate([

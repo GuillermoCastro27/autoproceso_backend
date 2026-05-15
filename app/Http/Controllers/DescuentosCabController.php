@@ -24,17 +24,16 @@ class DescuentosCabController extends Controller
             s.suc_razon_social,
             dc.empresa_id,
             e.emp_razon_social,
-            dc.user_id,
-            u.name,
-            u.login,
+            dc.funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
             dc.tipo_descuentos_id,
             td.tipo_desc_nombre AS tipo_desc_nombre,
             dc.created_at,
             dc.updated_at
-        FROM descuentos_cab dc 
-        JOIN sucursal s ON s.empresa_id = dc.sucursal_id
+        FROM descuentos_cab dc
+        JOIN sucursal s ON s.id = dc.sucursal_id
         JOIN empresa e  ON e.id = dc.empresa_id
-        JOIN users u    ON u.id = dc.user_id
+        JOIN funcionario f ON f.id = dc.funcionario_id
         JOIN tipo_descuentos td ON td.id = dc.tipo_descuentos_id
         ORDER BY dc.id desc;
     ");
@@ -49,10 +48,11 @@ public function store(Request $r){
             'desc_cab_estado'=>'required',
             'desc_cab_porcentaje'=>'required',
             'tipo_descuentos_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
+        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $descuentoscab = DescuentosCab::create($datosValidados);
         $descuentoscab->save();
         return response()->json([
@@ -78,7 +78,7 @@ public function store(Request $r){
             'desc_cab_estado'=>'required',
             'desc_cab_porcentaje'=>'required',
             'tipo_descuentos_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -106,7 +106,7 @@ public function store(Request $r){
             'desc_cab_estado'=>'required',
             'desc_cab_porcentaje'=>'required',
             'tipo_descuentos_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -134,7 +134,7 @@ public function store(Request $r){
             'desc_cab_estado'=>'required',
             'desc_cab_porcentaje'=>'required',
             'tipo_descuentos_id'=>'required',
-            'user_id'=>'required',
+            'funcionario_id'=>'nullable',
             'empresa_id'=>'required',
             'sucursal_id'=>'required'
         ]);
@@ -147,8 +147,8 @@ public function store(Request $r){
     }
     public function buscar(Request $r)
 {
-    $texto = $r->input('texto');
-    $userId = $r->input('user_id');
+    $texto  = $r->input('texto');
+    $funcId = $r->input('funcionario_id');
 
     // 🔹 Primero: anula automáticamente los descuentos vencidos
     DB::update("
@@ -174,10 +174,9 @@ public function store(Request $r){
             dc.tipo_descuentos_id,
             td.tipo_desc_nombre AS tipo_desc_nombre,
 
-            -- Usuario
-            u.id AS user_id,
-            u.name AS encargado,
-            u.login,
+            -- Funcionario
+            f.id AS funcionario_id,
+            f.fun_nom || ' ' || f.fun_apellido AS encargado,
 
             -- Empresa y Sucursal
             dc.empresa_id,
@@ -190,13 +189,13 @@ public function store(Request $r){
             ' (' || dc.desc_cab_nombre || ')' AS desc_cab_nombre
 
         FROM descuentos_cab dc
-        JOIN users u ON u.id = dc.user_id
+        JOIN funcionario f ON f.id = dc.funcionario_id
         JOIN empresa e ON e.id = dc.empresa_id
-        JOIN sucursal s ON s.empresa_id = dc.sucursal_id
+        JOIN sucursal s ON s.id = dc.sucursal_id
         JOIN tipo_descuentos td ON td.id = dc.tipo_descuentos_id
         WHERE 
             dc.desc_cab_estado = 'CONFIRMADO'
-            AND u.id = {$userId}
+            AND dc.funcionario_id = {$funcId}
             AND CURRENT_TIMESTAMP BETWEEN dc.desc_cab_fecha_inicio AND dc.desc_cab_fecha_fin
             AND (
                 dc.desc_cab_nombre ILIKE '%{$texto}%'

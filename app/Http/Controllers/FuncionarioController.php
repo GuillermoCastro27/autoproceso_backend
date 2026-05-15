@@ -63,6 +63,24 @@ class FuncionarioController extends Controller
         ],200);
     }
 
+    public function buscar(Request $r)
+    {
+        return DB::select("
+            SELECT
+                f.id,
+                f.fun_ci,
+                f.fun_nom || ' ' || f.fun_apellido AS fun_nombre_completo,
+                f.fun_correo,
+                f.fun_telefono
+            FROM funcionario f
+            WHERE f.fun_nom ILIKE ?
+               OR f.fun_apellido ILIKE ?
+               OR f.fun_ci ILIKE ?
+            ORDER BY f.fun_nom
+            LIMIT 20
+        ", ["%{$r->q}%", "%{$r->q}%", "%{$r->q}%"]);
+    }
+
     public function destroy($id){
         $funcionario = Funcionario::find($id);
         if(!$funcionario){
