@@ -35,49 +35,65 @@ return new class extends Migration
 
     public function up(): void
     {
-        // Paso 1: agregar funcionario_id nullable a cada tabla
+        // Paso 1: agregar funcionario_id nullable a cada tabla (solo si no existe)
         foreach ($this->tables as $table) {
-            Schema::table($table, function (Blueprint $t) {
-                $t->unsignedBigInteger('funcionario_id')->nullable()->after('user_id');
-            });
+            if (!Schema::hasTable($table)) continue;
+            if (!Schema::hasColumn($table, 'funcionario_id')) {
+                Schema::table($table, function (Blueprint $t) {
+                    $t->unsignedBigInteger('funcionario_id')->nullable();
+                });
+            }
         }
 
-        // Paso 2: poblar desde users.funcionario_id
+        // Paso 2: poblar desde users.funcionario_id (solo si user_id existe)
         foreach ($this->tables as $table) {
-            DB::statement("
-                UPDATE {$table} t
-                SET funcionario_id = u.funcionario_id
-                FROM users u
-                WHERE t.user_id = u.id
-            ");
+            if (!Schema::hasTable($table)) continue;
+            if (Schema::hasColumn($table, 'user_id') && Schema::hasColumn($table, 'funcionario_id')) {
+                DB::statement("
+                    UPDATE \"{$table}\" t
+                    SET funcionario_id = u.funcionario_id
+                    FROM users u
+                    WHERE t.user_id = u.id
+                ");
+            }
         }
 
-        // Paso 3: eliminar user_id de cada tabla
+        // Paso 3: eliminar user_id de cada tabla (solo si existe)
         foreach ($this->tables as $table) {
+            if (!Schema::hasTable($table)) continue;
             DB::statement("ALTER TABLE \"{$table}\" DROP CONSTRAINT IF EXISTS \"{$table}_user_id_foreign\"");
-            Schema::table($table, function (Blueprint $t) {
-                $t->dropColumn('user_id');
-            });
+            if (Schema::hasColumn($table, 'user_id')) {
+                Schema::table($table, function (Blueprint $t) use ($table) {
+                    $t->dropColumn('user_id');
+                });
+            }
         }
     }
 
     public function down(): void
     {
         foreach ($this->tables as $table) {
-            Schema::table($table, function (Blueprint $t) {
-                $t->unsignedBigInteger('user_id')->nullable()->after('funcionario_id');
-            });
+            if (!Schema::hasTable($table)) continue;
+            if (!Schema::hasColumn($table, 'user_id')) {
+                Schema::table($table, function (Blueprint $t) {
+                    $t->unsignedBigInteger('user_id')->nullable();
+                });
+            }
 
-            DB::statement("
-                UPDATE {$table} t
-                SET user_id = u.id
-                FROM users u
-                WHERE u.funcionario_id = t.funcionario_id
-            ");
+            if (Schema::hasColumn($table, 'user_id') && Schema::hasColumn($table, 'funcionario_id')) {
+                DB::statement("
+                    UPDATE \"{$table}\" t
+                    SET user_id = u.id
+                    FROM users u
+                    WHERE u.funcionario_id = t.funcionario_id
+                ");
+            }
 
-            Schema::table($table, function (Blueprint $t) {
-                $t->dropColumn('funcionario_id');
-            });
+            if (Schema::hasColumn($table, 'funcionario_id')) {
+                Schema::table($table, function (Blueprint $t) {
+                    $t->dropColumn('funcionario_id');
+                });
+            }
         }
     }
 };

@@ -22,33 +22,32 @@ return new class extends Migration
 
     public function up(): void
     {
-        // 1. Eliminar todas las FK que apuntan a sucursal.empresa_id (old PK)
+        // 1. Eliminar FKs existentes (si existen)
         foreach ($this->fkTables as $table) {
+            if (!Schema::hasTable($table)) continue;
             DB::statement("ALTER TABLE \"{$table}\" DROP CONSTRAINT IF EXISTS \"{$table}_sucursal_id_foreign\"");
         }
 
         // 2. Quitar el PK de empresa_id
         DB::statement('ALTER TABLE sucursal DROP CONSTRAINT IF EXISTS sucursal_pkey');
 
-        // 3. Agregar nueva columna id BIGSERIAL como nueva PK
-        DB::statement('ALTER TABLE sucursal ADD COLUMN id BIGSERIAL');
-        DB::statement('ALTER TABLE sucursal ADD PRIMARY KEY (id)');
+        // 3. Agregar nueva columna id BIGSERIAL como nueva PK (solo si no existe)
+        if (!Schema::hasColumn('sucursal', 'id')) {
+            DB::statement('ALTER TABLE sucursal ADD COLUMN id BIGSERIAL');
+            DB::statement('ALTER TABLE sucursal ADD PRIMARY KEY (id)');
+        }
 
-        // 4. Actualizar sucursal_id en todas las tablas:
-        //    actualmente guardan el valor de empresa_id → pasar a guardar sucursal.id
+        // 4. Actualizar sucursal_id en todas las tablas (solo si la columna existe)
         $allTables = array_merge($this->fkTables, $this->extraTables);
         foreach ($allTables as $table) {
+            if (!Schema::hasTable($table)) continue;
+            if (!Schema::hasColumn($table, 'sucursal_id')) continue;
             DB::statement(
                 "UPDATE \"{$table}\" t SET sucursal_id = s.id FROM sucursal s WHERE s.empresa_id = t.sucursal_id"
             );
         }
 
-        // 5. Recrear las FK apuntando al nuevo PK (sucursal.id)
-        foreach ($this->fkTables as $table) {
-            DB::statement(
-                "ALTER TABLE \"{$table}\" ADD CONSTRAINT \"{$table}_sucursal_id_foreign\" FOREIGN KEY (sucursal_id) REFERENCES sucursal(id)"
-            );
-        }
+        // 5. FKs no se recrean (eliminadas globalmente para compatibilidad con migración fresca)
     }
 
     public function down(): void

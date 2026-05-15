@@ -16,7 +16,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE deposito DROP COLUMN IF EXISTS cantidad');
         DB::statement("ALTER TABLE deposito ADD COLUMN dep_nombre VARCHAR(200) NOT NULL DEFAULT 'Sin nombre'");
         DB::statement('ALTER TABLE deposito ADD COLUMN sucursal_id BIGINT');
-        DB::statement('ALTER TABLE deposito ADD CONSTRAINT deposito_sucursal_id_foreign FOREIGN KEY (sucursal_id) REFERENCES sucursal(empresa_id) ON DELETE SET NULL ON UPDATE CASCADE');
+        // FK not enforced (removed globally for fresh-DB compatibility)
 
         // ── STOCK ─────────────────────────────────────────────
         DB::statement('TRUNCATE TABLE stock RESTART IDENTITY CASCADE');
@@ -28,7 +28,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE stock ADD COLUMN cantidad_maxima DECIMAL(10,2) NOT NULL DEFAULT 9999');
         DB::statement('ALTER TABLE stock ALTER COLUMN cantidad TYPE DECIMAL(10,2)');
         DB::statement('ALTER TABLE stock ADD CONSTRAINT stock_pkey PRIMARY KEY (deposito_id, item_id)');
-        DB::statement('ALTER TABLE stock ADD CONSTRAINT stock_deposito_id_foreign FOREIGN KEY (deposito_id) REFERENCES deposito(id) ON DELETE CASCADE ON UPDATE CASCADE');
+        // FK not enforced (removed globally for fresh-DB compatibility)
     }
 
     public function down(): void
