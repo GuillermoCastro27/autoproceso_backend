@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('ajuste_det', function (Blueprint $table) {
             // Renombrar la columna tipo_ajuste a nuevo_tipo_ajuste
-            $table->renameColumn('cant_stock', 'cantidad_stock');
+            if (Schema::hasColumn('ajuste_det', 'cant_stock') && !Schema::hasColumn('ajuste_det', 'cantidad_stock')) $table->renameColumn('cant_stock', 'cantidad_stock');
         });
     }
 

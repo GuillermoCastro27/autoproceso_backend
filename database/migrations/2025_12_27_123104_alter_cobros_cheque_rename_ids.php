@@ -13,7 +13,7 @@ return new class extends Migration
             // ðŸ”¥ eliminar FK primero
 
             // ðŸ” renombrar columna
-            $table->renameColumn('entidad_emisora_id', 'entidad_emisora_cheque_id');
+            if (Schema::hasColumn('cobros_cheque', 'entidad_emisora_id') && !Schema::hasColumn('cobros_cheque', 'entidad_emisora_cheque_id')) $table->renameColumn('entidad_emisora_id', 'entidad_emisora_cheque_id');
         });
 
         Schema::table('cobros_cheque', function (Blueprint $table) {
