@@ -23,7 +23,7 @@ return [
         'http://localhost',
         'https://localhost',
         'https://web-production-f58ca.up.railway.app',
-        'https://*.netlify.app',
+        'https://remarkable-axolotl-f9d663.netlify.app',
     ],
 
     'allowed_origins_patterns' => [],
