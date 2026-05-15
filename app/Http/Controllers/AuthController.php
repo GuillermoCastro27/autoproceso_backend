@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Validator;
 use App\Models\User;
 use App\Models\Perfil;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -81,7 +82,7 @@ class AuthController extends Controller
         }
 
         // Credenciales incorrectas
-        if (!Auth::attempt($request->only('login', 'password'))) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             if ($user) {
                 $user->intentos++;
                 if ($user->intentos >= 3) {
@@ -106,7 +107,6 @@ class AuthController extends Controller
 
         // Verificar que el usuario tenga un funcionario asignado
         if (!$user->funcionario_id) {
-            Auth::logout();
             return response()->json([
                 'message' => 'El usuario no tiene un funcionario asignado. Contacte al administrador.'
             ], 403);
@@ -118,8 +118,6 @@ class AuthController extends Controller
         |--------------------------------------------------------------------------
         */
         if ($user->two_factor_enabled) {
-
-            Auth::logout();
 
             app(\App\Http\Controllers\Seguridad\TwoFactorController::class)
                 ->enviarCodigoEmail($user);
