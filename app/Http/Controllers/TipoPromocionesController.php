@@ -98,11 +98,14 @@ class TipoPromocionesController extends Controller
             ], 404);
         }
 
-        $tipopromociones->delete();
-
-        return response()->json([
-            'mensaje' => 'Registro eliminado con éxito',
-            'tipo' => 'success',
-        ], 200);
+        try {
+            $tipopromociones->delete();
+            return response()->json(['mensaje' => 'Tipo de promoción eliminado con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar el tipo de promoción porque está siendo utilizado en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

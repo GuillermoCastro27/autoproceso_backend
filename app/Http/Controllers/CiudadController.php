@@ -3,75 +3,95 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ciudad;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CiudadController extends Controller
 {
-    public function read(){
-        return DB::select('select c.*,p.pais_descrpcion from ciudades c inner join paises p on p.id = c.pais_id;');
+    public function read()
+    {
+        return DB::select('SELECT c.*, p.pais_descrpcion FROM ciudades c INNER JOIN paises p ON p.id = c.pais_id');
     }
-    public function store(Request $r){
-        $datosValidados = $r->validate([
-            'ciu_descripcion'=>'required|max:200',
-            'pais_id'=>'required'
+
+    public function store(Request $r)
+    {
+        $r->validate([
+            'ciu_descripcion' => [
+                'required', 'string', 'max:200',
+                Rule::unique('ciudades', 'ciu_descripcion')->where(fn($q) => $q->where('pais_id', $r->pais_id)),
+            ],
+            'pais_id' => 'required|integer|exists:paises,id',
+        ], [
+            'ciu_descripcion.required' => 'El nombre de la ciudad es obligatorio.',
+            'ciu_descripcion.max'      => 'El nombre no puede superar los 200 caracteres.',
+            'ciu_descripcion.unique'   => 'Ya existe una ciudad con ese nombre en el país seleccionado.',
+            'pais_id.required'         => 'Debe seleccionar un país.',
+            'pais_id.exists'           => 'El país seleccionado no existe.',
         ]);
+
+        $ciudad = Ciudad::create([
+            'ciu_descripcion' => $r->ciu_descripcion,
+            'pais_id'         => $r->pais_id,
+        ]);
+
+        return response()->json([
+            'mensaje'  => 'Ciudad creada con éxito',
+            'tipo'     => 'success',
+            'registro' => $ciudad,
+        ]);
+    }
+
+    public function update(Request $r, $id)
+    {
+        $ciudad = Ciudad::find($id);
+        if (!$ciudad) {
+            return response()->json(['mensaje' => 'Ciudad no encontrada', 'tipo' => 'error'], 404);
+        }
+
+        $r->validate([
+            'ciu_descripcion' => [
+                'required', 'string', 'max:200',
+                Rule::unique('ciudades', 'ciu_descripcion')
+                    ->where(fn($q) => $q->where('pais_id', $r->pais_id))
+                    ->ignore($id),
+            ],
+            'pais_id' => 'required|integer|exists:paises,id',
+        ], [
+            'ciu_descripcion.required' => 'El nombre de la ciudad es obligatorio.',
+            'ciu_descripcion.max'      => 'El nombre no puede superar los 200 caracteres.',
+            'ciu_descripcion.unique'   => 'Ya existe otra ciudad con ese nombre en el país seleccionado.',
+            'pais_id.required'         => 'Debe seleccionar un país.',
+            'pais_id.exists'           => 'El país seleccionado no existe.',
+        ]);
+
+        $ciudad->update([
+            'ciu_descripcion' => $r->ciu_descripcion,
+            'pais_id'         => $r->pais_id,
+        ]);
+
+        return response()->json([
+            'mensaje'  => 'Ciudad actualizada con éxito',
+            'tipo'     => 'success',
+            'registro' => $ciudad,
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $ciudad = Ciudad::find($id);
+        if (!$ciudad) {
+            return response()->json(['mensaje' => 'Ciudad no encontrada', 'tipo' => 'error'], 404);
+        }
+
         try {
-            $ciudad = Ciudad::create($datosValidados);
+            $ciudad->delete();
+            return response()->json(['mensaje' => 'Ciudad eliminada con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
             return response()->json([
-                'mensaje' => 'Registro creado con éxito',
-                'tipo' => 'success',
-                'registro' => $ciudad
-            ], 200);
-
-        }catch (QueryException $e) {
-            // Verificar si el error es por restricción de unicidad (error 23505 en PostgreSQL)
-            if ($e->getCode() == 23505) {
-                return response()->json([
-                    'mensaje' => 'Error: ese registro ya existe',
-                    'tipo' => 'error'
-                ], 400);  // Puedes usar un código de error HTTP 400 (Bad Request)
-            }
-
-            // Manejo general de otros errores de base de datos
-            return response()->json([
-                'mensaje' => 'Error al crear el registro',
-                'tipo' => 'error'
-            ], 500);
+                'mensaje' => 'No se puede eliminar la ciudad porque está siendo utilizada en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
         }
-    }
-    public function update(Request $r, $id){
-        $ciudad = Ciudad::find($id);
-        if(!$ciudad){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'ciu_descripcion'=>'required|max:200',
-            'pais_id'=>'required'
-        ]);
-        $ciudad->update($datosValidados);
-        return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $ciudad
-        ],200);
-    }
-
-    public function destroy($id){
-        $ciudad = Ciudad::find($id);
-        if(!$ciudad){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $ciudad->delete();
-        return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
     }
 }

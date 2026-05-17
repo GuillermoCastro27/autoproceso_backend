@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Validator;
 use App\Models\User;
-use App\Models\Perfil;
+use App\Models\LoginIntento;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\UsuarioBloqueadoMail;
 
 class AuthController extends Controller
 {
@@ -76,37 +78,72 @@ class AuthController extends Controller
         // Verificar si el usuario está bloqueado temporalmente
         if ($user && $user->bloqueado_hasta && now()->lt($user->bloqueado_hasta)) {
             $minutos = now()->diffInMinutes($user->bloqueado_hasta) + 1;
+            $this->registrarIntento($request, 'bloqueado');
             return response()->json([
-                'message' => "Usuario bloqueado por intentos fallidos. Intente nuevamente en {$minutos} minuto(s)."
+                'tipo'    => 'bloqueado',
+                'message' => "Cuenta bloqueada por intentos fallidos. Intente nuevamente en {$minutos} minuto(s) o recupere su contraseña."
             ], 401);
         }
 
-        // Credenciales incorrectas
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            if ($user) {
-                $user->intentos++;
-                if ($user->intentos >= 3) {
-                    $user->bloqueado_hasta = now()->addMinutes(30);
-                    $user->intentos        = 0;
-                }
+        // Usuario no existe
+        if (!$user) {
+            $this->registrarIntento($request, 'usuario_no_existe');
+            return response()->json([
+                'tipo'    => 'usuario_no_existe',
+                'message' => 'El usuario ingresado no existe.'
+            ], 401);
+        }
+
+        // Contraseña incorrecta
+        if (!Hash::check($request->password, $user->password)) {
+            $user->intentos++;
+
+            if ($user->intentos >= 3) {
+                $user->bloqueado_hasta = now()->addMinutes(30);
+                $user->intentos        = 0;
                 $user->save();
+
+                $this->registrarIntento($request, 'bloqueado');
+
+                // Notificar al administrador por correo
+                $adminEmail = env('ADMIN_EMAIL');
+                if ($adminEmail) {
+                    $login = $request->login;
+                    $ip    = $request->ip();
+                    dispatch(function () use ($adminEmail, $login, $ip) {
+                        Mail::to($adminEmail)->send(new UsuarioBloqueadoMail($login, $ip));
+                    })->afterResponse();
+                }
+
+                return response()->json([
+                    'tipo'    => 'bloqueado',
+                    'message' => 'Cuenta bloqueada por 3 intentos fallidos. Intente nuevamente en 30 minutos o recupere su contraseña.'
+                ], 401);
             }
 
+            $restantes = 3 - $user->intentos;
+            $user->save();
+
+            $this->registrarIntento($request, 'contrasena_incorrecta');
             return response()->json([
-                'message' => 'USUARIO O CONTRASEÑA INCORRECTA'
+                'tipo'       => 'contrasena_incorrecta',
+                'message'    => 'Contraseña incorrecta.',
+                'restantes'  => $restantes
             ], 401);
         }
 
-        $user   = User::where('login', $request->login)->firstOrFail();
-        $perfil = Perfil::where('id', $user->perfil_id)->firstOrFail();
+        // Rehash si la contraseña fue guardada con más rondas que las actuales
+        if (Hash::needsRehash($user->password)) {
+            $user->password = Hash::make($request->password);
+        }
 
-        // Desbloquear y resetear intentos al ingresar correctamente
-        $user->intentos       = 0;
+        // Resetear bloqueo (se guarda junto con el código 2FA en un solo UPDATE)
+        $user->intentos        = 0;
         $user->bloqueado_hasta = null;
-        $user->save();
 
         // Verificar que el usuario tenga un funcionario asignado
         if (!$user->funcionario_id) {
+            $user->save();
             return response()->json([
                 'message' => 'El usuario no tiene un funcionario asignado. Contacte al administrador.'
             ], 403);
@@ -119,6 +156,9 @@ class AuthController extends Controller
         */
         if ($user->two_factor_enabled) {
 
+            $this->registrarIntento($request, 'exitoso');
+
+            // enviarCodigoEmail hace el único save() combinado
             app(\App\Http\Controllers\Seguridad\TwoFactorController::class)
                 ->enviarCodigoEmail($user);
 
@@ -139,6 +179,21 @@ class AuthController extends Controller
             'tipo'    => 'sin_2fa',
             'message' => 'El usuario no tiene habilitado el doble factor de autenticación. Contacte al administrador.'
         ], 403);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | HELPER — REGISTRAR INTENTO
+    |--------------------------------------------------------------------------
+    */
+    private function registrarIntento(Request $request, string $resultado): void
+    {
+        LoginIntento::create([
+            'login'      => $request->login,
+            'resultado'  => $resultado,
+            'ip'         => $request->ip(),
+            'user_agent' => substr($request->userAgent() ?? '', 0, 300),
+        ]);
     }
 
     /*

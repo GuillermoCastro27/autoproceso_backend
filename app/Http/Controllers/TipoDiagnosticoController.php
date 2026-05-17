@@ -1,106 +1,95 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\TipoDiagnostico;
 
+use App\Models\TipoDiagnostico;
 use Illuminate\Http\Request;
 
 class TipoDiagnosticoController extends Controller
 {
-     public function read()
+    public function read()
     {
         return response()->json(
-            TipoDiagnostico::select('id as tipo_diagnostico_id', 'tipo_diag_nombre as tipo_diag_nombre', 'tipo_diag_descrip as tipo_diag_descrip')->get()
+            TipoDiagnostico::select(
+                'id as tipo_diagnostico_id',
+                'tipo_diag_nombre',
+                'tipo_diag_descrip'
+            )->get()
         );
     }
 
-    public function store(Request $r){
-        $datosValidados = $r->validate([
+    public function store(Request $r)
+    {
+        $r->validate([
             'tipo_diag_nombre' => 'required|string|max:100|unique:tipo_diagnostico,tipo_diag_nombre',
             'tipo_diag_descrip' => 'required|string|max:255',
         ], [
-            'tipo_diag_nombre.required' => 'El campo nombre es obligatorio.',
-            'tipo_diag_nombre.unique' => 'El tipo de diagnóstico ya existe.',
-            'tipo_diag_descrip.required' => 'El campo descripción es obligatorio.',
-            'tipo_diag_descrip.unique' => 'El campo descripción ya existe.',
+            'tipo_diag_nombre.required' => 'El nombre del tipo de diagnóstico es obligatorio.',
+            'tipo_diag_nombre.max'      => 'El nombre no puede superar los 100 caracteres.',
+            'tipo_diag_nombre.unique'   => 'Ya existe un tipo de diagnóstico con ese nombre.',
+            'tipo_diag_descrip.required'=> 'La descripción es obligatoria.',
+            'tipo_diag_descrip.max'     => 'La descripción no puede superar los 255 caracteres.',
         ]);
-        $datosValidados = $r->validate([
-            'tipo_diag_nombre'=>'required',
-            'tipo_diag_descrip'=>'required'
+
+        $registro = TipoDiagnostico::create([
+            'tipo_diag_nombre' => $r->tipo_diag_nombre,
+            'tipo_diag_descrip' => $r->tipo_diag_descrip,
         ]);
-        $tipodiagnostico = TipoDiagnostico::create($datosValidados);
-        $tipodiagnostico->save();
+
         return response()->json([
-            'mensaje'=>'Registro creado con exito',
-            'tipo'=>'success',
-            'registro'=> $tipodiagnostico
-        ],200);
+            'mensaje'  => 'Tipo de diagnóstico creado con éxito',
+            'tipo'     => 'success',
+            'registro' => $registro
+        ]);
     }
 
     public function update(Request $r, $id)
     {
-        $tipoContrato = TipoContrato::find($id);
+        $registro = TipoDiagnostico::find($id);
 
-        if (!$tipoContrato) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
-            ], 404);
+        if (!$registro) {
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
-        $datosValidados = $r->validate([
-            'tip_con_nombre' => 'required|string|max:100|unique:tipo_contrato,tip_con_nombre,' . $id,
-
-            'tip_con_objeto' => 'required|string',
-            'tip_con_alcance' => 'required|string',
-            'tip_con_garantia' => 'required|string',
-            'tip_con_responsabilidad' => 'required|string',
-            'tip_con_limitacion' => 'required|string',
-            'tip_con_fuerza_mayor' => 'required|string',
-            'tip_con_jurisdiccion' => 'required|string',
-
-            'tip_con_estado' => 'nullable|string|max:20'
+        $r->validate([
+            'tipo_diag_nombre' => 'required|string|max:100|unique:tipo_diagnostico,tipo_diag_nombre,' . $id,
+            'tipo_diag_descrip' => 'required|string|max:255',
         ], [
-            'tip_con_nombre.required' => 'El nombre del tipo de contrato es obligatorio.',
-            'tip_con_nombre.unique' => 'El tipo de contrato ya existe.',
-
-            'tip_con_objeto.required' => 'El objeto del contrato es obligatorio.',
-            'tip_con_alcance.required' => 'El alcance del contrato es obligatorio.',
-            'tip_con_garantia.required' => 'La garantía es obligatoria.',
-            'tip_con_responsabilidad.required' => 'La responsabilidad es obligatoria.',
-            'tip_con_limitacion.required' => 'La limitación es obligatoria.',
-            'tip_con_fuerza_mayor.required' => 'La cláusula de fuerza mayor es obligatoria.',
-            'tip_con_jurisdiccion.required' => 'La jurisdicción es obligatoria.',
+            'tipo_diag_nombre.required' => 'El nombre del tipo de diagnóstico es obligatorio.',
+            'tipo_diag_nombre.max'      => 'El nombre no puede superar los 100 caracteres.',
+            'tipo_diag_nombre.unique'   => 'Ya existe otro tipo de diagnóstico con ese nombre.',
+            'tipo_diag_descrip.required'=> 'La descripción es obligatoria.',
+            'tipo_diag_descrip.max'     => 'La descripción no puede superar los 255 caracteres.',
         ]);
 
-        $tipoContrato->update($datosValidados);
+        $registro->update([
+            'tipo_diag_nombre' => $r->tipo_diag_nombre,
+            'tipo_diag_descrip' => $r->tipo_diag_descrip,
+        ]);
 
         return response()->json([
-            'mensaje' => 'Tipo de contrato modificado con éxito',
-            'tipo' => 'success',
-            'registro' => $tipoContrato
-        ], 200);
+            'mensaje'  => 'Tipo de diagnóstico actualizado con éxito',
+            'tipo'     => 'success',
+            'registro' => $registro
+        ]);
     }
 
     public function destroy($id)
     {
-        $tipoContrato = TipoContrato::find($id);
+        $registro = TipoDiagnostico::find($id);
 
-        if (!$tipoContrato) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
-            ], 404);
+        if (!$registro) {
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
-        $tipoContrato->update([
-            'tip_con_estado' => 'INACTIVO'
-        ]);
-
-        return response()->json([
-            'mensaje' => 'Tipo de contrato inactivado con éxito',
-            'tipo' => 'success'
-        ], 200);
+        try {
+            $registro->delete();
+            return response()->json(['mensaje' => 'Tipo de diagnóstico eliminado con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar porque está siendo utilizado en el sistema.',
+                'tipo'    => 'error'
+            ], 409);
+        }
     }
-
 }

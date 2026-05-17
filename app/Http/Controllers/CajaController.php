@@ -2,59 +2,82 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Caja;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CajaController extends Controller
 {
-    public function read(){
+    public function read()
+    {
         return Caja::all();
     }
 
-    public function store(Request $r){
-        $datosValidados = $r->validate([
-            'caja_descripcion'=>'required'
+    public function store(Request $r)
+    {
+        $r->validate([
+            'caja_descripcion' => 'required|string|max:100|unique:cajas,caja_descripcion',
+        ], [
+            'caja_descripcion.required' => 'La descripción de la caja es obligatoria.',
+            'caja_descripcion.max'      => 'La descripción no puede superar los 100 caracteres.',
+            'caja_descripcion.unique'   => 'Ya existe una caja con esa descripción.',
         ]);
-        $caja = Caja::create($datosValidados);
-        $caja->save();
+
+        $caja = Caja::create([
+            'caja_descripcion' => $r->caja_descripcion,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro creado con exito',
-            'tipo'=>'success',
-            'registro'=> $caja
-        ],200);
+            'mensaje'  => 'Caja creada con éxito',
+            'tipo'     => 'success',
+            'registro' => $caja,
+        ]);
     }
 
-    public function update(Request $r, $id){
+    public function update(Request $r, $id)
+    {
         $caja = Caja::find($id);
-        if(!$caja){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$caja) {
+            return response()->json(['mensaje' => 'Caja no encontrada', 'tipo' => 'error'], 404);
         }
-        $datosValidados = $r->validate([
-            'caja_descripcion'=>'required'
+
+        $r->validate([
+            'caja_descripcion' => [
+                'required', 'string', 'max:100',
+                Rule::unique('cajas', 'caja_descripcion')->ignore($id),
+            ],
+        ], [
+            'caja_descripcion.required' => 'La descripción de la caja es obligatoria.',
+            'caja_descripcion.max'      => 'La descripción no puede superar los 100 caracteres.',
+            'caja_descripcion.unique'   => 'Ya existe otra caja con esa descripción.',
         ]);
-        $caja->update($datosValidados);
+
+        $caja->update([
+            'caja_descripcion' => $r->caja_descripcion,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $caja
-        ],200);
+            'mensaje'  => 'Caja actualizada con éxito',
+            'tipo'     => 'success',
+            'registro' => $caja,
+        ]);
     }
 
-    public function destroy($id){
+    public function destroy($id)
+    {
         $caja = Caja::find($id);
-        if(!$caja){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$caja) {
+            return response()->json(['mensaje' => 'Caja no encontrada', 'tipo' => 'error'], 404);
         }
-        $caja->delete();
-        return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
+
+        try {
+            $caja->delete();
+            return response()->json(['mensaje' => 'Caja eliminada con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar la caja porque tiene movimientos registrados.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

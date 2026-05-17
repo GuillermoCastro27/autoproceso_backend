@@ -18,60 +18,38 @@ use App\Models\TipoImpuesto;
 
 class VentasCabController extends Controller
 {
-    public function read()
+    public function read(Request $r)
 {
-    return DB::select("
-        SELECT 
-            v.*,
+    $desde = $r->query('desde', now()->startOfMonth()->toDateString());
+    $hasta = $r->query('hasta', now()->toDateString());
 
-            -- Fechas
-            COALESCE(
-                TO_CHAR(v.vent_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS'),
-                'N/A'
-            ) AS vent_intervalo_fecha_vence,
+    return DB::select("
+        SELECT
+            v.*,
+            COALESCE(TO_CHAR(v.vent_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS'), 'N/A') AS vent_intervalo_fecha_vence,
             v.vent_fecha,
             v.vent_estado,
             COALESCE(v.vent_cant_cuota::varchar, '0') AS vent_cant_cuota,
             v.condicion_pago,
-
-            -- Cliente
             c.cli_nombre,
             c.cli_apellido,
             c.cli_ruc,
             c.cli_direccion,
             c.cli_telefono,
             c.cli_correo,
-
-            -- Empresa / Sucursal
             e.emp_razon_social,
             s.suc_razon_social,
-
-            -- Usuario
             f.fun_nom || ' ' || f.fun_apellido AS funcionario,
-
-            -- Pedido de venta
-            COALESCE(
-                'PEDIDO DE VENTA NRO: ' || TO_CHAR(pv.id, '0000000'),
-                'SIN PEDIDO DE VENTA'
-            ) AS pedido_venta
-
+            COALESCE('PEDIDO DE VENTA NRO: ' || TO_CHAR(pv.id, '0000000'), 'SIN PEDIDO DE VENTA') AS pedido_venta
         FROM ventas_cab v
-
-        JOIN clientes c
-            ON c.id = v.clientes_id
-
-        JOIN empresa e
-            ON e.id = v.empresa_id
-
-        JOIN sucursal s
-            ON s.id = v.sucursal_id
-
-        JOIN funcionario f
-            ON f.id = v.funcionario_id
-
-        LEFT JOIN pedidos_ventas pv
-            ON pv.id = v.pedidos_ventas_id
-    ");
+        JOIN clientes c    ON c.id  = v.clientes_id
+        JOIN empresa e     ON e.id  = v.empresa_id
+        JOIN sucursal s    ON s.id  = v.sucursal_id
+        JOIN funcionario f ON f.id  = v.funcionario_id
+        LEFT JOIN pedidos_ventas pv ON pv.id = v.pedidos_ventas_id
+        WHERE v.vent_fecha BETWEEN ? AND ?
+        ORDER BY v.vent_fecha DESC
+    ", [$desde, $hasta]);
 }
 public function store(Request $r)
 {

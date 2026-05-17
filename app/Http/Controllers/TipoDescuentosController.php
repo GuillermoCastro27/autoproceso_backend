@@ -90,11 +90,14 @@ class TipoDescuentosController extends Controller
             ], 404);
         }
 
-        $tipodescuentos->delete();
-
-        return response()->json([
-            'mensaje' => 'Registro eliminado con éxito',
-            'tipo'    => 'success',
-        ], 200);
+        try {
+            $tipodescuentos->delete();
+            return response()->json(['mensaje' => 'Tipo de descuento eliminado con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar el tipo de descuento porque está siendo utilizado en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

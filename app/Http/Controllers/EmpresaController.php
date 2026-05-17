@@ -4,81 +4,102 @@ namespace App\Http\Controllers;
 
 use App\Models\Empresa;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class EmpresaController extends Controller
 {
-    public function read(){
+    public function read()
+    {
         return Empresa::all();
     }
-    public function store(Request $r) {
-        // Validación de los datos
-        $datosValidados = $r->validate([
-            'emp_razon_social' => 'required',
-            'emp_direccion' => 'required',
-            'emp_telefono' => 'required',
-            'emp_correo' => 'required'
+
+    public function store(Request $r)
+    {
+        $r->validate([
+            'emp_razon_social' => 'required|string|max:200',
+            'emp_direccion'    => 'required|string|max:300',
+            'emp_telefono'     => 'required|string|max:30',
+            'emp_correo'       => 'required|email|max:100',
+        ], [
+            'emp_razon_social.required' => 'La razón social es obligatoria.',
+            'emp_direccion.required'    => 'La dirección es obligatoria.',
+            'emp_telefono.required'     => 'El teléfono es obligatorio.',
+            'emp_correo.required'       => 'El correo electrónico es obligatorio.',
+            'emp_correo.email'          => 'El correo no tiene un formato válido.',
         ]);
-    
-        try {
-            // Intentar crear el registro
-            $empresa = Empresa::create($datosValidados);
-            return response()->json([
-                "mensaje" => "Registro creado con éxito",
-                "tipo" => "success",
-                "registro" => $empresa
-            ], 200);
-    
-        } catch (QueryException $e) {
-            // Verificar si el error es por restricción de unicidad (error 23505 en PostgreSQL)
-            if ($e->getCode() == 23505) {
-                return response()->json([
-                    "mensaje" => "Error: la empresa ya existe",
-                    "tipo" => "error"
-                ], 400);  // Código de error HTTP 400 (Bad Request)
-            }
-    
-            // Manejo general de otros errores
-            return response()->json([
-                "mensaje" => "Error al crear el registro",
-                "tipo" => "error"
-            ], 500);
-        }
-    }
-    
-    public function update(Request $r, $id){
-        $empresa = Empresa::find($id);
-        if(!$empresa){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'emp_razon_social' => 'required',
-            'emp_direccion' => 'required',
-            'emp_telefono' => 'required',
-            'emp_correo' => 'required'
+
+        $empresa = Empresa::create([
+            'emp_razon_social' => $r->emp_razon_social,
+            'emp_direccion'    => $r->emp_direccion,
+            'emp_telefono'     => $r->emp_telefono,
+            'emp_correo'       => $r->emp_correo,
         ]);
-        $empresa->update($datosValidados);
+
         return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $empresa
-        ],200);
+            'mensaje'  => 'Empresa creada con éxito',
+            'tipo'     => 'success',
+            'registro' => $empresa,
+        ]);
     }
 
-    public function destroy($id){
+    public function update(Request $r, $id)
+    {
         $empresa = Empresa::find($id);
-        if(!$empresa){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$empresa) {
+            return response()->json(['mensaje' => 'Empresa no encontrada', 'tipo' => 'error'], 404);
         }
-        $empresa->delete();
+
+        $r->validate([
+            'emp_razon_social' => 'required|string|max:200',
+            'emp_direccion'    => 'required|string|max:300',
+            'emp_telefono'     => 'required|string|max:30',
+            'emp_correo'       => 'required|email|max:100',
+        ], [
+            'emp_razon_social.required' => 'La razón social es obligatoria.',
+            'emp_direccion.required'    => 'La dirección es obligatoria.',
+            'emp_telefono.required'     => 'El teléfono es obligatorio.',
+            'emp_correo.required'       => 'El correo electrónico es obligatorio.',
+            'emp_correo.email'          => 'El correo no tiene un formato válido.',
+        ]);
+
+        $empresa->update([
+            'emp_razon_social' => $r->emp_razon_social,
+            'emp_direccion'    => $r->emp_direccion,
+            'emp_telefono'     => $r->emp_telefono,
+            'emp_correo'       => $r->emp_correo,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
+            'mensaje'  => 'Empresa actualizada con éxito',
+            'tipo'     => 'success',
+            'registro' => $empresa,
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $empresa = Empresa::find($id);
+        if (!$empresa) {
+            return response()->json(['mensaje' => 'Empresa no encontrada', 'tipo' => 'error'], 404);
+        }
+
+        $tieneSucursales = DB::table('sucursal')->where('empresa_id', $id)->exists();
+        if ($tieneSucursales) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar la empresa porque tiene sucursales asociadas.',
+                'tipo'    => 'error',
+            ], 409);
+        }
+
+        try {
+            $empresa->delete();
+            return response()->json(['mensaje' => 'Empresa eliminada con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar la empresa porque tiene registros asociados en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

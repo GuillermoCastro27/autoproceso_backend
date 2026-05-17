@@ -4,120 +4,25 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReciboCobro;
 use App\Models\AperturaCierreCaja;
 use App\Models\CobrosCab;
 use App\Models\CobrosDet;
 
 class CobrosCabController extends Controller
 {
-    public function read()
-{
-    return DB::select("
-        SELECT
-            cc.id,
+    public function read(Request $r)
+    {
+        $desde = $r->input('desde', now()->startOfMonth()->toDateString());
+        $hasta = $r->input('hasta', now()->toDateString());
 
-            -- =========================
-            -- Fechas
-            -- =========================
-            TO_CHAR(cc.cobro_fecha, 'YYYY-MM-DD HH24:MI:SS') AS cobro_fecha,
-            COALESCE(
-                TO_CHAR(cc.fecha_cobro_diferido, 'YYYY-MM-DD HH24:MI:SS'),
-                'N/A'
-            ) AS fecha_cobro_diferido,
-
-            -- =========================
-            -- Estado / importes
-            -- =========================
-            cc.cobro_estado,
-            cc.cobro_importe,
-            COALESCE(cc.cobro_observacion, '') AS cobro_observacion,
-
-            -- =========================
-            -- EFECTIVO
-            -- =========================
-            COALESCE(ce.monto_efectivo, 0) AS monto_efectivo,
-
-            -- =========================
-            -- Datos del cobro
-            -- =========================
-            COALESCE(cc.numero_documento, 'N/A') AS numero_documento,
-            COALESCE(cc.nro_voucher, 'N/A') AS nro_voucher,
-            COALESCE(cc.portador, 'N/A') AS portador,
-
-            -- =========================
-            -- Forma de cobro
-            -- =========================
-            fc.id AS forma_cobro_id,
-            fc.for_cob_descripcion AS forma_cobro,
-
-            -- =========================
-            -- Cliente
-            -- =========================
-            cli.id AS clientes_id,
-            cli.cli_nombre,
-            cli.cli_apellido,
-            cli.cli_ruc,
-            cli.cli_telefono,
-            cli.cli_correo,
-            cli.cli_direccion,
-
-            -- =========================
-            -- Venta asociada
-            -- =========================
-            cc.ventas_cab_id,
-            'VENTA NRO: ' || TO_CHAR(cc.ventas_cab_id, '0000000') AS venta_nro,
-
-            -- =========================
-            -- Empresa / Sucursal
-            -- =========================
-            e.emp_razon_social,
-            s.suc_razon_social,
-
-            -- =========================
-            -- Usuario
-            -- =========================
-            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
-
-            -- =========================
-            -- Caja (DESDE APERTURA)
-            -- =========================
-            ac.id AS apertura_cierre_caja_id,
-            ac.estado AS aper_cier_estado,
-            ca.caja_descripcion AS caja,
-
-            -- =========================
-            -- Entidades opcionales (resumen)
-            -- =========================
-            cc.entidad_emisora_id,
-            COALESCE(ee.ent_emis_nombre, 'N/A') AS entidad_emisora,
-
-            cc.marca_tarjeta_id,
-            COALESCE(mt.marca_nombre, 'N/A') AS marca_tarjeta,
-
-            cc.entidad_adherida_id,
-            COALESCE(ea.ent_adh_nombre, 'N/A') AS entidad_adherida
-
-        FROM cobros_cab cc
-
-        JOIN forma_cobro fc ON fc.id = cc.forma_cobro_id
-        JOIN clientes cli   ON cli.id = cc.clientes_id
-        JOIN empresa e      ON e.id  = cc.empresa_id
-        JOIN sucursal s     ON s.id  = cc.sucursal_id
-        JOIN funcionario f  ON f.id = cc.funcionario_id
-
-        JOIN apertura_cierre_caja ac ON ac.id = cc.apertura_cierre_caja_id
-        JOIN caja ca                ON ca.id = ac.caja_id
-
-        LEFT JOIN entidad_emisora ee  ON ee.id = cc.entidad_emisora_id
-        LEFT JOIN marca_tarjeta mt    ON mt.id = cc.marca_tarjeta_id
-        LEFT JOIN entidad_adherida ea ON ea.id = cc.entidad_adherida_id
-
-        -- 👇 EFECTIVO
-        LEFT JOIN cobro_efectivo ce ON ce.cobros_cab_id = cc.id
-
-        ORDER BY cc.id DESC
-    ");
-}
+        return DB::select("
+            SELECT * FROM v_cobros
+            WHERE cobro_fecha_ts::date BETWEEN ? AND ?
+            ORDER BY id DESC
+        ", [$desde, $hasta]);
+    }
 public function store(Request $r)
 {
     $r->validate([
@@ -200,10 +105,13 @@ public function store(Request $r)
         // ==================================================
         // 3) Validar suma de medios de cobro (BLINDAJE)
         // ==================================================
-        $totalMedios =
-            (float)($r->monto_efectivo ?? 0) +
-            (float)($r->monto_tarjeta ?? 0) +
-            (float)($r->monto_cheque ?? 0);
+        $tarjetasVal = json_decode($r->input('tarjetas', '[]'), true) ?? [];
+        $chequesVal  = json_decode($r->input('cheques',  '[]'), true) ?? [];
+
+        $totalTarjetas = array_sum(array_column($tarjetasVal, 'monto_tarjeta'));
+        $totalCheques  = array_sum(array_column($chequesVal,  'monto_cheque'));
+
+        $totalMedios = (float)($r->monto_efectivo ?? 0) + $totalTarjetas + $totalCheques;
 
         if (abs($totalMedios - (float)$r->cobro_importe) > 0.01) {
             throw new \Exception('La suma de los medios de cobro no coincide con el importe');
@@ -217,16 +125,7 @@ public function store(Request $r)
             'cobro_estado' => 'PENDIENTE',
             'cobro_importe' => $r->cobro_importe,
             'cobro_observacion' => $r->cobro_observacion,
-
             'numero_documento' => $r->numero_documento,
-            'nro_voucher' => $r->nro_voucher,
-            'portador' => $r->portador,
-            'fecha_cobro_diferido' => $r->fecha_cobro_diferido,
-
-            'entidad_emisora_id' => $r->entidad_emisora_id,
-            'marca_tarjeta_id' => $r->marca_tarjeta_id,
-            'entidad_adherida_id' => $r->entidad_adherida_id,
-
             'forma_cobro_id' => $r->forma_cobro_id,
             'clientes_id' => $r->clientes_id,
             'ventas_cab_id' => $ventaId,
@@ -288,37 +187,45 @@ public function store(Request $r)
         }
 
         // ==================================================
-        // 7) Detalle TARJETA
+        // 7) Tarjetas (array JSON)
         // ==================================================
-        if ($r->filled('monto_tarjeta') && (float)$r->monto_tarjeta > 0) {
-            DB::table('cobros_tarjeta')->insert([
-                'cobros_cab_id' => $cobroId,
-                'entidad_emisora_tarjeta_id' => $r->entidad_emisora_tarjeta_id,
-                'marca_tarjeta_tarjeta_id' => $r->marca_tarjeta_tarjeta_id,
-                'entidad_adherida_tarjeta_id' => $r->entidad_adherida_tarjeta_id,
-                'nro_tarjeta' => $r->nro_tarjeta,
-                'fecha_vencimiento' => $r->fecha_venc_tarjeta,
-                'nro_voucher' => $r->nro_voucher_tarjeta,
-                'monto_tarjeta' => $r->monto_tarjeta,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        $tarjetas = json_decode($r->input('tarjetas', '[]'), true) ?? [];
+        foreach ($tarjetas as $t) {
+            if ((float)($t['monto_tarjeta'] ?? 0) > 0) {
+                DB::table('cobros_tarjeta')->insert([
+                    'cobros_cab_id'              => $cobroId,
+                    'entidad_emisora_tarjeta_id' => $t['entidad_emisora_tarjeta_id'] ?? null,
+                    'marca_tarjeta_tarjeta_id'   => $t['marca_tarjeta_tarjeta_id']   ?? null,
+                    'entidad_adherida_tarjeta_id'=> $t['entidad_adherida_tarjeta_id']?? null,
+                    'nro_tarjeta'                => $t['nro_tarjeta']                ?? null,
+                    'fecha_vencimiento'          => $t['fecha_venc_tarjeta']          ?? null,
+                    'nro_voucher'                => $t['nro_voucher_tarjeta']         ?? null,
+                    'monto_tarjeta'              => $t['monto_tarjeta'],
+                    'created_at'                 => now(),
+                    'updated_at'                 => now(),
+                ]);
+            }
         }
 
         // ==================================================
-        // 8) Detalle CHEQUE
+        // 8) Cheques (array JSON)
         // ==================================================
-        if ($r->filled('monto_cheque') && (float)$r->monto_cheque > 0) {
-            DB::table('cobros_cheque')->insert([
-                'cobros_cab_id'             => $cobroId,
-                'entidad_emisora_cheque_id' => $r->entidad_emisora_cheque_id,
-                'nro_cheque'                => $r->nro_cheque,
-                'fecha_vencimiento'         => $r->fecha_venc_cheque,
-                'monto_cheque'              => $r->monto_cheque,
-                'estado_cheque'             => 'RECIBIDO',
-                'created_at'                => now(),
-                'updated_at'                => now(),
-            ]);
+        $cheques = json_decode($r->input('cheques', '[]'), true) ?? [];
+        foreach ($cheques as $ch) {
+            if ((float)($ch['monto_cheque'] ?? 0) > 0) {
+                DB::table('cobros_cheque')->insert([
+                    'cobros_cab_id'             => $cobroId,
+                    'entidad_emisora_cheque_id' => $ch['entidad_emisora_cheque_id'] ?? null,
+                    'nro_cheque'                => $ch['nro_cheque']                ?? null,
+                    'fecha_vencimiento'         => $ch['fecha_venc_cheque']         ?? null,
+                    'portador'                  => $ch['portador']                  ?? null,
+                    'fecha_cobro_diferido'      => $ch['fecha_cobro_diferido']      ?? null,
+                    'monto_cheque'              => $ch['monto_cheque'],
+                    'estado_cheque'             => 'RECIBIDO',
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
+                ]);
+            }
         }
 
         // ==================================================
@@ -393,98 +300,73 @@ public function update(Request $r, $id)
     try {
 
         // ==================================================
-        // 🔹 Normalizar campos opcionales
-        // ==================================================
-        foreach ([
-            'numero_documento',
-            'nro_voucher',
-            'portador',
-            'fecha_cobro_diferido',
-            'cobro_observacion'
-        ] as $campo) {
-            if (
-                !$r->has($campo) ||
-                $r->$campo === '' ||
-                $r->$campo === 'N/A' ||
-                strtolower((string)$r->$campo) === 'null'
-            ) {
-                $r->merge([$campo => null]);
-            }
-        }
-
-        // ==================================================
         // 🔹 Actualizar cabecera
         // ==================================================
         $cobro->update([
-            'cobro_fecha'          => $r->cobro_fecha,
-            'forma_cobro_id'       => $r->forma_cobro_id,
-            'cobro_observacion'    => $r->cobro_observacion,
-            'numero_documento'     => $r->numero_documento,
-            'nro_voucher'          => $r->nro_voucher,
-            'portador'             => $r->portador,
-            'fecha_cobro_diferido' => $r->fecha_cobro_diferido,
+            'cobro_fecha'       => $r->cobro_fecha,
+            'forma_cobro_id'    => $r->forma_cobro_id,
+            'cobro_observacion' => $r->cobro_observacion ?: null,
+            'numero_documento'  => $r->numero_documento  ?: null,
         ]);
 
         // ==================================================
         // 🔹 Validar suma de medios
         // ==================================================
-        $totalMedios =
-            (float)($r->monto_efectivo ?? 0) +
-            (float)($r->monto_tarjeta ?? 0) +
-            (float)($r->monto_cheque ?? 0);
+        $tarjetasUpd = json_decode($r->input('tarjetas', '[]'), true) ?? [];
+        $chequesUpd  = json_decode($r->input('cheques',  '[]'), true) ?? [];
+
+        $totalTarjUpd  = array_sum(array_column($tarjetasUpd, 'monto_tarjeta'));
+        $totalCheqUpd  = array_sum(array_column($chequesUpd,  'monto_cheque'));
+        $totalMedios   = (float)($r->monto_efectivo ?? 0) + $totalTarjUpd + $totalCheqUpd;
 
         if (abs($totalMedios - (float)$cobro->cobro_importe) > 0.01) {
             throw new \Exception('La suma de los medios de cobro no coincide con el importe');
         }
 
         // ==================================================
-        // 🔹 TARJETA (DETALLE) — independiente de forma_cobro
+        // 🔹 TARJETAS — borrar y re-insertar
         // ==================================================
-        if ((float)($r->monto_tarjeta ?? 0) > 0) {
-
-            DB::table('cobros_tarjeta')->updateOrInsert(
-                ['cobros_cab_id' => $id],
-                [
-                    'entidad_emisora_tarjeta_id'  => $r->entidad_emisora_tarjeta_id,
-                    'marca_tarjeta_tarjeta_id'    => $r->marca_tarjeta_tarjeta_id,
-                    'entidad_adherida_tarjeta_id' => $r->entidad_adherida_tarjeta_id,
-                    'nro_tarjeta'                 => $r->nro_tarjeta,
-                    'fecha_vencimiento'           => $r->fecha_venc_tarjeta,
-                    'nro_voucher'                 => $r->nro_voucher_tarjeta,
-                    'monto_tarjeta'               => $r->monto_tarjeta,
-                    'updated_at'                  => now(),
-                    'created_at'                  => now(),
-                ]
-            );
-
-        } else {
-            DB::table('cobros_tarjeta')->where('cobros_cab_id', $id)->delete();
+        DB::table('cobros_tarjeta')->where('cobros_cab_id', $id)->delete();
+        foreach ($tarjetasUpd as $t) {
+            if ((float)($t['monto_tarjeta'] ?? 0) > 0) {
+                DB::table('cobros_tarjeta')->insert([
+                    'cobros_cab_id'              => $id,
+                    'entidad_emisora_tarjeta_id' => $t['entidad_emisora_tarjeta_id'] ?? null,
+                    'marca_tarjeta_tarjeta_id'   => $t['marca_tarjeta_tarjeta_id']   ?? null,
+                    'entidad_adherida_tarjeta_id'=> $t['entidad_adherida_tarjeta_id']?? null,
+                    'nro_tarjeta'                => $t['nro_tarjeta']                ?? null,
+                    'fecha_vencimiento'          => $t['fecha_venc_tarjeta']          ?? null,
+                    'nro_voucher'                => $t['nro_voucher_tarjeta']         ?? null,
+                    'monto_tarjeta'              => $t['monto_tarjeta'],
+                    'created_at'                 => now(),
+                    'updated_at'                 => now(),
+                ]);
+            }
         }
 
         // ==================================================
-        // 🔹 CHEQUE (DETALLE) — independiente de forma_cobro
+        // 🔹 CHEQUES — borrar y re-insertar
         // ==================================================
-        if ((float)($r->monto_cheque ?? 0) > 0) {
-
-            DB::table('cobros_cheque')->updateOrInsert(
-                ['cobros_cab_id' => $id],
-                [
-                    'entidad_emisora_cheque_id' => $r->entidad_emisora_cheque_id,
-                    'nro_cheque'                => $r->nro_cheque,
-                    'fecha_vencimiento'         => $r->fecha_venc_cheque,
-                    'monto_cheque'              => $r->monto_cheque,
+        DB::table('cobros_cheque')->where('cobros_cab_id', $id)->delete();
+        foreach ($chequesUpd as $ch) {
+            if ((float)($ch['monto_cheque'] ?? 0) > 0) {
+                DB::table('cobros_cheque')->insert([
+                    'cobros_cab_id'             => $id,
+                    'entidad_emisora_cheque_id' => $ch['entidad_emisora_cheque_id'] ?? null,
+                    'nro_cheque'                => $ch['nro_cheque']                ?? null,
+                    'fecha_vencimiento'         => $ch['fecha_venc_cheque']         ?? null,
+                    'portador'                  => $ch['portador']                  ?? null,
+                    'fecha_cobro_diferido'      => $ch['fecha_cobro_diferido']      ?? null,
+                    'monto_cheque'              => $ch['monto_cheque'],
                     'estado_cheque'             => 'RECIBIDO',
-                    'updated_at'                => now(),
                     'created_at'                => now(),
-                ]
-            );
-
-        } else {
-            DB::table('cobros_cheque')->where('cobros_cab_id', $id)->delete();
+                    'updated_at'                => now(),
+                ]);
+            }
         }
 
         // ==================================================
-        // 🔹 EFECTIVO (DETALLE) — independiente de forma_cobro
+        // 🔹 EFECTIVO (DETALLE)
         // ==================================================
         if ((float)($r->monto_efectivo ?? 0) > 0) {
 
@@ -640,6 +522,197 @@ public function confirmar(Request $r, $id)
     }
 }
 
+
+private function datosRecibo($id): ?array
+{
+    $cobro = DB::selectOne("
+        SELECT
+            cc.id,
+            cc.clientes_id,
+            TO_CHAR(cc.cobro_fecha, 'DD/MM/YYYY HH24:MI') AS cobro_fecha,
+            cc.cobro_estado,
+            cc.cobro_importe,
+            COALESCE(cc.cobro_observacion, '')                           AS cobro_observacion,
+            COALESCE(cc.numero_documento, '')                            AS numero_documento,
+            COALESCE(cc.nro_voucher, '')                                 AS nro_voucher,
+            COALESCE(cc.portador, '')                                    AS portador,
+            COALESCE(TO_CHAR(cc.fecha_cobro_diferido, 'DD/MM/YYYY'), '') AS fecha_cobro_diferido,
+
+            fc.for_cob_descripcion AS forma_cobro,
+
+            cli.cli_nombre,
+            cli.cli_apellido,
+            cli.cli_ruc,
+            cli.cli_telefono,
+            cli.cli_correo,
+            cli.cli_direccion,
+
+            e.emp_razon_social,
+            e.emp_direccion,
+            e.emp_telefono,
+
+            s.suc_razon_social,
+            s.suc_direccion,
+            s.suc_telefono,
+
+            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+            ca.caja_descripcion                AS caja,
+
+            COALESCE(ce.monto_efectivo, 0) AS monto_efectivo
+
+        FROM cobros_cab cc
+        JOIN forma_cobro fc          ON fc.id  = cc.forma_cobro_id
+        JOIN clientes cli            ON cli.id = cc.clientes_id
+        JOIN empresa e               ON e.id   = cc.empresa_id
+        JOIN sucursal s              ON s.id   = cc.sucursal_id
+        JOIN funcionario f           ON f.id   = cc.funcionario_id
+        JOIN apertura_cierre_caja ac ON ac.id  = cc.apertura_cierre_caja_id
+        JOIN caja ca                 ON ca.id  = ac.caja_id
+        LEFT JOIN cobro_efectivo ce  ON ce.cobros_cab_id = cc.id
+        WHERE cc.id = ?
+    ", [$id]);
+
+    if (!$cobro) {
+        return null;
+    }
+
+    $detalles = DB::select("
+        SELECT
+            cd.item_id,
+            i.item_decripcion,
+            ti.tip_imp_nom,
+            cd.cob_det_cantidad AS cantidad,
+            cd.cob_det_precio   AS precio,
+            (cd.cob_det_cantidad * cd.cob_det_precio) AS subtotal
+        FROM cobros_det cd
+        JOIN items i          ON i.id  = cd.item_id
+        JOIN tipo_impuesto ti ON ti.id = cd.tipo_impuesto_id
+        WHERE cd.cobros_cab_id = ?
+        ORDER BY cd.item_id
+    ", [$id]);
+
+    $cuotas = DB::select("
+        SELECT
+            ccc.monto_cobrado,
+            cc2.nro_cuota,
+            TO_CHAR(cc2.cta_cob_fecha_vencimiento, 'DD/MM/YYYY') AS fecha_vencimiento,
+            'VENTA NRO: ' || TO_CHAR(v.id, '0000000') AS venta_nro
+        FROM cobros_ctas_cobrar ccc
+        JOIN ctas_cobrar cc2 ON cc2.id = ccc.ctas_cobrar_id
+        JOIN ventas_cab v    ON v.id   = cc2.ventas_cab_id
+        WHERE ccc.cobros_cab_id = ?
+        ORDER BY cc2.nro_cuota
+    ", [$id]);
+
+    $tarjeta = DB::table('cobros_tarjeta')->where('cobros_cab_id', $id)->first();
+    $cheque  = DB::table('cobros_cheque')->where('cobros_cab_id', $id)->first();
+
+    return compact('cobro', 'detalles', 'cuotas', 'tarjeta', 'cheque');
+}
+
+public function imprimir($id)
+{
+    $data = $this->datosRecibo($id);
+
+    if (!$data) {
+        return response()->json(['mensaje' => 'Cobro no encontrado', 'tipo' => 'error'], 404);
+    }
+
+    return response()->json([
+        'cab'      => $data['cobro'],
+        'detalles' => $data['detalles'],
+        'cuotas'   => $data['cuotas'],
+        'tarjeta'  => $data['tarjeta'],
+        'cheque'   => $data['cheque'],
+    ]);
+}
+
+public function enviarRecibo($id)
+{
+    $data = $this->datosRecibo($id);
+
+    if (!$data) {
+        return response()->json(['mensaje' => 'Cobro no encontrado', 'tipo' => 'error'], 404);
+    }
+
+    $cobro = $data['cobro'];
+
+    if (empty($cobro->cli_correo)) {
+        return response()->json(['mensaje' => 'El cliente no tiene correo registrado', 'tipo' => 'warning']);
+    }
+
+    $datos = array_merge((array) $cobro, [
+        'detalles' => $data['detalles'],
+        'cuotas'   => $data['cuotas'],
+        'tarjeta'  => $data['tarjeta'],
+        'cheque'   => $data['cheque'],
+    ]);
+
+    Mail::to($cobro->cli_correo)->send(new ReciboCobro($datos));
+
+    return response()->json([
+        'mensaje' => 'Recibo enviado correctamente a ' . $cobro->cli_correo,
+        'tipo'    => 'success',
+    ]);
+}
+
+public function detalle($id)
+{
+    $tarjeta = DB::table('cobros_tarjeta as ct')
+        ->leftJoin('entidad_emisora as ee', 'ee.id', '=', 'ct.entidad_emisora_tarjeta_id')
+        ->leftJoin('marca_tarjeta as mt',   'mt.id', '=', 'ct.marca_tarjeta_tarjeta_id')
+        ->leftJoin('entidad_adherida as ea','ea.id', '=', 'ct.entidad_adherida_tarjeta_id')
+        ->select(
+            'ct.id', 'ct.cobros_cab_id', 'ct.nro_tarjeta',
+            DB::raw("TO_CHAR(ct.fecha_vencimiento, 'YYYY-MM-DD') AS fecha_venc_tarjeta"),
+            'ct.monto_tarjeta', 'ct.nro_voucher',
+            'ee.ent_emis_nombre AS entidad_emisora_tarjeta',
+            'mt.marca_nombre    AS marca_tarjeta_tarjeta',
+            'ea.ent_adh_nombre  AS entidad_adherida_tarjeta',
+            'ct.entidad_emisora_tarjeta_id',
+            DB::raw('ct.marca_tarjeta_tarjeta_id AS marca_tarjeta_tarjeta_id'),
+            'ct.entidad_adherida_tarjeta_id'
+        )
+        ->where('ct.cobros_cab_id', $id)
+        ->get();
+
+    $cheque = DB::table('cobros_cheque as cc')
+        ->leftJoin('entidad_emisora as ee', 'ee.id', '=', 'cc.entidad_emisora_cheque_id')
+        ->select(
+            'cc.id', 'cc.cobros_cab_id', 'cc.nro_cheque',
+            DB::raw("TO_CHAR(cc.fecha_vencimiento, 'YYYY-MM-DD') AS fecha_venc_cheque"),
+            'cc.monto_cheque', 'cc.estado_cheque',
+            'cc.portador',
+            DB::raw("TO_CHAR(cc.fecha_cobro_diferido, 'YYYY-MM-DD') AS fecha_cobro_diferido"),
+            'ee.ent_emis_nombre AS entidad_emisora_cheque',
+            'ee.id              AS entidad_emisora_cheque_id'
+        )
+        ->where('cc.cobros_cab_id', $id)
+        ->get();
+
+    $detalles = DB::select("
+        SELECT cd.*, i.item_decripcion, ti.tip_imp_nom
+        FROM cobros_det cd
+        JOIN items        i  ON i.id  = cd.item_id
+        JOIN tipo_impuesto ti ON ti.id = cd.tipo_impuesto_id
+        WHERE cd.cobros_cab_id = ?
+    ", [$id]);
+
+    $cuotas = DB::select("
+        SELECT ccc.monto_cobrado,
+               cc2.id AS cta_cobrar_id,
+               cc2.nro_cuota,
+               TO_CHAR(cc2.cta_cob_fecha_vencimiento, 'YYYY-MM-DD') AS fecha_vencimiento,
+               'VENTA NRO: ' || TO_CHAR(v.id, '0000000') AS venta_nro
+        FROM cobros_ctas_cobrar ccc
+        JOIN ctas_cobrar cc2 ON cc2.id = ccc.ctas_cobrar_id
+        JOIN ventas_cab  v   ON v.id   = cc2.ventas_cab_id
+        WHERE ccc.cobros_cab_id = ?
+        ORDER BY cc2.nro_cuota
+    ", [$id]);
+
+    return response()->json(compact('tarjeta', 'cheque', 'detalles', 'cuotas'));
+}
 
 public function ctas($cobro_id)
 {

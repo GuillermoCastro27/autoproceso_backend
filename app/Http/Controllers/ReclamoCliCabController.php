@@ -11,25 +11,36 @@ use Illuminate\Http\Request;
 
 class ReclamoCliCabController extends Controller
 {
-    private static function portalUrl(): string
+    private function portalUrl()
     {
         return rtrim(env('PORTAL_SEGUIMIENTO_URL', 'http://localhost/taller_front/seguimiento_reclamo/index.html'), '/');
     }
-
-    // -------------------------------------------------------
-    // Construye el array de datos para el email
-    // -------------------------------------------------------
     private function datosEmail(ReclamoCliCab $reclamo, array $cliente): array
     {
+        $empresa  = DB::table('empresa')->where('id', $reclamo->empresa_id)->value('emp_razon_social');
+        $sucursal = DB::table('sucursal')->where('id', $reclamo->sucursal_id)->value('suc_razon_social');
+        $venta    = $reclamo->venta_cab_id
+                        ? DB::table('ventas_cab')->where('id', $reclamo->venta_cab_id)->first()
+                        : null;
+
         return [
             'id'          => $reclamo->id,
             'estado'      => $reclamo->rec_cli_cab_estado,
             'prioridad'   => $reclamo->rec_cli_cab_prioridad,
             'fecha'       => date('d/m/Y H:i', strtotime($reclamo->rec_cli_cab_fecha)),
+            'fecha_inicio'=> $reclamo->rec_cli_cab_fecha_inicio
+                                ? date('d/m/Y H:i', strtotime($reclamo->rec_cli_cab_fecha_inicio))
+                                : null,
+            'fecha_fin'   => $reclamo->rec_cli_cab_fecha_fin
+                                ? date('d/m/Y H:i', strtotime($reclamo->rec_cli_cab_fecha_fin))
+                                : null,
             'observacion' => $reclamo->rec_cli_cab_observacion,
             'cli_nombre'  => $cliente['cli_nombre'],
             'cli_apellido'=> $cliente['cli_apellido'],
-            'portal_url'  => self::portalUrl() . '?token=' . $reclamo->token_seguimiento,
+            'empresa'     => $empresa  ?? '—',
+            'sucursal'    => $sucursal ?? '—',
+            'nro_venta'   => $venta ? str_pad($venta->id, 7, '0', STR_PAD_LEFT) : null,
+            'venta_fecha' => $venta && $venta->vent_fecha ? date('d/m/Y', strtotime($venta->vent_fecha)) : null,
         ];
     }
 
@@ -81,14 +92,18 @@ class ReclamoCliCabController extends Controller
             rcc.funcionario_id,
             f.fun_nom || ' ' || f.fun_apellido AS funcionario,
 
+            rcc.venta_cab_id,
+            TO_CHAR(v.vent_fecha, 'dd/mm/yyyy') AS venta_fecha,
+
             rcc.created_at,
             rcc.updated_at
 
         FROM reclamo_cli_cab rcc
-        JOIN sucursal s ON s.id = rcc.sucursal_id
-        JOIN empresa e ON e.id = rcc.empresa_id
-        JOIN clientes c ON c.id = rcc.clientes_id
+        JOIN sucursal s  ON s.id = rcc.sucursal_id
+        JOIN empresa e   ON e.id = rcc.empresa_id
+        JOIN clientes c  ON c.id = rcc.clientes_id
         JOIN funcionario f ON f.id = rcc.funcionario_id
+        LEFT JOIN ventas_cab v ON v.id = rcc.venta_cab_id
         ORDER BY rcc.id DESC");
     }
 
@@ -108,6 +123,7 @@ class ReclamoCliCabController extends Controller
             'funcionario_id'           => 'nullable',
             'empresa_id'               => 'required',
             'sucursal_id'              => 'required',
+            'venta_cab_id'             => 'nullable|exists:ventas_cab,id',
         ]);
 
         $datosValidados['funcionario_id']    = auth()->user()->funcionario_id;
@@ -145,6 +161,7 @@ class ReclamoCliCabController extends Controller
             'clientes_id'              => 'required',
             'empresa_id'               => 'required',
             'sucursal_id'              => 'required',
+            'venta_cab_id'             => 'nullable|exists:ventas_cab,id',
         ]);
 
         $reclamo->update($datosValidados);

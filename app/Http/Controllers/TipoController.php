@@ -2,61 +2,91 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Tipo;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TipoController extends Controller
 {
-    public function read(){
+    public function read()
+    {
         return Tipo::all();
     }
 
-    public function store(Request $r){
-        $datosValidados = $r->validate([
-            'tipo_descripcion'=>'required',
-            'tipo_objeto'=>'required'
+    public function store(Request $r)
+    {
+        $r->validate([
+            'tipo_descripcion' => [
+                'required', 'string', 'max:100',
+                Rule::unique('tipos', 'tipo_descripcion')->where(fn($q) => $q->where('tipo_objeto', $r->tipo_objeto)),
+            ],
+            'tipo_objeto' => 'required|string|max:100',
+        ], [
+            'tipo_descripcion.required' => 'La descripción del tipo es obligatoria.',
+            'tipo_descripcion.unique'   => 'Ya existe un tipo con esa descripción para el mismo objeto.',
+            'tipo_objeto.required'      => 'El objeto del tipo es obligatorio.',
         ]);
-        $tipo = Tipo::create($datosValidados);
-        $tipo->save();
+
+        $tipo = Tipo::create([
+            'tipo_descripcion' => $r->tipo_descripcion,
+            'tipo_objeto'      => $r->tipo_objeto,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro creado con exito',
-            'tipo'=>'success',
-            'registro'=> $tipo
-        ],200);
+            'mensaje'  => 'Tipo creado con éxito',
+            'tipo'     => 'success',
+            'registro' => $tipo,
+        ]);
     }
 
-    public function update(Request $r, $id){
+    public function update(Request $r, $id)
+    {
         $tipo = Tipo::find($id);
-        if(!$tipo){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$tipo) {
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
-        $datosValidados = $r->validate([
-            'tipo_descripcion'=>'required',
-            'tipo_objeto'=>'required'
+
+        $r->validate([
+            'tipo_descripcion' => [
+                'required', 'string', 'max:100',
+                Rule::unique('tipos', 'tipo_descripcion')
+                    ->where(fn($q) => $q->where('tipo_objeto', $r->tipo_objeto))
+                    ->ignore($id),
+            ],
+            'tipo_objeto' => 'required|string|max:100',
+        ], [
+            'tipo_descripcion.required' => 'La descripción del tipo es obligatoria.',
+            'tipo_descripcion.unique'   => 'Ya existe otro tipo con esa descripción para el mismo objeto.',
+            'tipo_objeto.required'      => 'El objeto del tipo es obligatorio.',
         ]);
-        $tipo->update($datosValidados);
+
+        $tipo->update([
+            'tipo_descripcion' => $r->tipo_descripcion,
+            'tipo_objeto'      => $r->tipo_objeto,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $tipo
-        ],200);
+            'mensaje'  => 'Tipo actualizado con éxito',
+            'tipo'     => 'success',
+            'registro' => $tipo,
+        ]);
     }
 
-    public function destroy($id){
+    public function destroy($id)
+    {
         $tipo = Tipo::find($id);
-        if(!$tipo){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$tipo) {
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
-        $tipo->delete();
-        return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
+
+        try {
+            $tipo->delete();
+            return response()->json(['mensaje' => 'Tipo eliminado con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar el tipo porque está siendo utilizado en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

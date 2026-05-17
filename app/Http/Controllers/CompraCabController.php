@@ -18,37 +18,36 @@ use Illuminate\Support\Facades\Validator;
 
 class CompraCabController extends Controller
 {
-    public function read() {
+    public function read(Request $r) {
+        $desde = $r->query('desde', now()->startOfMonth()->toDateString());
+        $hasta = $r->query('hasta', now()->toDateString());
+
         return DB::select("
-            SELECT 
-            c.*,
-            COALESCE(to_char(c.comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') AS comp_intervalo_fecha_vence,
-            c.comp_fecha,
-            c.comp_estado,
-            COALESCE(c.comp_cant_cuota::varchar, '0') AS comp_cant_cuota,
-            c.condicion_pago,
-            p.prov_razonsocial,
-            p.prov_ruc,
-            p.prov_telefono,
-            p.prov_correo,
-            e.emp_razon_social,
-            s.suc_razon_social,
-            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
-            COALESCE('ORDEN DE COMPRA NRO: ' || to_char(occ.id, '0000000'), 'SIN ORDEN DE COMPRA') ||
-            COALESCE(' VENCE EL: ' || to_char(occ.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') AS ordencompra
-        FROM
-            compra_cab c
-        JOIN
-            proveedores p ON p.id = c.proveedor_id
-        JOIN
-            empresa e ON e.id = c.empresa_id
-        JOIN
-            sucursal s ON s.id = c.sucursal_id
-        JOIN
-            funcionario f ON f.id = c.funcionario_id
-        LEFT JOIN
-            orden_compra_cab occ ON occ.id = c.orden_compra_cab_id;
-        ");
+            SELECT
+                c.*,
+                COALESCE(to_char(c.comp_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS'), 'N/A') AS comp_intervalo_fecha_vence,
+                c.comp_fecha,
+                c.comp_estado,
+                COALESCE(c.comp_cant_cuota::varchar, '0') AS comp_cant_cuota,
+                c.condicion_pago,
+                p.prov_razonsocial,
+                p.prov_ruc,
+                p.prov_telefono,
+                p.prov_correo,
+                e.emp_razon_social,
+                s.suc_razon_social,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+                COALESCE('ORDEN DE COMPRA NRO: ' || to_char(occ.id, '0000000'), 'SIN ORDEN DE COMPRA') ||
+                COALESCE(' VENCE EL: ' || to_char(occ.ord_comp_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS'), '') AS ordencompra
+            FROM compra_cab c
+            JOIN proveedores p       ON p.id  = c.proveedor_id
+            JOIN empresa e           ON e.id  = c.empresa_id
+            JOIN sucursal s          ON s.id  = c.sucursal_id
+            JOIN funcionario f       ON f.id  = c.funcionario_id
+            LEFT JOIN orden_compra_cab occ ON occ.id = c.orden_compra_cab_id
+            WHERE c.comp_fecha BETWEEN ? AND ?
+            ORDER BY c.comp_fecha DESC
+        ", [$desde, $hasta]);
     }    
     public function store(Request $r) {
         // Convertir cadena vacía a null antes de la validación

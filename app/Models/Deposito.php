@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class Deposito extends Model
+class Deposito extends Model implements Auditable
 {
-    use HasFactory;
+    use HasFactory, AuditableTrait;
 
     protected $table = 'deposito'; // Nombre de la tabla en la BD
 

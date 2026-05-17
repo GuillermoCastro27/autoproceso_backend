@@ -5,101 +5,128 @@ namespace App\Http\Controllers;
 use App\Models\Proveedor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProveedorController extends Controller
 {
-    public function read(){
-        return DB::table('proveedores')
-        ->join('ciudades', 'proveedores.ciudad_id', '=', 'ciudades.id')
-        ->join('nacionalidad', 'proveedores.nacionalidad_id', '=', 'nacionalidad.id')
-        ->join('paises', 'proveedores.pais_id', '=', 'paises.id')
-        ->select('proveedores.*', 'paises.pais_descrpcion as pais_descrpcion',
-        'ciudades.ciu_descripcion as ciu_descripcion',
-        'nacionalidad.nacio_descripcion as nacio_descripcion')
-        ->get();
-    }
-    public function store(Request $r) {
-        // Validación de los datos
-        $datosValidados = $r->validate([
-            'prov_razonsocial' => 'required',
-            'prov_ruc' => 'required',
-            'prov_direccion' => 'required',
-            'prov_telefono' => 'required',
-            'prov_correo' => 'required',
-            'pais_id' => 'required',
-            'ciudad_id' => 'required',
-            'nacionalidad_id' => 'required'
-        ]);
-    
-        try {
-            // Intentar crear el registro
-            $proveedor = Proveedor::create($datosValidados);
-            return response()->json([
-                "mensaje" => "Registro creado con éxito",
-                "tipo" => "success",
-                "registro" => $proveedor
-            ], 200);
-    
-        } catch (QueryException $e) {
-            // Verificar si el error es por restricción de unicidad (error 23505 en PostgreSQL)
-            if ($e->getCode() == 23505) {
-                return response()->json([
-                    "mensaje" => "Error: el RUC ya existe",
-                    "tipo" => "error"
-                ], 400);  // Código de error HTTP 400 (Bad Request)
-            }
-    
-            // Manejo general de otros errores
-            return response()->json([
-                "mensaje" => "Error al crear el registro",
-                "tipo" => "error"
-            ], 500);
-        }
-    }
-    
-    public function update(Request $r, $id){
-        $proveedor = Proveedor::find($id);
-        if(!$proveedor){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'prov_razonsocial'=>'required',
-            'prov_ruc'=>'required',
-            'prov_direccion'=>'required',
-            'prov_telefono'=>'required',
-            'prov_correo'=>'required',
-            'pais_id' => 'required',
-            'ciudad_id'=>'required',
-            'nacionalidad_id'=>'required'
-        ]);
-        $proveedor->update($datosValidados);
-        return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $proveedor
-        ],200);
+    public function read()
+    {
+        return DB::table('v_proveedores')->get();
     }
 
-    public function destroy($id){
-        $proveedor = Proveedor::find($id);
-        if(!$proveedor){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $proveedor->delete();
+    public function store(Request $r)
+    {
+        $r->validate([
+            'prov_razonsocial' => 'required|string|max:200',
+            'prov_ruc'         => ['required', 'string', 'max:30', Rule::unique('proveedores', 'prov_ruc')->whereNull('deleted_at')],
+            'prov_direccion'   => 'required|string|max:300',
+            'prov_telefono'    => 'required|string|max:30',
+            'prov_correo'      => 'required|email|max:100',
+            'pais_id'          => 'required|integer|exists:paises,id',
+            'ciudad_id'        => 'required|integer|exists:ciudades,id',
+            'nacionalidad_id'  => 'required|integer|exists:nacionalidad,id',
+        ], [
+            'prov_razonsocial.required' => 'La razón social es obligatoria.',
+            'prov_ruc.required'         => 'El RUC es obligatorio.',
+            'prov_ruc.unique'           => 'Ya existe un proveedor con ese RUC.',
+            'prov_direccion.required'   => 'La dirección es obligatoria.',
+            'prov_telefono.required'    => 'El teléfono es obligatorio.',
+            'prov_correo.required'      => 'El correo electrónico es obligatorio.',
+            'prov_correo.email'         => 'El correo no tiene un formato válido.',
+            'pais_id.required'          => 'Debe seleccionar un país.',
+            'ciudad_id.required'        => 'Debe seleccionar una ciudad.',
+            'nacionalidad_id.required'  => 'Debe seleccionar una nacionalidad.',
+        ]);
+
+        $proveedor = Proveedor::create([
+            'prov_razonsocial' => $r->prov_razonsocial,
+            'prov_ruc'         => $r->prov_ruc,
+            'prov_direccion'   => $r->prov_direccion,
+            'prov_telefono'    => $r->prov_telefono,
+            'prov_correo'      => $r->prov_correo,
+            'pais_id'          => $r->pais_id,
+            'ciudad_id'        => $r->ciudad_id,
+            'nacionalidad_id'  => $r->nacionalidad_id,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
+            'mensaje'  => 'Proveedor creado con éxito',
+            'tipo'     => 'success',
+            'registro' => $proveedor,
+        ]);
     }
-    public function buscar(Request $r){
+
+    public function update(Request $r, $id)
+    {
+        $proveedor = Proveedor::find($id);
+        if (!$proveedor) {
+            return response()->json(['mensaje' => 'Proveedor no encontrado', 'tipo' => 'error'], 404);
+        }
+
+        $r->validate([
+            'prov_razonsocial' => 'required|string|max:200',
+            'prov_ruc'         => ['required', 'string', 'max:30', Rule::unique('proveedores', 'prov_ruc')->ignore($id)->whereNull('deleted_at')],
+            'prov_direccion'   => 'required|string|max:300',
+            'prov_telefono'    => 'required|string|max:30',
+            'prov_correo'      => 'required|email|max:100',
+            'pais_id'          => 'required|integer|exists:paises,id',
+            'ciudad_id'        => 'required|integer|exists:ciudades,id',
+            'nacionalidad_id'  => 'required|integer|exists:nacionalidad,id',
+        ], [
+            'prov_razonsocial.required' => 'La razón social es obligatoria.',
+            'prov_ruc.required'         => 'El RUC es obligatorio.',
+            'prov_ruc.unique'           => 'Ya existe otro proveedor con ese RUC.',
+            'prov_direccion.required'   => 'La dirección es obligatoria.',
+            'prov_telefono.required'    => 'El teléfono es obligatorio.',
+            'prov_correo.required'      => 'El correo electrónico es obligatorio.',
+            'prov_correo.email'         => 'El correo no tiene un formato válido.',
+            'pais_id.required'          => 'Debe seleccionar un país.',
+            'ciudad_id.required'        => 'Debe seleccionar una ciudad.',
+            'nacionalidad_id.required'  => 'Debe seleccionar una nacionalidad.',
+        ]);
+
+        $proveedor->update([
+            'prov_razonsocial' => $r->prov_razonsocial,
+            'prov_ruc'         => $r->prov_ruc,
+            'prov_direccion'   => $r->prov_direccion,
+            'prov_telefono'    => $r->prov_telefono,
+            'prov_correo'      => $r->prov_correo,
+            'pais_id'          => $r->pais_id,
+            'ciudad_id'        => $r->ciudad_id,
+            'nacionalidad_id'  => $r->nacionalidad_id,
+        ]);
+
+        return response()->json([
+            'mensaje'  => 'Proveedor actualizado con éxito',
+            'tipo'     => 'success',
+            'registro' => $proveedor,
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $proveedor = Proveedor::find($id);
+        if (!$proveedor) {
+            return response()->json(['mensaje' => 'Proveedor no encontrado', 'tipo' => 'error'], 404);
+        }
+
+        try {
+            $proveedor->delete();
+            return response()->json(['mensaje' => 'Proveedor eliminado con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar el proveedor porque tiene órdenes de compra u otros registros asociados.',
+                'tipo'    => 'error',
+            ], 409);
+        }
+    }
+
+    public function buscar(Request $r)
+    {
+        $q = '%' . $r->prov_razonsocial . '%';
         return DB::select(
-        "select p.*,p.*,
-        p.id as proveedor_id from proveedores p where prov_razonsocial ilike '%{$r->prov_razonsocial}%' or prov_ruc ilike '%{$r->prov_razonsocial}%'");
+            "SELECT p.*, p.id AS proveedor_id FROM proveedores p WHERE (prov_razonsocial ILIKE ? OR prov_ruc ILIKE ?) AND p.deleted_at IS NULL",
+            [$q, $q]
+        );
     }
 }

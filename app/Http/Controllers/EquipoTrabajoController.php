@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EquipoTrabajo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class EquipoTrabajoController extends Controller
 {
@@ -51,16 +52,20 @@ class EquipoTrabajoController extends Controller
             ], 404);
         }
 
-        $datosValidados = $r->validate([
-            'equipo_nombre' => 'required|string|max:100|unique:equipo_trabajo,equipo_nombre',
+        $r->validate([
+            'equipo_nombre'      => ['required', 'string', 'max:100', Rule::unique('equipo_trabajo', 'equipo_nombre')->ignore($id)],
             'equipo_descripcion' => 'nullable|string|max:255',
-            'equipo_categoria' => 'nullable|string|max:50'
+            'equipo_categoria'   => 'nullable|string|max:50',
         ], [
             'equipo_nombre.required' => 'El campo nombre es obligatorio.',
-            'equipo_nombre.unique' => 'Ya existe un equipo con este nombre.'
+            'equipo_nombre.unique'   => 'Ya existe otro equipo con ese nombre.',
         ]);
 
-        $equipo->update($datosValidados);
+        $equipo->update([
+            'equipo_nombre'      => $r->equipo_nombre,
+            'equipo_descripcion' => $r->equipo_descripcion,
+            'equipo_categoria'   => $r->equipo_categoria,
+        ]);
 
         return response()->json([
             'mensaje' => 'Registro modificado con éxito',
@@ -80,11 +85,14 @@ class EquipoTrabajoController extends Controller
             ], 404);
         }
 
-        $equipo->delete();
-
-        return response()->json([
-            'mensaje' => 'Registro eliminado con éxito',
-            'tipo' => 'success',
-        ], 200);
+        try {
+            $equipo->delete();
+            return response()->json(['mensaje' => 'Equipo de trabajo eliminado con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar el equipo porque tiene registros asociados en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

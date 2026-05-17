@@ -8,20 +8,22 @@
         .wrapper { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .header { background: #2c3e50; padding: 28px 32px; text-align: center; }
         .header h1 { margin: 0; color: #fff; font-size: 22px; letter-spacing: 1px; }
-        .header p { margin: 6px 0 0; color: #bdc3c7; font-size: 13px; }
-        .badge { display: inline-block; margin: 24px auto 0; padding: 8px 24px; border-radius: 20px; font-size: 15px; font-weight: bold; letter-spacing: 1px; }
+        .header p  { margin: 6px 0 0; color: #bdc3c7; font-size: 13px; }
+        .badge { display: inline-block; margin: 18px auto 0; padding: 8px 28px; border-radius: 20px; font-size: 15px; font-weight: bold; letter-spacing: 1px; }
         .badge-pendiente  { background: #f39c12; color: #fff; }
         .badge-en-proceso { background: #2980b9; color: #fff; }
         .badge-resuelto   { background: #27ae60; color: #fff; }
         .badge-anulado    { background: #c0392b; color: #fff; }
-        .body { padding: 28px 32px; }
+        .body  { padding: 28px 32px; }
         .body p { margin: 0 0 12px; font-size: 15px; line-height: 1.6; }
         .info-box { background: #f8f9fa; border-left: 4px solid #2c3e50; border-radius: 4px; padding: 16px 20px; margin: 20px 0; }
         .info-box table { width: 100%; border-collapse: collapse; }
-        .info-box td { padding: 5px 0; font-size: 14px; }
-        .info-box td:first-child { color: #666; width: 140px; }
-        .info-box td:last-child { font-weight: bold; color: #2c3e50; }
-        .btn { display: block; width: fit-content; margin: 24px auto; padding: 12px 32px; background: #2c3e50; color: #fff !important; text-decoration: none; border-radius: 6px; font-size: 15px; font-weight: bold; text-align: center; }
+        .info-box td { padding: 6px 0; font-size: 14px; vertical-align: top; }
+        .info-box td:first-child { color: #666; width: 160px; font-weight: normal; }
+        .info-box td:last-child  { font-weight: bold; color: #2c3e50; }
+        .obs-box { background: #fff8e1; border-left: 4px solid #f39c12; border-radius: 4px; padding: 14px 18px; margin: 16px 0; font-size: 14px; line-height: 1.6; color: #555; }
+        .obs-box strong { display: block; margin-bottom: 4px; color: #333; }
+        .notice { font-size: 12px; color: #888; background: #f0f0f0; border-radius: 4px; padding: 10px 14px; margin-top: 20px; }
         .footer { background: #ecf0f1; padding: 16px 32px; text-align: center; font-size: 12px; color: #7f8c8d; }
     </style>
 </head>
@@ -32,23 +34,23 @@
     <div class="header">
         <h1>AutoProcesos</h1>
         <p>Sistema de Gestión de Talleres</p>
+        @php
+            $badgeClass = match($datos['estado']) {
+                'PENDIENTE'  => 'badge-pendiente',
+                'EN PROCESO' => 'badge-en-proceso',
+                'RESUELTO'   => 'badge-resuelto',
+                'ANULADO'    => 'badge-anulado',
+                default      => 'badge-pendiente',
+            };
+            $mensajePrincipal = match($datos['estado']) {
+                'PENDIENTE'  => 'Hemos recibido su reclamo y está siendo revisado por nuestro equipo.',
+                'EN PROCESO' => 'Su reclamo ya está siendo atendido. Le avisaremos cuando sea resuelto.',
+                'RESUELTO'   => '¡Su reclamo fue resuelto! Esperamos haber cumplido sus expectativas.',
+                'ANULADO'    => 'Su reclamo fue anulado. Si tiene dudas, contáctenos directamente.',
+                default      => 'El estado de su reclamo fue actualizado.',
+            };
+        @endphp
         <div style="text-align:center;">
-            @php
-                $badgeClass = match($datos['estado']) {
-                    'PENDIENTE'  => 'badge-pendiente',
-                    'EN PROCESO' => 'badge-en-proceso',
-                    'RESUELTO'   => 'badge-resuelto',
-                    'ANULADO'    => 'badge-anulado',
-                    default      => 'badge-pendiente',
-                };
-                $mensaje = match($datos['estado']) {
-                    'PENDIENTE'  => 'Hemos recibido su reclamo y está siendo revisado.',
-                    'EN PROCESO' => 'Su reclamo ya está siendo atendido por nuestro equipo.',
-                    'RESUELTO'   => '¡Su reclamo fue resuelto! Esperamos haber cumplido sus expectativas.',
-                    'ANULADO'    => 'Su reclamo fue anulado. Si tiene dudas, contáctenos.',
-                    default      => '',
-                };
-            @endphp
             <span class="badge {{ $badgeClass }}">{{ $datos['estado'] }}</span>
         </div>
     </div>
@@ -56,8 +58,9 @@
     {{-- CUERPO --}}
     <div class="body">
         <p>Estimado/a <strong>{{ $datos['cli_nombre'] }} {{ $datos['cli_apellido'] }}</strong>,</p>
-        <p>{{ $mensaje }}</p>
+        <p>{{ $mensajePrincipal }}</p>
 
+        {{-- DETALLE DEL RECLAMO --}}
         <div class="info-box">
             <table>
                 <tr>
@@ -73,26 +76,50 @@
                     <td>{{ $datos['prioridad'] }}</td>
                 </tr>
                 <tr>
-                    <td>Fecha registro:</td>
+                    <td>Empresa:</td>
+                    <td>{{ $datos['empresa'] }}</td>
+                </tr>
+                <tr>
+                    <td>Sucursal:</td>
+                    <td>{{ $datos['sucursal'] }}</td>
+                </tr>
+                @if(!empty($datos['nro_venta']))
+                <tr>
+                    <td>N° Venta/Recibo:</td>
+                    <td>#{{ $datos['nro_venta'] }} — {{ $datos['venta_fecha'] }}</td>
+                </tr>
+                @endif
+                <tr>
+                    <td>Fecha de registro:</td>
                     <td>{{ $datos['fecha'] }}</td>
                 </tr>
-                @if(!empty($datos['observacion']))
+                @if(!empty($datos['fecha_inicio']))
                 <tr>
-                    <td>Observación:</td>
-                    <td>{{ $datos['observacion'] }}</td>
+                    <td>Inicio de atención:</td>
+                    <td>{{ $datos['fecha_inicio'] }}</td>
+                </tr>
+                @endif
+                @if(!empty($datos['fecha_fin']))
+                <tr>
+                    <td>Fecha de cierre:</td>
+                    <td>{{ $datos['fecha_fin'] }}</td>
                 </tr>
                 @endif
             </table>
         </div>
 
-        <p>Puede consultar el estado de su reclamo en cualquier momento haciendo clic en el botón:</p>
+        {{-- OBSERVACIÓN --}}
+        @if(!empty($datos['observacion']))
+        <div class="obs-box">
+            <strong>Observación del reclamo:</strong>
+            {{ $datos['observacion'] }}
+        </div>
+        @endif
 
-        <a href="{{ $datos['portal_url'] }}" class="btn">Ver estado de mi reclamo</a>
-
-        <p style="font-size:13px; color:#666;">
-            Si el botón no funciona, copie y pegue este enlace en su navegador:<br>
-            <span style="color:#2980b9; word-break:break-all;">{{ $datos['portal_url'] }}</span>
-        </p>
+        <div class="notice">
+            Recibirá un correo como este cada vez que el estado de su reclamo sea actualizado.
+            Si necesita más información, comuníquese directamente con la sucursal indicada arriba.
+        </div>
     </div>
 
     {{-- PIE --}}

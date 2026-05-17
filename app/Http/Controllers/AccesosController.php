@@ -106,6 +106,44 @@ class AccesosController extends Controller
         ]);
     }
 
+    public function storeMasivo(Request $r)
+    {
+        $r->validate([
+            'perfil_id'     => 'required|integer|exists:perfiles,id',
+            'mod_id'        => 'required|integer|exists:modulos,id',
+            'permiso_ids'   => 'required|array|min:1',
+            'permiso_ids.*' => 'integer|exists:permisos,id',
+        ]);
+
+        $creados = 0;
+        foreach ($r->permiso_ids as $permiso_id) {
+            $existe = Accesos::where('perfil_id', $r->perfil_id)
+                ->where('permiso_id', $permiso_id)
+                ->exists();
+
+            if (!$existe) {
+                Accesos::create([
+                    'perfil_id'  => $r->perfil_id,
+                    'permiso_id' => $permiso_id,
+                    'mod_id'     => $r->mod_id,
+                    'acc_estado' => 'ACTIVO',
+                    'acc_fecha'  => now(),
+                ]);
+                $creados++;
+            }
+        }
+
+        $omitidos = count($r->permiso_ids) - $creados;
+        $msg = $creados > 0
+            ? "{$creados} acceso(s) creado(s) con éxito" . ($omitidos > 0 ? " ({$omitidos} ya existían)" : "")
+            : "Todos los accesos seleccionados ya existen para este perfil";
+
+        return response()->json([
+            'mensaje' => $msg,
+            'tipo'    => $creados > 0 ? 'success' : 'warning',
+        ]);
+    }
+
     public function activar($id)
     {
         $acceso = Accesos::find($id);

@@ -4,10 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
 
-class Proveedor extends Model
+class Proveedor extends Model implements Auditable
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes, AuditableTrait;
     protected $fillable = [
         'prov_razonsocial',
         'prov_ruc',

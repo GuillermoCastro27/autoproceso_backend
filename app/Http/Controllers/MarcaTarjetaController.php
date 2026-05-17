@@ -73,11 +73,14 @@ class MarcaTarjetaController extends Controller
             ], 404);
         }
 
-        $marca->delete();
-
-        return response()->json([
-            'mensaje' => 'Marca eliminada con éxito',
-            'tipo'    => 'success'
-        ], 200);
+        try {
+            $marca->delete();
+            return response()->json(['mensaje' => 'Marca eliminada con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar la marca porque está siendo utilizada en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

@@ -70,11 +70,14 @@ class FormaCobroController extends Controller
             ], 404);
         }
 
-        $forma->delete();
-
-        return response()->json([
-            'mensaje' => 'Forma de cobro eliminada con éxito',
-            'tipo'    => 'success'
-        ], 200);
+        try {
+            $forma->delete();
+            return response()->json(['mensaje' => 'Forma de cobro eliminada con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar la forma de cobro porque está siendo utilizada en el sistema.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Seguridad;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use PragmaRX\Google2FA\Google2FA;
 use App\Mail\TwoFactorCodeMail;
@@ -57,11 +58,15 @@ class TwoFactorController extends Controller
 
     $code = (string) random_int(100000, 999999);
 
-    $user->email_two_factor_code = $code;
+    $user->email_two_factor_code       = $code;
     $user->email_two_factor_expires_at = now()->addMinutes(5);
-    $user->save();
+    $user->save(); // guarda también los cambios de intentos/password rehash del AuthController
 
-    Mail::to($user->email)->send(new TwoFactorCodeMail($code));
+    // Enviar correo DESPUÉS de que la respuesta HTTP llega al cliente
+    $email = $user->email;
+    dispatch(function() use ($email, $code) {
+        Mail::to($email)->send(new TwoFactorCodeMail($code));
+    })->afterResponse();
 
     return true;
 }
@@ -112,11 +117,46 @@ class TwoFactorController extends Controller
         // 🔐 CREAR TOKEN AHORA
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        $esSuperadmin = (bool) DB::table('perfiles')
+            ->where('id', $user->perfil_id)
+            ->value('pref_superadmin');
+
+        if ($esSuperadmin) {
+            // El superadmin ve todos los módulos sin filtro de accesos
+            $modulos  = DB::table('modulos')->pluck('mod_nombre')->toArray();
+            $permisos = [];
+        } else {
+            // Módulos y permisos configurados para el perfil del usuario
+            $accesos = DB::table('accesos as a')
+                ->join('permisos as p', 'p.id', '=', 'a.permiso_id')
+                ->join('modulos as m',  'm.id', '=', 'a.mod_id')
+                ->where('a.perfil_id', $user->perfil_id)
+                ->where('a.acc_estado', 'ACTIVO')
+                ->whereNotNull('a.mod_id')
+                ->select('m.mod_nombre', 'p.per_nombre')
+                ->get();
+
+            $modulos  = $accesos->pluck('mod_nombre')->unique()->values()->toArray();
+            $permisos = $accesos->pluck('per_nombre')
+                ->filter(fn($p) => str_contains($p, '.'))
+                ->unique()
+                ->values()
+                ->toArray();
+        }
+
+        // Incluir descripción del perfil en el objeto user
+        $user->perfil_descripcion = DB::table('perfiles')
+            ->where('id', $user->perfil_id)
+            ->value('pref_descripcion');
+
         return response()->json([
-            'mensaje' => 'Autenticación verificada correctamente',
-            'tipo'    => 'success',
-            'token'   => $token,
-            'user'    => $user
+            'mensaje'    => 'Autenticación verificada correctamente',
+            'tipo'       => 'success',
+            'token'      => $token,
+            'user'       => $user,
+            'modulos'    => $modulos,
+            'permisos'   => $permisos,
+            'superadmin' => $esSuperadmin,
         ]);
     }
 }

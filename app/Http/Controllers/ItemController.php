@@ -2,31 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Item;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
     public function read()
     {
-        return DB::select("
-            SELECT
-                i.id, i.item_decripcion, i.item_costo, i.item_precio,
-                t.tipo_descripcion, ti.tip_imp_nom,
-                STRING_AGG(DISTINCT m.marc_nom, ', ') AS marcas,
-                STRING_AGG(DISTINCT mo.modelo_nom, ', ') AS modelos
-            FROM items i
-            JOIN tipos t ON t.id = i.tipo_id
-            JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
-            LEFT JOIN item_marca im ON im.item_id = i.id
-            LEFT JOIN marca m ON m.id = im.marca_id
-            LEFT JOIN item_modelo imo ON imo.item_id = i.id
-            LEFT JOIN modelo mo ON mo.id = imo.modelo_id
-            GROUP BY i.id, i.item_decripcion, i.item_costo, i.item_precio,
-                     t.tipo_descripcion, ti.tip_imp_nom
-            ORDER BY i.id
-        ");
+        return DB::table('v_items')->orderBy('id')->get();
     }
 
     public function getMarcas($id)
@@ -49,75 +34,106 @@ class ItemController extends Controller
 
     public function store(Request $r)
     {
-        $messages = [
-            'item_costo.min'   => 'El costo no puede ser negativo.',
-            'item_precio.min'  => 'El precio no puede ser negativo.',
-        ];
-
-        $datosValidados = $r->validate([
-            'item_decripcion'  => 'required',
+        $r->validate([
+            'item_decripcion'  => ['required', 'string', 'max:200', Rule::unique('items', 'item_decripcion')->whereNull('deleted_at')],
             'item_costo'       => 'required|numeric|min:0',
             'item_precio'      => 'required|numeric|min:0',
-            'tipo_id'          => 'required',
-            'tipo_impuesto_id' => 'required',
-        ], $messages);
+            'tipo_id'          => 'required|integer|exists:tipos,id',
+            'tipo_impuesto_id' => 'required|integer|exists:tipo_impuesto,id',
+        ], [
+            'item_decripcion.required'  => 'La descripción del ítem es obligatoria.',
+            'item_decripcion.unique'    => 'Ya existe un ítem con esa descripción.',
+            'item_costo.required'       => 'El costo es obligatorio.',
+            'item_costo.numeric'        => 'El costo debe ser un valor numérico.',
+            'item_costo.min'            => 'El costo no puede ser negativo.',
+            'item_precio.required'      => 'El precio es obligatorio.',
+            'item_precio.numeric'       => 'El precio debe ser un valor numérico.',
+            'item_precio.min'           => 'El precio no puede ser negativo.',
+            'tipo_id.required'          => 'Debe seleccionar un tipo.',
+            'tipo_id.exists'            => 'El tipo seleccionado no existe.',
+            'tipo_impuesto_id.required' => 'Debe seleccionar un tipo de impuesto.',
+            'tipo_impuesto_id.exists'   => 'El tipo de impuesto seleccionado no existe.',
+        ]);
 
-        $item = Item::create($datosValidados);
+        $item = Item::create([
+            'item_decripcion'  => $r->item_decripcion,
+            'item_costo'       => $r->item_costo,
+            'item_precio'      => $r->item_precio,
+            'tipo_id'          => $r->tipo_id,
+            'tipo_impuesto_id' => $r->tipo_impuesto_id,
+        ]);
 
         $this->syncMarcas($item->id, $r->marcas ?? []);
         $this->syncModelos($item->id, $r->modelos ?? []);
 
         return response()->json([
-            'mensaje'  => 'Registro creado con éxito',
+            'mensaje'  => 'Ítem creado con éxito',
             'tipo'     => 'success',
-            'registro' => $item
-        ], 200);
+            'registro' => $item,
+        ]);
     }
 
     public function update(Request $r, $id)
     {
         $item = Item::find($id);
         if (!$item) {
-            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
+            return response()->json(['mensaje' => 'Ítem no encontrado', 'tipo' => 'error'], 404);
         }
 
-        $messages = [
-            'item_costo.min'  => 'El costo no puede ser negativo.',
-            'item_precio.min' => 'El precio no puede ser negativo.',
-        ];
-
-        $datosValidados = $r->validate([
-            'item_decripcion'  => 'required',
+        $r->validate([
+            'item_decripcion'  => ['required', 'string', 'max:200', Rule::unique('items', 'item_decripcion')->ignore($id)->whereNull('deleted_at')],
             'item_costo'       => 'required|numeric|min:0',
             'item_precio'      => 'required|numeric|min:0',
-            'tipo_id'          => 'required',
-            'tipo_impuesto_id' => 'required',
-        ], $messages);
+            'tipo_id'          => 'required|integer|exists:tipos,id',
+            'tipo_impuesto_id' => 'required|integer|exists:tipo_impuesto,id',
+        ], [
+            'item_decripcion.required'  => 'La descripción del ítem es obligatoria.',
+            'item_decripcion.unique'    => 'Ya existe otro ítem con esa descripción.',
+            'item_costo.required'       => 'El costo es obligatorio.',
+            'item_costo.min'            => 'El costo no puede ser negativo.',
+            'item_precio.required'      => 'El precio es obligatorio.',
+            'item_precio.min'           => 'El precio no puede ser negativo.',
+            'tipo_id.required'          => 'Debe seleccionar un tipo.',
+            'tipo_impuesto_id.required' => 'Debe seleccionar un tipo de impuesto.',
+        ]);
 
-        $item->update($datosValidados);
+        $item->update([
+            'item_decripcion'  => $r->item_decripcion,
+            'item_costo'       => $r->item_costo,
+            'item_precio'      => $r->item_precio,
+            'tipo_id'          => $r->tipo_id,
+            'tipo_impuesto_id' => $r->tipo_impuesto_id,
+        ]);
 
         $this->syncMarcas($id, $r->marcas ?? []);
         $this->syncModelos($id, $r->modelos ?? []);
 
         return response()->json([
-            'mensaje'  => 'Registro modificado con éxito',
+            'mensaje'  => 'Ítem actualizado con éxito',
             'tipo'     => 'success',
-            'registro' => $item
-        ], 200);
+            'registro' => $item,
+        ]);
     }
 
     public function destroy($id)
     {
         $item = Item::find($id);
         if (!$item) {
-            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
+            return response()->json(['mensaje' => 'Ítem no encontrado', 'tipo' => 'error'], 404);
         }
 
         DB::table('item_marca')->where('item_id', $id)->delete();
         DB::table('item_modelo')->where('item_id', $id)->delete();
-        $item->delete();
 
-        return response()->json(['mensaje' => 'Registro eliminado con éxito', 'tipo' => 'success'], 200);
+        try {
+            $item->delete();
+            return response()->json(['mensaje' => 'Ítem eliminado con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar el ítem porque está siendo utilizado en compras, ventas u otros registros.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 
     public function buscar(Request $r)
@@ -134,9 +150,9 @@ class ItemController extends Controller
             JOIN tipos t ON t.id = i.tipo_id
             LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
             LEFT JOIN stock s ON s.item_id = i.id
-            WHERE i.item_decripcion ILIKE '%{$r->item_decripcion}%'
+            WHERE i.deleted_at IS NULL AND i.item_decripcion ILIKE ?
             GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
-        ");
+        ", ['%' . $r->item_decripcion . '%']);
 
         return response()->json($productos);
     }
@@ -155,25 +171,24 @@ class ItemController extends Controller
             JOIN tipos t ON t.id = i.tipo_id
             LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
             LEFT JOIN stock s ON s.item_id = i.id
-            WHERE i.item_decripcion ILIKE '%{$r->item_decripcion}%'
+            WHERE i.deleted_at IS NULL AND i.item_decripcion ILIKE ?
             GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
-        ");
+        ", ['%' . $r->item_decripcion . '%']);
 
         return response()->json($productos);
     }
 
-    // -------------------------------------------------------
     private function syncMarcas($itemId, $marcas)
     {
         DB::table('item_marca')->where('item_id', $itemId)->delete();
         foreach ($marcas as $marcaId) {
             if (!$marcaId) continue;
             DB::table('item_marca')->insert([
-                'item_id'           => $itemId,
-                'marca_id'          => $marcaId,
+                'item_id'            => $itemId,
+                'marca_id'           => $marcaId,
                 'item_marca_descrip' => null,
-                'created_at'        => now(),
-                'updated_at'        => now(),
+                'created_at'         => now(),
+                'updated_at'         => now(),
             ]);
         }
     }
@@ -184,11 +199,11 @@ class ItemController extends Controller
         foreach ($modelos as $modeloId) {
             if (!$modeloId) continue;
             DB::table('item_modelo')->insert([
-                'item_id'            => $itemId,
-                'modelo_id'          => $modeloId,
+                'item_id'             => $itemId,
+                'modelo_id'           => $modeloId,
                 'item_modelo_descrip' => null,
-                'created_at'         => now(),
-                'updated_at'         => now(),
+                'created_at'          => now(),
+                'updated_at'          => now(),
             ]);
         }
     }

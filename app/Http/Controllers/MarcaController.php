@@ -1,9 +1,11 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\Marca;
 
+use App\Models\Marca;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class MarcaController extends Controller
 {
@@ -18,113 +20,129 @@ class MarcaController extends Controller
         }
         return response()->json($q->orderBy('marc_nom')->get());
     }
-    public function store(Request $r){
-        $datosValidados = $r->validate([
-            'marc_nom'=>'required',
-            'mar_tipo'=>'required'
+
+    public function store(Request $r)
+    {
+        $r->validate([
+            'marc_nom' => [
+                'required', 'string', 'max:100',
+                Rule::unique('marca', 'marc_nom')->where(fn($q) => $q->where('mar_tipo', $r->mar_tipo)),
+            ],
+            'mar_tipo' => 'required|string|max:50',
+        ], [
+            'marc_nom.required' => 'El nombre de la marca es obligatorio.',
+            'marc_nom.max'      => 'El nombre no puede superar los 100 caracteres.',
+            'marc_nom.unique'   => 'Ya existe una marca con ese nombre para el tipo seleccionado.',
+            'mar_tipo.required' => 'El tipo de marca es obligatorio.',
         ]);
-        $marca = Marca::create($datosValidados);
-        $marca->save();
-        return response()->json([
-            'mensaje'=>'Registro creado con exito',
-            'tipo'=>'success',
-            'registro'=> $marca
-        ],200);
-    }
-    public function update(Request $r, $id){
-        $marca = Marca::find($id);
-        if(!$marca){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
-        }
-        $datosValidados = $r->validate([
-            'marc_nom'=>'required',
-            'mar_tipo'=>'required'
+
+        $marca = Marca::create([
+            'marc_nom' => $r->marc_nom,
+            'mar_tipo' => $r->mar_tipo,
         ]);
-        $marca->update($datosValidados);
+
         return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $marca
-        ],200);
+            'mensaje'  => 'Marca creada con éxito',
+            'tipo'     => 'success',
+            'registro' => $marca,
+        ]);
     }
-    public function destroy($id){
+
+    public function update(Request $r, $id)
+    {
         $marca = Marca::find($id);
-        if(!$marca){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$marca) {
+            return response()->json(['mensaje' => 'Marca no encontrada', 'tipo' => 'error'], 404);
         }
-        $marca->delete();
+
+        $r->validate([
+            'marc_nom' => [
+                'required', 'string', 'max:100',
+                Rule::unique('marca', 'marc_nom')
+                    ->where(fn($q) => $q->where('mar_tipo', $r->mar_tipo))
+                    ->ignore($id),
+            ],
+            'mar_tipo' => 'required|string|max:50',
+        ], [
+            'marc_nom.required' => 'El nombre de la marca es obligatorio.',
+            'marc_nom.max'      => 'El nombre no puede superar los 100 caracteres.',
+            'marc_nom.unique'   => 'Ya existe otra marca con ese nombre para el tipo seleccionado.',
+            'mar_tipo.required' => 'El tipo de marca es obligatorio.',
+        ]);
+
+        $marca->update([
+            'marc_nom' => $r->marc_nom,
+            'mar_tipo' => $r->mar_tipo,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro Eliminado con exito',
-            'tipo'=>'success',
-        ],200);
+            'mensaje'  => 'Marca actualizada con éxito',
+            'tipo'     => 'success',
+            'registro' => $marca,
+        ]);
     }
-    public function buscar(Request $r){
-        return DB::select("select im.*, m.marc_nom, i.id AS item_id
-        FROM items i
-        JOIN item_marca im ON im.item_id = i.id
-        JOIN marca m ON m.id = im.marca_id
-        WHERE i.item_decripcion ILIKE '%$r->item_decripcion%'
-        AND m.marc_nom = '$r->marc_nom'");
+
+    public function destroy($id)
+    {
+        $marca = Marca::find($id);
+        if (!$marca) {
+            return response()->json(['mensaje' => 'Marca no encontrada', 'tipo' => 'error'], 404);
+        }
+
+        try {
+            $marca->delete();
+            return response()->json(['mensaje' => 'Marca eliminada con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar la marca porque tiene modelos asociados.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
+
+    public function buscar(Request $r)
+    {
+        return DB::select(
+            "SELECT im.*, m.marc_nom, i.id AS item_id
+             FROM items i
+             JOIN item_marca im ON im.item_id = i.id
+             JOIN marca m ON m.id = im.marca_id
+             WHERE i.item_decripcion ILIKE ?
+               AND m.marc_nom = ?",
+            ['%' . $r->item_decripcion . '%', $r->marc_nom]
+        );
+    }
+
     public function buscarPorTipo(Request $r)
-{
-    $texto = $r->input('texto');
-    $tipo = $r->input('tipo');
+    {
+        return response()->json(
+            Marca::select('id', 'marc_nom', 'mar_tipo')
+                ->where('mar_tipo', $r->input('tipo'))
+                ->where('marc_nom', 'ILIKE', '%' . $r->input('texto') . '%')
+                ->orderBy('marc_nom')
+                ->get()
+        );
+    }
 
-    $resultado = Marca::select('id', 'marc_nom', 'mar_tipo')
-        ->where('mar_tipo', '=', $tipo)
-        ->where('marc_nom', 'ILIKE', "%$texto%")
-        ->orderBy('marc_nom')
-        ->get();
+    public function buscarVehiculo(Request $r)
+    {
+        return response()->json(
+            Marca::select('id', 'marc_nom', 'mar_tipo')
+                ->where('mar_tipo', 'VEHICULO')
+                ->where('marc_nom', 'ILIKE', '%' . $r->input('texto') . '%')
+                ->orderBy('marc_nom')
+                ->get()
+        );
+    }
 
-    return response()->json($resultado);
-}
-public function buscarPorMarca(Request $r)
-{
-    $marca_id = $r->input('marca_id');
-    $texto = $r->input('texto');
-
-    $resultado = Modelo::select('id', 'modelo_nom', 'modelo_año')
-        ->where('marca_id', $marca_id)
-        ->where('modelo_nom', 'ILIKE', "%$texto%")
-        ->orderBy('modelo_nom')
-        ->get();
-
-    return response()->json($resultado);
-}
-public function buscarVehiculo(Request $r)
-{
-    $texto = $r->input('texto'); // texto que escribe el usuario
-
-    $resultado = Marca::select('id', 'marc_nom', 'mar_tipo')
-        ->where('mar_tipo', 'VEHICULO')
-        ->where('marc_nom', 'ILIKE', "%$texto%")
-        ->orderBy('marc_nom')
-        ->get();
-
-    return response()->json($resultado);
-}
-public function buscarPorTipoItem(Request $r)
-{
-    // texto que escribe el usuario en el campo Marca del CRUD de Items
-    $texto = $r->input('texto', '');
-
-    // tipo de ítem seleccionado (PRODUCTO, LUBRICANTES, etc.)
-    $tipoItem = $r->input('tipo_descripcion');
-
-    $resultado = Marca::select('id', 'marc_nom', 'mar_tipo')
-        ->where('mar_tipo', $tipoItem)                  // filtra por tipo
-        ->where('marc_nom', 'ILIKE', "%$texto%")        // filtra por nombre
-        ->orderBy('marc_nom')
-        ->get();
-
-    return response()->json($resultado);
-}
-
+    public function buscarPorTipoItem(Request $r)
+    {
+        return response()->json(
+            Marca::select('id', 'marc_nom', 'mar_tipo')
+                ->where('mar_tipo', $r->input('tipo_descripcion'))
+                ->where('marc_nom', 'ILIKE', '%' . $r->input('texto', '') . '%')
+                ->orderBy('marc_nom')
+                ->get()
+        );
+    }
 }

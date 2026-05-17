@@ -97,11 +97,14 @@ class EntidadAdheridaController extends Controller
             ], 404);
         }
 
-        $entidadAdherida->delete();
-
-        return response()->json([
-            'mensaje' => 'Entidad adherida eliminada con éxito',
-            'tipo'    => 'success'
-        ], 200);
+        try {
+            $entidadAdherida->delete();
+            return response()->json(['mensaje' => 'Entidad adherida eliminada con éxito', 'tipo' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'mensaje' => 'No se puede eliminar la entidad adherida porque tiene registros asociados.',
+                'tipo'    => 'error',
+            ], 409);
+        }
     }
 }

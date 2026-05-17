@@ -9,8 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('accesos', function (Blueprint $table) {
-            if (!Schema::hasColumn('accesos', 'mod_id')) $table->unsignedBigInteger('mod_id')->nullable()->after('perfil_id');
-            if (!Schema::hasColumn('accesos', 'acc_fecha')) $table->timestamp('acc_fecha')->nullable()->after('acc_estado');
+            if (!Schema::hasColumn('accesos', 'mod_id')) {
+                $table->unsignedBigInteger('mod_id')->nullable()->after('perfil_id');
+            }
+            if (!Schema::hasColumn('accesos', 'acc_fecha')) {
+                $table->timestamp('acc_fecha')->nullable()->after('acc_estado');
+            }
         });
     }
 

@@ -13,6 +13,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\AccesosController;
 use App\Http\Controllers\ModulosController;
+use App\Http\Controllers\LoginIntentoController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\TipoController;
 use App\Http\Controllers\ItemController;
@@ -136,9 +137,11 @@ Route::middleware(['auth:sanctum', 'permiso:seguridad'])->group(function () {
     Route::put('permisos/update/{id}',    [PermisoController::class, 'update']);
     Route::delete('permisos/delete/{id}', [PermisoController::class, 'destroy']);
     Route::get('permisos/buscar',         [PermisoController::class, 'buscar']);
+    Route::get('permisos/arbol',          [PermisoController::class, 'arbol']);
 
     Route::get('accesos/read',               [AccesosController::class, 'read']);
     Route::post('accesos/create',            [AccesosController::class, 'store']);
+    Route::post('accesos/create-masivo',     [AccesosController::class, 'storeMasivo']);
     Route::put('accesos/update/{id}',        [AccesosController::class, 'update']);
     Route::put('accesos/desactivar/{id}',    [AccesosController::class, 'desactivar']);
     Route::put('accesos/activar/{id}',       [AccesosController::class, 'activar']);
@@ -151,6 +154,9 @@ Route::middleware(['auth:sanctum', 'permiso:seguridad'])->group(function () {
     Route::get('perfiles/read',     [PerfilController::class, 'read']);
     Route::post('perfiles/create',  [PerfilController::class, 'store']);
     Route::get('/perfiles/buscar',  [PerfilController::class, 'buscar']);
+
+    Route::get('login-intentos/read',    [LoginIntentoController::class, 'read']);
+    Route::delete('login-intentos/limpiar', [LoginIntentoController::class, 'limpiar']);
 });
 
 /*
@@ -643,6 +649,9 @@ Route::middleware(['auth:sanctum', 'permiso:cobros'])->group(function () {
     Route::put('cobros_cab/anular/{id}',    [CobrosCabController::class, 'anular']);
     Route::put('cobros_cab/confirmar/{id}', [CobrosCabController::class, 'confirmar']);
     Route::get('cobros_cab/ctas/{id}',      [CobrosCabController::class, 'ctas']);
+    Route::get('cobros_cab/detalle/{id}',   [CobrosCabController::class, 'detalle']);
+    Route::get('cobros_cab/imprimir/{id}',      [CobrosCabController::class, 'imprimir']);
+    Route::get('cobros_cab/enviar-recibo/{id}', [CobrosCabController::class, 'enviarRecibo']);
 
     Route::get('cobros_det/read/{cobros_cab_id}',   [CobrosDetController::class, 'read']);
 

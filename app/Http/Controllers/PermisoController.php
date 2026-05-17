@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Permiso;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PermisoController extends Controller
 {
@@ -59,6 +60,34 @@ class PermisoController extends Controller
             'tipo'=>'success',
         ],200);
     }
+    public function arbol()
+    {
+        $modulos = DB::table('modulos')->pluck('id', 'mod_nombre');
+
+        $permisos = DB::table('permisos')
+            ->select('id', 'per_nombre')
+            ->whereRaw("LENGTH(per_nombre) - LENGTH(REPLACE(per_nombre, '.', '')) = 2")
+            ->orderBy('per_nombre')
+            ->get();
+
+        $arbol = [];
+        foreach ($permisos as $p) {
+            [$modulo, $entidad, $accion] = explode('.', $p->per_nombre);
+            if (!isset($arbol[$modulo])) {
+                $arbol[$modulo] = [
+                    'mod_id'    => $modulos[$modulo] ?? null,
+                    'entidades' => [],
+                ];
+            }
+            $arbol[$modulo]['entidades'][$entidad][] = [
+                'accion'     => $accion,
+                'permiso_id' => $p->id,
+            ];
+        }
+
+        return response()->json($arbol);
+    }
+
     public function buscar(Request $r){
         $texto = $r->input('q');
 
