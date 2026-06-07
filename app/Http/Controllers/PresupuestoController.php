@@ -92,7 +92,7 @@ class PresupuestoController extends Controller
             $pedido->save();
 
             $detalles = DB::select("
-                SELECT pd.*, pd.deposito_id, i.item_costo
+                SELECT pd.*, pd.deposito_id, pd.marca_id, pd.modelo_id, i.item_costo
                 FROM pedidos_detalles pd
                 JOIN items i ON i.id = pd.item_id
                 WHERE pd.pedidos_id = ?
@@ -106,6 +106,8 @@ class PresupuestoController extends Controller
                     $itemsAcumulados[$key] = [
                         'item_id'      => $dp->item_id,
                         'deposito_id'  => $dp->deposito_id,
+                        'marca_id'     => $dp->marca_id,
+                        'modelo_id'    => $dp->modelo_id,
                         'det_costo'    => $dp->item_costo,
                         'det_cantidad' => $dp->det_cantidad,
                     ];
@@ -114,13 +116,17 @@ class PresupuestoController extends Controller
         }
 
         foreach ($itemsAcumulados as $item) {
-            $detalle = new PresupuestosDetalle();
-            $detalle->presupuesto_id = $presupuesto->id;
-            $detalle->item_id        = $item['item_id'];
-            $detalle->deposito_id    = $item['deposito_id'];
-            $detalle->det_costo      = $item['det_costo'];
-            $detalle->det_cantidad   = $item['det_cantidad'];
-            $detalle->save();
+            DB::table('presupuestos_detalles')->insert([
+                'presupuesto_id' => $presupuesto->id,
+                'item_id'        => $item['item_id'],
+                'deposito_id'    => $item['deposito_id'],
+                'marca_id'       => $item['marca_id']   ?? null,
+                'modelo_id'      => $item['modelo_id']  ?? null,
+                'det_costo'      => $item['det_costo'],
+                'det_cantidad'   => $item['det_cantidad'],
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
         }
 
         return response()->json([
@@ -271,9 +277,17 @@ class PresupuestoController extends Controller
                 TO_CHAR(p.ped_fecha, 'dd/mm/yyyy') AS ped_fecha,
                 TO_CHAR(p.ped_vence, 'dd/mm/yyyy') AS ped_vence,
                 p.ped_pbservaciones,
-                p.ped_estado
+                p.ped_estado,
+                p.empresa_id,
+                p.sucursal_id,
+                e.emp_razon_social,
+                s.suc_razon_social,
+                'PEDIDO NRO: ' || TO_CHAR(p.id, '0000000') ||
+                ' (' || p.ped_pbservaciones || ')' AS pedido
             FROM presupuesto_pedidos pp
-            JOIN pedidos p ON p.id = pp.pedido_id
+            JOIN pedidos  p ON p.id = pp.pedido_id
+            JOIN empresa  e ON e.id = p.empresa_id
+            JOIN sucursal s ON s.id = p.sucursal_id
             WHERE pp.presupuesto_id = ?
             ORDER BY pp.id
         ", [$presupuesto_id]);

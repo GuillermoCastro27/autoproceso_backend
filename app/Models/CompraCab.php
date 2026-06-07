@@ -21,6 +21,8 @@ class CompraCab extends Model implements Auditable
         'comp_cant_cuota',
         'condicion_pago',
         'comp_timbrado',
+        'comp_nro_factura',
+        'comp_fecha_emision',
         'funcionario_id',
         'orden_compra_cab_id',
         'proveedor_id',

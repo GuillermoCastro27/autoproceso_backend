@@ -13,7 +13,8 @@ class TipoDescuentos extends Model
     'tipo_desc_descrip',
     'tipo_desc_nombre',
     'tipo_desc_fechaInicio',
-    'tipo_desc_fechaFin'
+    'tipo_desc_fechaFin',
+    'tipo_desc_estado',
     ]; 
     use HasFactory;
 }

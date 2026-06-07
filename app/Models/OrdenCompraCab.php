@@ -18,6 +18,7 @@ class OrdenCompraCab extends Model implements Auditable
         'ord_comp_cant_cuota',
         'funcionario_id',
         'presupuesto_id',
+        'pedido_id',
         'proveedor_id',
         'empresa_id',
         'condicion_pago',

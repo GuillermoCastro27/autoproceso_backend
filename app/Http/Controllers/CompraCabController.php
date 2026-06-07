@@ -68,6 +68,8 @@ class CompraCabController extends Controller
             'comp_cant_cuota'            => 'nullable|integer',
             'condicion_pago'             => 'required',
             'comp_timbrado'              => 'nullable|string|max:20',
+            'comp_nro_factura'           => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
+            'comp_fecha_emision'         => 'nullable|date|before_or_equal:today',
             'funcionario_id'             => 'nullable',
             'orden_compra_cab_id'        => 'required',
             'proveedor_id'               => 'required',
@@ -99,6 +101,8 @@ class CompraCabController extends Controller
                     'comp_det_costo'   => $detalle->orden_compra_det_costo,
                     'tipo_impuesto_id' => $detalle->tipo_impuesto_id,
                     'deposito_id'      => $detalle->deposito_id,
+                    'marca_id'         => $detalle->marca_id  ?? null,
+                    'modelo_id'        => $detalle->modelo_id ?? null,
                 ]);
             }
         }
@@ -128,6 +132,7 @@ class CompraCabController extends Controller
             'comp_cant_cuota'            => 'nullable|integer',
             'condicion_pago'             => 'required',
             'comp_timbrado'              => 'nullable|string|max:20',
+            'comp_nro_factura'           => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
             'orden_compra_cab_id'        => 'required',
             'proveedor_id'               => 'required',
             'empresa_id'                 => 'required',
@@ -220,12 +225,15 @@ class CompraCabController extends Controller
         foreach ($detallesCompra as $detalle) {
             if (!$detalle->deposito_id) continue;
 
-            $stock = Stock::where('deposito_id', $detalle->deposito_id)
-                          ->where('item_id', $detalle->item_id)
-                          ->first();
+            $stock = DB::table('stock')
+                ->where('deposito_id', $detalle->deposito_id)
+                ->where('item_id', $detalle->item_id)
+                ->first();
             if ($stock) {
-                $stock->cantidad = max(0, $stock->cantidad - $detalle->comp_det_cantidad);
-                $stock->save();
+                DB::table('stock')
+                    ->where('deposito_id', $detalle->deposito_id)
+                    ->where('item_id', $detalle->item_id)
+                    ->update(['cantidad' => max(0, $stock->cantidad - $detalle->comp_det_cantidad), 'updated_at' => now()]);
             }
         }
 
@@ -262,43 +270,35 @@ public function calcularTotal(Request $r, $id)
 
     // Modificar la consulta para usar bindings y evitar errores de sintaxis
     $detalles = DB::select("
-        SELECT 
-            cd.comp_det_cantidad AS comp_det_cantidad,
-            i.item_costo AS comp_det_costo,
-            ti.tip_imp_nom AS tip_imp_nom,
-            (cd.comp_det_cantidad * i.item_costo) AS subtotal,
-            CASE 
-                WHEN ti.tip_imp_nom = 'IVA10' THEN (cd.comp_det_cantidad * i.item_costo) / 11
-                WHEN ti.tip_imp_nom = 'IVA5' THEN (cd.comp_det_cantidad * i.item_costo) / 21
-                ELSE (cd.comp_det_cantidad * i.item_costo) -- Si no es IVA10 o IVA5, se usa el subtotal sin cambios
-            END AS totalConImpuesto
-        FROM 
-            compra_det cd
-        JOIN 
-            items i ON cd.item_id = i.id
-        JOIN 
-            tipo_impuesto ti ON cd.tipo_impuesto_id = ti.id
-        WHERE 
-            cd.compra_cab_id = :compra_cab_id;", ['compra_cab_id' => $compraCabId]);
+        SELECT
+            cd.comp_det_cantidad                              AS comp_det_cantidad,
+            cd.comp_det_costo                                 AS comp_det_costo,
+            ti.tip_imp_nom                                    AS tip_imp_nom,
+            (cd.comp_det_cantidad * cd.comp_det_costo)        AS subtotal,
+            CASE
+                WHEN ti.tip_imp_nom = 'IVA10' THEN (cd.comp_det_cantidad * cd.comp_det_costo) / 11
+                WHEN ti.tip_imp_nom = 'IVA5'  THEN (cd.comp_det_cantidad * cd.comp_det_costo) / 21
+                ELSE 0
+            END                                               AS iva_monto
+        FROM compra_det cd
+        JOIN items i          ON i.id  = cd.item_id
+        JOIN tipo_impuesto ti  ON ti.id = cd.tipo_impuesto_id
+        WHERE cd.compra_cab_id = :compra_cab_id
+    ", ['compra_cab_id' => $compraCabId]);
 
-    // Variables para almacenar el total general y el total con impuesto
     $totalGral = 0;
-    $totalConImpuesto = 0;
+    $totalIVA  = 0;
 
-    // Recorrer cada detalle y calcular el subtotal e impuestos
     foreach ($detalles as $detalle) {
-        $subtotal = $detalle->subtotal; // Subtotal ya calculado
-        $totalConImpuestoDetalle = $detalle->totalconimpuesto; // Total con impuestos ya calculado
-
-        // Sumar al total general y total con impuestos
-        $totalGral += $subtotal;
-        $totalConImpuesto += $totalConImpuestoDetalle;
+        $totalGral += $detalle->subtotal;
+        $totalIVA  += $detalle->iva_monto;
     }
 
-    // Devolver los resultados como JSON
+    // totalGral = precio total de compra (IVA incluido en el precio unitario)
+    // totalIVA  = solo la porción impositiva (para el libro de compras)
     return response()->json([
-        'totalGral' => number_format($totalGral, 2),
-        'totalConImpuesto' => number_format($totalConImpuesto, 2)
+        'totalGral'        => number_format($totalGral, 2),
+        'totalConImpuesto' => number_format($totalIVA,  2)
     ]);
 }
 
@@ -319,6 +319,27 @@ public function confirmar(Request $r, $id) {
         $r->merge(['comp_intervalo_fecha_vence' => null]);
     }
 
+    // Validar stock máximo ANTES de confirmar (sin guardar nada)
+    $detallesPreview = CompraDet::where('compra_cab_id', $compracab->id)->get();
+    foreach ($detallesPreview as $detalle) {
+        if (!$detalle->deposito_id) continue;
+        $stock = Stock::where('deposito_id', $detalle->deposito_id)
+                      ->where('item_id', $detalle->item_id)
+                      ->first();
+        if ($stock && $stock->cantidad_maxima > 0) {
+            $nuevaCantidad = $stock->cantidad + $detalle->comp_det_cantidad;
+            if ($nuevaCantidad > $stock->cantidad_maxima) {
+                return response()->json([
+                    'mensaje' => "No se puede confirmar: el ítem ID {$detalle->item_id} superaría el stock máximo ({$stock->cantidad_maxima}) en el depósito {$detalle->deposito_id}. Cantidad actual: {$stock->cantidad}, cantidad a ingresar: {$detalle->comp_det_cantidad}.",
+                    'tipo'    => 'error'
+                ], 400);
+            }
+        }
+    }
+
+    DB::beginTransaction();
+    try {
+
     // Validaciones y preparación de datos
     $datosValidados = $r->validate([
         'comp_intervalo_fecha_vence' => 'nullable|date',
@@ -338,12 +359,14 @@ public function confirmar(Request $r, $id) {
     $compracab->comp_estado = "RECIBIDO";
     $compracab->save();
 
-    // Calcular el total con impuestos
-    $resultadoCalculo = $this->calcularTotal($r, $id);
-    $totalConImpuesto = str_replace(',', '', $resultadoCalculo->getData()->totalConImpuesto);
+    // Calcular totales: totalGral = monto a pagar; totalConImpuesto = solo la porción IVA
+    $resultadoCalculo  = $this->calcularTotal($r, $id);
+    $totalGral         = (float) str_replace(',', '', $resultadoCalculo->getData()->totalGral);
+    $totalConImpuesto  = (float) str_replace(',', '', $resultadoCalculo->getData()->totalConImpuesto);
 
-    $cuotas    = ($compracab->condicion_pago === 'CONTADO') ? 1 : max(1, (int)($compracab->comp_cant_cuota ?? 1));
-    $montoCuota = round((float)$totalConImpuesto / $cuotas, 2);
+    // CtasPagar se basa en el precio total de compra (totalGral)
+    $cuotas     = ($compracab->condicion_pago === 'CONTADO') ? 1 : max(1, (int)($compracab->comp_cant_cuota ?? 1));
+    $montoCuota = round($totalGral / $cuotas, 2);
     $fechaBase  = $compracab->comp_fecha ?? now();
 
     for ($i = 1; $i <= $cuotas; $i++) {
@@ -367,18 +390,25 @@ public function confirmar(Request $r, $id) {
     foreach ($detallesCompra as $detalle) {
         if (!$detalle->deposito_id) continue;
 
-        $stock = Stock::where('deposito_id', $detalle->deposito_id)
-                      ->where('item_id', $detalle->item_id)
-                      ->first();
+        $stock = DB::table('stock')
+            ->where('deposito_id', $detalle->deposito_id)
+            ->where('item_id', $detalle->item_id)
+            ->first();
 
         if ($stock) {
-            $stock->cantidad += $detalle->comp_det_cantidad;
-            $stock->save();
+            DB::table('stock')
+                ->where('deposito_id', $detalle->deposito_id)
+                ->where('item_id', $detalle->item_id)
+                ->update(['cantidad' => $stock->cantidad + $detalle->comp_det_cantidad, 'updated_at' => now()]);
         } else {
-            Stock::create([
-                'deposito_id' => $detalle->deposito_id,
-                'item_id'     => $detalle->item_id,
-                'cantidad'    => $detalle->comp_det_cantidad,
+            DB::table('stock')->insert([
+                'deposito_id'     => $detalle->deposito_id,
+                'item_id'         => $detalle->item_id,
+                'cantidad'        => $detalle->comp_det_cantidad,
+                'cantidad_minima' => 0,
+                'cantidad_maxima' => 0,
+                'created_at'      => now(),
+                'updated_at'      => now(),
             ]);
         }
     }
@@ -402,7 +432,7 @@ public function confirmar(Request $r, $id) {
     // Insertar el registro en libro_compras con los nuevos campos
         LibroCompras::create([
         'compra_cab_id'   => $compracab->id,
-        'libC_monto'      => $totalConImpuesto,
+        'libC_monto'      => $totalGral,
         'libC_fecha'      => now(),
         'libC_cuota'      => $r->comp_cant_cuota ?? 1,
         'libC_tipo_nota'  => $r->libC_tipo_nota,
@@ -418,11 +448,18 @@ public function confirmar(Request $r, $id) {
     ]);
 
 
+    DB::commit();
+
     return response()->json([
-        'mensaje' => 'Compra registrada con éxito. Cuenta por pagar, Libro de Compras, Stock y Depósito actualizados',
-        'tipo' => 'success',
-        'registro' => $compracab
+        'mensaje'  => 'Compra registrada con éxito. Cuenta por pagar, Libro de Compras, Stock y Depósito actualizados.',
+        'tipo'     => 'success',
+        'registro' => $compracab,
     ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json(['mensaje' => 'Error al confirmar la compra. Intente nuevamente.', 'tipo' => 'error'], 500);
+    }
 }
 public function buscar(Request $r)
 {
@@ -453,7 +490,9 @@ public function buscar(Request $r)
             'COMPRA NRO: ' || TO_CHAR(cc.id, '0000000') || ' VENCE EL: ' || TO_CHAR(cc.comp_fecha, 'YYYY-MM-DD HH:mm:ss') AS compra,
             COALESCE(to_char(cc.comp_intervalo_fecha_vence, 'YYYY-MM-DD HH:mm:ss'), 'N/A') as nota_comp_intervalo_fecha_vence,
             COALESCE(cc.comp_cant_cuota::varchar, '0') as nota_comp_cantidad_cuota,
-            COALESCE(cc.comp_timbrado, '') AS comp_timbrado
+            COALESCE(cc.comp_timbrado, '') AS comp_timbrado,
+            COALESCE(cc.comp_nro_factura, '') AS comp_nro_factura,
+            COALESCE(TO_CHAR(cc.comp_fecha_emision, 'DD/MM/YYYY'), '') AS comp_fecha_emision
         FROM
             compra_cab cc
         JOIN

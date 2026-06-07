@@ -14,7 +14,8 @@ class EntidadAdherida extends Model
         'ent_adh_nombre',
         'ent_adh_direccion',
         'ent_adh_telefono',
-        'ent_adh_email'
+        'ent_adh_email',
+        'ent_adh_estado'
     ];
     public function entidadEmisora()
     {

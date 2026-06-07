@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\MotivoAjuste;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class MotivoAjusteController extends Controller
 {
@@ -18,15 +17,23 @@ class MotivoAjusteController extends Controller
     {
         $r->validate([
             'descripcion' => [
-                'required', 'string', 'max:200',
-                Rule::unique('motivo_ajuste', 'descripcion')->where(fn($q) => $q->where('tipo_ajuste', $r->tipo_ajuste)),
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($r) {
+                    $existe = \DB::table('motivo_ajuste')
+                        ->whereRaw('LOWER(descripcion) = LOWER(?)', [trim($value)])
+                        ->where('tipo_ajuste', $r->tipo_ajuste)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe un motivo con esa descripción para el mismo tipo de ajuste.');
+                    }
+                },
             ],
             'tipo_ajuste' => 'required|string|max:50',
         ], [
-            'descripcion.required' => 'La descripción del motivo es obligatoria.',
-            'descripcion.max'      => 'La descripción no puede superar los 200 caracteres.',
-            'descripcion.unique'   => 'Ya existe un motivo con esa descripción para el mismo tipo de ajuste.',
-            'tipo_ajuste.required' => 'El tipo de ajuste es obligatorio.',
+            'descripcion.required'  => 'La descripción del motivo es obligatoria.',
+            'descripcion.max'       => 'La descripción no puede superar los 200 caracteres.',
+            'descripcion.not_regex' => 'La descripción contiene caracteres no permitidos.',
+            'tipo_ajuste.required'  => 'El tipo de ajuste es obligatorio.',
         ]);
 
         $motivoajuste = MotivoAjuste::create([
@@ -50,17 +57,24 @@ class MotivoAjusteController extends Controller
 
         $r->validate([
             'descripcion' => [
-                'required', 'string', 'max:200',
-                Rule::unique('motivo_ajuste', 'descripcion')
-                    ->where(fn($q) => $q->where('tipo_ajuste', $r->tipo_ajuste))
-                    ->ignore($id),
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($r, $id) {
+                    $existe = \DB::table('motivo_ajuste')
+                        ->whereRaw('LOWER(descripcion) = LOWER(?)', [trim($value)])
+                        ->where('tipo_ajuste', $r->tipo_ajuste)
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otro motivo con esa descripción para el mismo tipo de ajuste.');
+                    }
+                },
             ],
             'tipo_ajuste' => 'required|string|max:50',
         ], [
-            'descripcion.required' => 'La descripción del motivo es obligatoria.',
-            'descripcion.max'      => 'La descripción no puede superar los 200 caracteres.',
-            'descripcion.unique'   => 'Ya existe otro motivo con esa descripción para el mismo tipo de ajuste.',
-            'tipo_ajuste.required' => 'El tipo de ajuste es obligatorio.',
+            'descripcion.required'  => 'La descripción del motivo es obligatoria.',
+            'descripcion.max'       => 'La descripción no puede superar los 200 caracteres.',
+            'descripcion.not_regex' => 'La descripción contiene caracteres no permitidos.',
+            'tipo_ajuste.required'  => 'El tipo de ajuste es obligatorio.',
         ]);
 
         $motivoajuste->update([
@@ -75,21 +89,15 @@ class MotivoAjusteController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $motivoajuste = MotivoAjuste::find($id);
         if (!$motivoajuste) {
-            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
+            return response()->json(['mensaje' => 'Motivo de Ajuste no encontrado', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $motivoajuste->delete();
-            return response()->json(['mensaje' => 'Motivo de ajuste eliminado con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar el motivo porque está siendo utilizado en ajustes de inventario.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($motivoajuste->estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $motivoajuste->update(['estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Motivo de Ajuste activado con éxito.' : 'Motivo de Ajuste desactivado con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 }

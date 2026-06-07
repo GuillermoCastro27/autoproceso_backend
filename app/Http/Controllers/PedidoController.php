@@ -8,6 +8,29 @@ use Illuminate\Support\Facades\DB;
 
 class PedidoController extends Controller
 {
+    private function validarFechas(Request $r): ?array
+    {
+        $hoy = (new \DateTime())->format('d/m/Y');
+
+        if ($r->ped_fecha) {
+            $dt = \DateTime::createFromFormat('d/m/Y H:i:s', $r->ped_fecha);
+            if (!$dt) return ['La fecha del pedido tiene un formato inválido.', 422];
+            if ($dt->format('d/m/Y') !== $hoy)
+                return ['La fecha del pedido debe ser la de hoy (' . $hoy . ').', 422];
+        }
+
+        if ($r->ped_vence) {
+            $dtV = \DateTime::createFromFormat('d/m/Y H:i:s', $r->ped_vence);
+            if (!$dtV) return ['El plazo de entrega tiene un formato inválido.', 422];
+            if ($dtV < new \DateTime('today'))
+                return ['El plazo de entrega no puede ser una fecha pasada.', 422];
+            if (isset($dt) && $dtV < $dt)
+                return ['El plazo de entrega debe ser igual o posterior a la fecha del pedido.', 422];
+        }
+
+        return null;
+    }
+
     // 🔹 Centralizamos validaciones
     private function validarPedido(Request $r)
     {
@@ -66,6 +89,9 @@ class PedidoController extends Controller
     DB::unprepared("SET myapp.ip = '".request()->ip()."'");
     DB::unprepared("SET myapp.url = '".request()->fullUrl()."'");
 
+    if ($err = $this->validarFechas($r))
+        return response()->json(['mensaje' => $err[0], 'tipo' => 'error'], $err[1]);
+
     $datos = $this->validarPedido($r);
     $datos['funcionario_id'] = auth()->user()->funcionario_id;
     $pedido = Pedido::create($datos);
@@ -82,6 +108,9 @@ class PedidoController extends Controller
 
     $pedido = $this->buscarPedido($id);
     if (!$pedido instanceof Pedido) return $pedido;
+
+    if ($err = $this->validarFechas($r))
+        return response()->json(['mensaje' => $err[0], 'tipo' => 'error'], $err[1]);
 
     $pedido->update($this->validarPedido($r));
 
@@ -158,7 +187,7 @@ class PedidoController extends Controller
     public function buscarInforme(Request $request)
     {
         return DB::select("
-            SELECT 
+            SELECT
                 p.id,
                 TO_CHAR(p.ped_fecha, 'dd/mm/yyyy') AS fecha,
                 TO_CHAR(p.ped_vence, 'dd/mm/yyyy') AS entrega,
@@ -175,5 +204,78 @@ class PedidoController extends Controller
               AND p.ped_fecha BETWEEN ? AND ?
             ORDER BY p.ped_fecha ASC
         ", [$request->desde, $request->hasta]);
+    }
+
+    private function datosTicket($id)
+    {
+        $cab = DB::selectOne("
+            SELECT
+                p.id,
+                TO_CHAR(p.ped_fecha, 'DD/MM/YYYY HH24:MI:SS') AS ped_fecha,
+                TO_CHAR(p.ped_vence, 'DD/MM/YYYY HH24:MI:SS') AS ped_vence,
+                p.ped_pbservaciones,
+                p.ped_estado,
+                e.emp_razon_social,
+                COALESCE(e.emp_direccion, '') AS emp_direccion,
+                COALESCE(e.emp_telefono, '') AS emp_telefono,
+                s.suc_razon_social,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+                f.fun_correo
+            FROM pedidos p
+            JOIN empresa e     ON e.id = p.empresa_id
+            JOIN sucursal s    ON s.id = p.sucursal_id
+            JOIN funcionario f ON f.id = p.funcionario_id
+            WHERE p.id = ?
+        ", [$id]);
+
+        if (!$cab) return null;
+
+        $detalles = DB::select("
+            SELECT
+                pd.det_cantidad AS cantidad,
+                pd.cantidad_stock,
+                i.item_decripcion,
+                COALESCE(d.dep_nombre, '-') AS dep_nombre,
+                COALESCE(ma.marc_nom, '') AS marc_nom,
+                COALESCE(mo.modelo_nom, '') AS modelo_nom
+            FROM pedidos_detalles pd
+            JOIN items i ON i.id = pd.item_id
+            LEFT JOIN deposito d  ON d.id  = pd.deposito_id
+            LEFT JOIN marca ma    ON ma.id = pd.marca_id
+            LEFT JOIN modelo mo   ON mo.id = pd.modelo_id
+            WHERE pd.pedidos_id = ?
+        ", [$id]);
+
+        return compact('cab', 'detalles');
+    }
+
+    public function imprimir($id)
+    {
+        $data = $this->datosTicket($id);
+        if (!$data) {
+            return response()->json(['mensaje' => 'Pedido no encontrado', 'tipo' => 'error'], 404);
+        }
+        return response()->json(['cab' => $data['cab'], 'detalles' => $data['detalles']]);
+    }
+
+    public function enviarTicket($id)
+    {
+        $data = $this->datosTicket($id);
+        if (!$data) {
+            return response()->json(['mensaje' => 'Pedido no encontrado', 'tipo' => 'error'], 404);
+        }
+
+        $cab = $data['cab'];
+        if (empty($cab->fun_correo)) {
+            return response()->json(['mensaje' => 'El funcionario no tiene correo registrado', 'tipo' => 'warning']);
+        }
+
+        $datos = array_merge((array) $cab, ['detalles' => $data['detalles']]);
+        \Mail::to($cab->fun_correo)->send(new \App\Mail\TicketPedido($datos));
+
+        return response()->json([
+            'mensaje' => 'Pedido enviado correctamente a ' . $cab->fun_correo,
+            'tipo'    => 'success',
+        ]);
     }
 }

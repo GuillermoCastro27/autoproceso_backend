@@ -24,8 +24,16 @@ class VentasCab extends Model implements Auditable
         'pedidos_ventas_id',
         'clientes_id',
         'empresa_id',
-        'sucursal_id'
+        'sucursal_id',
+        'timbrado_id',
+        'vent_nro_comprobante',
     ];
+
+    public function timbrado()
+    {
+        return $this->belongsTo(Timbrado::class);
+    }
+
     public function cliente()
 {
     return $this->belongsTo(Clientes::class, 'clientes_id');

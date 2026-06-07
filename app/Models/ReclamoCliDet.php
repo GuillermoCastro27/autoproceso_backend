@@ -15,13 +15,15 @@ class ReclamoCliDet extends Model implements Auditable
         CompositeKeyAuditable::transformAudit insteadof AuditableTrait;
     }
     protected array $auditKeyColumns = ['reclamo_cli_cab_id', 'item_id'];
-    protected $fillable =[
+    protected $fillable = [
         'reclamo_cli_cab_id',
         'item_id',
         'tipo_impuesto_id',
         'rec_cli_det_cantidad',
         'rec_cli_det_costo',
-        'rec_cli_det_cantidad_stock'
+        'rec_cli_det_cantidad_stock',
+        'marca_id',
+        'modelo_id',
     ];
     protected $primaryKey = null;
     public $incrementing = false;

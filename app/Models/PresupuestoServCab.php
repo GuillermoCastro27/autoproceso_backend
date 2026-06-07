@@ -20,6 +20,7 @@ class PresupuestoServCab extends Model implements Auditable
         'empresa_id',
         'sucursal_id',
         'diagnostico_cab_id',
+        'recep_cab_id',
         'tipo_servicio_id',
         'tipo_vehiculo_id',
         'promociones_cab_id',

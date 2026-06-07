@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\OrdenServVenta;
+use App\Models\VentasDet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -16,14 +17,54 @@ class OrdenServVentaController extends Controller
             'contrato_serv_cab_id' => 'nullable|integer|exists:contrato_serv_cab,id',
         ]);
 
+        $ventaCabId = (int) $r->ventas_cab_id;
+        $ordenId    = (int) $r->orden_serv_cab_id;
+
+        // Solo se vincula a ventas PENDIENTE
+        $venta = DB::table('ventas_cab')->where('id', $ventaCabId)->first();
+        if (!$venta || $venta->vent_estado !== 'PENDIENTE') {
+            return response()->json([
+                'mensaje' => 'Solo se pueden vincular órdenes a ventas en estado PENDIENTE.',
+                'tipo'    => 'error',
+            ], 422);
+        }
+
+        // No duplicar el vínculo
+        $existe = DB::table('orden_serv_venta')
+            ->where('ventas_cab_id', $ventaCabId)
+            ->where('orden_serv_cab_id', $ordenId)
+            ->exists();
+        if ($existe) {
+            return response()->json([
+                'mensaje' => 'Esta orden ya está vinculada a la venta.',
+                'tipo'    => 'warning',
+            ], 409);
+        }
+
         $registro = OrdenServVenta::create([
-            'ventas_cab_id'        => $r->ventas_cab_id,
-            'orden_serv_cab_id'    => $r->orden_serv_cab_id,
+            'ventas_cab_id'        => $ventaCabId,
+            'orden_serv_cab_id'    => $ordenId,
             'contrato_serv_cab_id' => $r->contrato_serv_cab_id ?: null,
         ]);
 
+        // Copiar detalles de la orden a ventas_det
+        $detallesOrden = DB::table('orden_serv_det')
+            ->where('orden_serv_cab_id', $ordenId)
+            ->get();
+
+        foreach ($detallesOrden as $det) {
+            VentasDet::create([
+                'ventas_cab_id'     => $ventaCabId,
+                'item_id'           => $det->item_id,
+                'vent_det_cantidad' => $det->orden_serv_det_cantidad,
+                'vent_det_precio'   => $det->orden_serv_det_costo,
+                'tipo_impuesto_id'  => $det->tipo_impuesto_id,
+                'deposito_id'       => null,
+            ]);
+        }
+
         return response()->json([
-            'mensaje'   => 'Orden de servicio vinculada a la venta',
+            'mensaje'   => 'Orden de servicio vinculada y detalles copiados a la venta.',
             'tipo'      => 'success',
             'registro'  => $registro,
         ], 201);

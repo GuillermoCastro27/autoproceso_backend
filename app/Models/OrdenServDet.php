@@ -21,7 +21,9 @@ class OrdenServDet extends Model implements Auditable
         'tipo_impuesto_id',
         'orden_serv_det_cantidad',
         'orden_serv_det_costo',
-        'orden_serv_det_cantidad_stock'
+        'orden_serv_det_cantidad_stock',
+        'marca_id',
+        'modelo_id',
     ];
     protected $primaryKey = null;
     public $incrementing = false;

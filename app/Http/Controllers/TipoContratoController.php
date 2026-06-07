@@ -27,20 +27,31 @@ class TipoContratoController extends Controller
     public function store(Request $r)
 {
     $datosValidados = $r->validate([
-        'tip_con_nombre' => 'required|string|max:100|unique:tipo_contrato,tip_con_nombre',
+        'tip_con_nombre' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('tipo_contrato')
+                        ->whereRaw('LOWER(tip_con_nombre) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('El tipo de contrato ya existe.');
+                    }
+                },
+            ],
 
-        'tip_con_objeto' => 'required|string',
-        'tip_con_alcance' => 'required|string',
-        'tip_con_garantia' => 'required|string',
-        'tip_con_responsabilidad' => 'required|string',
-        'tip_con_limitacion' => 'required|string',
-        'tip_con_fuerza_mayor' => 'required|string',
-        'tip_con_jurisdiccion' => 'required|string',
+        'tip_con_objeto'          => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_alcance'         => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_garantia'        => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_responsabilidad' => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_limitacion'      => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_fuerza_mayor'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_jurisdiccion'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
 
         'tip_con_estado' => 'nullable|string|max:20'
     ], [
-        'tip_con_nombre.required' => 'El nombre del tipo de contrato es obligatorio.',
-        'tip_con_nombre.unique' => 'El tipo de contrato ya existe.',
+        'tip_con_nombre.required'  => 'El nombre del tipo de contrato es obligatorio.',
+        'tip_con_nombre.unique'    => 'El tipo de contrato ya existe.',
+        'tip_con_nombre.not_regex' => 'El nombre contiene caracteres no permitidos.',
 
         'tip_con_objeto.required' => 'El objeto del contrato es obligatorio.',
         'tip_con_alcance.required' => 'El alcance del contrato es obligatorio.',
@@ -53,7 +64,7 @@ class TipoContratoController extends Controller
 
     // Estado por defecto si no viene
     if (!isset($datosValidados['tip_con_estado'])) {
-        $datosValidados['tip_con_estado'] = 'ACTIVO';
+        $datosValidados['tip_con_estado'] = 'activo';
     }
 
     $tipoContrato = TipoContrato::create($datosValidados);
@@ -76,20 +87,32 @@ public function update(Request $r, $id)
     }
 
     $datosValidados = $r->validate([
-        'tip_con_nombre' => 'required|string|max:100|unique:tipo_contrato,tip_con_nombre,' . $id,
+        'tip_con_nombre' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('tipo_contrato')
+                        ->whereRaw('LOWER(tip_con_nombre) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('El tipo de contrato ya existe.');
+                    }
+                },
+            ],
 
-        'tip_con_objeto' => 'required|string',
-        'tip_con_alcance' => 'required|string',
-        'tip_con_garantia' => 'required|string',
-        'tip_con_responsabilidad' => 'required|string',
-        'tip_con_limitacion' => 'required|string',
-        'tip_con_fuerza_mayor' => 'required|string',
-        'tip_con_jurisdiccion' => 'required|string',
+        'tip_con_objeto'          => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_alcance'         => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_garantia'        => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_responsabilidad' => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_limitacion'      => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_fuerza_mayor'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_jurisdiccion'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
 
         'tip_con_estado' => 'nullable|string|max:20'
     ], [
-        'tip_con_nombre.required' => 'El nombre del tipo de contrato es obligatorio.',
-        'tip_con_nombre.unique' => 'El tipo de contrato ya existe.',
+        'tip_con_nombre.required'  => 'El nombre del tipo de contrato es obligatorio.',
+        'tip_con_nombre.unique'    => 'El tipo de contrato ya existe.',
+        'tip_con_nombre.not_regex' => 'El nombre contiene caracteres no permitidos.',
 
         'tip_con_objeto.required' => 'El objeto del contrato es obligatorio.',
         'tip_con_alcance.required' => 'El alcance del contrato es obligatorio.',
@@ -108,24 +131,15 @@ public function update(Request $r, $id)
         'registro' => $tipoContrato
     ], 200);
 }
-public function destroy($id)
+public function cambiarEstado($id)
 {
     $tipoContrato = TipoContrato::find($id);
-
     if (!$tipoContrato) {
-        return response()->json([
-            'mensaje' => 'Registro no encontrado',
-            'tipo' => 'error'
-        ], 404);
+        return response()->json(['mensaje' => 'Tipo de Contrato no encontrado', 'tipo' => 'error'], 404);
     }
-
-    $tipoContrato->update([
-        'tip_con_estado' => 'INACTIVO'
-    ]);
-
-    return response()->json([
-        'mensaje' => 'Tipo de contrato inactivado con éxito',
-        'tipo' => 'success'
-    ], 200);
+    $nuevoEstado = strtolower($tipoContrato->tip_con_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+    $tipoContrato->update(['tip_con_estado' => $nuevoEstado]);
+    $msg = $nuevoEstado === 'activo' ? 'Tipo de Contrato activado con éxito.' : 'Tipo de Contrato desactivado con éxito.';
+    return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
 }
 }

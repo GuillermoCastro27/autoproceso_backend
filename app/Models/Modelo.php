@@ -16,5 +16,6 @@ class Modelo extends Model implements Auditable
         'modelo_tipo',
         'modelo_año',
         'marca_id',
+        'modelo_estado',
     ];
 }

@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Sucursal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class SucursalController extends Controller
 {
@@ -22,7 +21,17 @@ class SucursalController extends Controller
     {
         $r->validate([
             'empresa_id'      => 'required|integer|exists:empresa,id',
-            'suc_razon_social'=> 'required|string|max:200',
+            'suc_razon_social'=> [
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('sucursal')
+                        ->whereRaw('LOWER(suc_razon_social) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe una sucursal con esa razón social.');
+                    }
+                },
+            ],
             'suc_direccion'   => 'required|string|max:300',
             'suc_telefono'    => 'required|string|max:30',
             'suc_correo'      => 'required|email|max:100',
@@ -60,7 +69,18 @@ class SucursalController extends Controller
 
         $r->validate([
             'empresa_id'      => 'required|integer|exists:empresa,id',
-            'suc_razon_social'=> 'required|string|max:200',
+            'suc_razon_social'=> [
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('sucursal')
+                        ->whereRaw('LOWER(suc_razon_social) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otra sucursal con esa razón social.');
+                    }
+                },
+            ],
             'suc_direccion'   => 'required|string|max:300',
             'suc_telefono'    => 'required|string|max:30',
             'suc_correo'      => 'required|email|max:100',
@@ -89,29 +109,15 @@ class SucursalController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $sucursal = Sucursal::find($id);
         if (!$sucursal) {
             return response()->json(['mensaje' => 'Sucursal no encontrada', 'tipo' => 'error'], 404);
         }
-
-        $tieneDepositos = DB::table('deposito')->where('sucursal_id', $id)->exists();
-        if ($tieneDepositos) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar la sucursal porque tiene depósitos asociados.',
-                'tipo'    => 'error',
-            ], 409);
-        }
-
-        try {
-            $sucursal->delete();
-            return response()->json(['mensaje' => 'Sucursal eliminada con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar la sucursal porque tiene registros asociados en el sistema.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($sucursal->suc_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $sucursal->update(['suc_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Sucursal activada con éxito.' : 'Sucursal desactivada con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 }

@@ -16,11 +16,12 @@ class Deposito extends Model implements Auditable
     protected $fillable = [
         'dep_nombre',
         'sucursal_id',
+        'dep_estado',
     ];
 
     public function sucursal()
     {
-        return $this->belongsTo(Sucursal::class, 'sucursal_id', 'empresa_id');
+        return $this->belongsTo(Sucursal::class, 'sucursal_id', 'id');
     }
 
     public function stocks()

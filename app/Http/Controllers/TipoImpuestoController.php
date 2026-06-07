@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\TipoImpuesto;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class TipoImpuestoController extends Controller
 {
@@ -16,11 +15,21 @@ class TipoImpuestoController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'tip_imp_nom'   => 'required|string|max:100|unique:tipo_impuesto,tip_imp_nom',
+            'tip_imp_nom'   => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('tipo_impuesto')
+                        ->whereRaw('LOWER(tip_imp_nom) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe un tipo de impuesto con ese nombre.');
+                    }
+                },
+            ],
             'tipo_imp_tasa' => 'required|numeric|min:0|max:100',
         ], [
             'tip_imp_nom.required'   => 'El nombre del impuesto es obligatorio.',
-            'tip_imp_nom.unique'     => 'Ya existe un tipo de impuesto con ese nombre.',
+            'tip_imp_nom.not_regex'  => 'El nombre contiene caracteres no permitidos.',
             'tipo_imp_tasa.required' => 'La tasa del impuesto es obligatoria.',
             'tipo_imp_tasa.numeric'  => 'La tasa debe ser un valor numérico.',
             'tipo_imp_tasa.min'      => 'La tasa no puede ser negativa.',
@@ -47,11 +56,22 @@ class TipoImpuestoController extends Controller
         }
 
         $r->validate([
-            'tip_imp_nom'   => ['required', 'string', 'max:100', Rule::unique('tipo_impuesto', 'tip_imp_nom')->ignore($id)],
+            'tip_imp_nom'   => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('tipo_impuesto')
+                        ->whereRaw('LOWER(tip_imp_nom) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otro tipo de impuesto con ese nombre.');
+                    }
+                },
+            ],
             'tipo_imp_tasa' => 'required|numeric|min:0|max:100',
         ], [
             'tip_imp_nom.required'   => 'El nombre del impuesto es obligatorio.',
-            'tip_imp_nom.unique'     => 'Ya existe otro tipo de impuesto con ese nombre.',
+            'tip_imp_nom.not_regex'  => 'El nombre contiene caracteres no permitidos.',
             'tipo_imp_tasa.required' => 'La tasa del impuesto es obligatoria.',
             'tipo_imp_tasa.numeric'  => 'La tasa debe ser un valor numérico.',
             'tipo_imp_tasa.min'      => 'La tasa no puede ser negativa.',
@@ -70,22 +90,16 @@ class TipoImpuestoController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $tipoimpuesto = TipoImpuesto::find($id);
         if (!$tipoimpuesto) {
-            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
+            return response()->json(['mensaje' => 'Tipo de Impuesto no encontrado', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $tipoimpuesto->delete();
-            return response()->json(['mensaje' => 'Tipo de impuesto eliminado con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar el tipo de impuesto porque está siendo utilizado en el sistema.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($tipoimpuesto->tip_imp_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $tipoimpuesto->update(['tip_imp_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Tipo de Impuesto activado con éxito.' : 'Tipo de Impuesto desactivado con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 
     public function buscar(Request $r)

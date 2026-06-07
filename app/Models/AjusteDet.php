@@ -14,7 +14,7 @@ class AjusteDet extends Model implements Auditable
     use AuditableTrait, CompositeKeyAuditable {
         CompositeKeyAuditable::transformAudit insteadof AuditableTrait;
     }
-    protected array $auditKeyColumns = ['ajuste_cab_id', 'item_id'];
+    protected array $auditKeyColumns = ['ajuste_cab_id', 'item_id', 'deposito_id'];
     protected $table = 'ajuste_det';
     protected $fillable = [
     'ajuste_cab_id',

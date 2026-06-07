@@ -27,12 +27,23 @@ class CtasCobrarController extends Controller
 
                 -- Venta
                 'VENTA NRO: ' || TO_CHAR(v.id, '0000000') AS venta_nro,
-                TO_CHAR(v.vent_fecha, 'YYYY-MM-DD') AS fecha_venta
+                TO_CHAR(v.vent_fecha, 'YYYY-MM-DD') AS fecha_venta,
+
+                -- Número de factura (timbrado + comprobante)
+                COALESCE(
+                    LPAD(COALESCE(t.tim_establecimiento, '001'), 3, '0') || '-' ||
+                    LPAD(COALESCE(t.tim_punto_expedicion, '001'), 3, '0') || '-' ||
+                    LPAD(v.vent_nro_comprobante::varchar, 7, '0'),
+                    'VENTA-' || TO_CHAR(v.id, 'FM0000000')
+                ) AS nro_factura
 
             FROM ctas_cobrar cc
 
             JOIN ventas_cab v
                 ON v.id = cc.ventas_cab_id
+
+            LEFT JOIN timbrado t
+                ON t.id = v.timbrado_id
 
             JOIN clientes c
                 ON c.id = v.clientes_id

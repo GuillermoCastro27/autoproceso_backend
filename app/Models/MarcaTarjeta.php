@@ -11,6 +11,7 @@ class MarcaTarjeta extends Model
     protected $table = 'marca_tarjeta';
 
     protected $fillable = [
-        'marca_nombre'
+        'marca_nombre',
+        'marca_estado',
     ];
 }

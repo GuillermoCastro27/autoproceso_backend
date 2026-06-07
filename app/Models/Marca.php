@@ -14,5 +14,6 @@ class Marca extends Model implements Auditable
     protected $fillable = [
         'marc_nom',
         'mar_tipo',
+        'marc_estado',
     ];
 }

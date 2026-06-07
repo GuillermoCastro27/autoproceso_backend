@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
@@ -28,14 +27,25 @@ class ItemController extends Controller
         return DB::table('item_modelo as imo')
             ->join('modelo as mo', 'mo.id', '=', 'imo.modelo_id')
             ->where('imo.item_id', $id)
-            ->select('mo.id as modelo_id', 'mo.modelo_nom')
+            ->select('mo.id as modelo_id', 'mo.modelo_nom', 'mo.modelo_año', 'mo.marca_id')
             ->get();
     }
 
     public function store(Request $r)
     {
         $r->validate([
-            'item_decripcion'  => ['required', 'string', 'max:200', Rule::unique('items', 'item_decripcion')->whereNull('deleted_at')],
+            'item_decripcion'  => [
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('items')
+                        ->whereRaw('LOWER(item_decripcion) = LOWER(?)', [trim($value)])
+                        ->whereNull('deleted_at')
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe un ítem con esa descripción.');
+                    }
+                },
+            ],
             'item_costo'       => 'required|numeric|min:0',
             'item_precio'      => 'required|numeric|min:0',
             'tipo_id'          => 'required|integer|exists:tipos,id',
@@ -63,8 +73,8 @@ class ItemController extends Controller
             'tipo_impuesto_id' => $r->tipo_impuesto_id,
         ]);
 
-        $this->syncMarcas($item->id, $r->marcas ?? []);
-        $this->syncModelos($item->id, $r->modelos ?? []);
+        $this->syncMarcas($item->id,  $this->toArray($r->marcas));
+        $this->syncModelos($item->id, $this->toArray($r->modelos));
 
         return response()->json([
             'mensaje'  => 'Ítem creado con éxito',
@@ -81,7 +91,19 @@ class ItemController extends Controller
         }
 
         $r->validate([
-            'item_decripcion'  => ['required', 'string', 'max:200', Rule::unique('items', 'item_decripcion')->ignore($id)->whereNull('deleted_at')],
+            'item_decripcion'  => [
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('items')
+                        ->whereRaw('LOWER(item_decripcion) = LOWER(?)', [trim($value)])
+                        ->whereNull('deleted_at')
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otro ítem con esa descripción.');
+                    }
+                },
+            ],
             'item_costo'       => 'required|numeric|min:0',
             'item_precio'      => 'required|numeric|min:0',
             'tipo_id'          => 'required|integer|exists:tipos,id',
@@ -105,8 +127,8 @@ class ItemController extends Controller
             'tipo_impuesto_id' => $r->tipo_impuesto_id,
         ]);
 
-        $this->syncMarcas($id, $r->marcas ?? []);
-        $this->syncModelos($id, $r->modelos ?? []);
+        $this->syncMarcas($id,  $this->toArray($r->marcas));
+        $this->syncModelos($id, $this->toArray($r->modelos));
 
         return response()->json([
             'mensaje'  => 'Ítem actualizado con éxito',
@@ -115,44 +137,58 @@ class ItemController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $item = Item::find($id);
         if (!$item) {
             return response()->json(['mensaje' => 'Ítem no encontrado', 'tipo' => 'error'], 404);
         }
-
-        DB::table('item_marca')->where('item_id', $id)->delete();
-        DB::table('item_modelo')->where('item_id', $id)->delete();
-
-        try {
-            $item->delete();
-            return response()->json(['mensaje' => 'Ítem eliminado con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar el ítem porque está siendo utilizado en compras, ventas u otros registros.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = $item->item_estado === 'activo' ? 'inactivo' : 'activo';
+        $item->update(['item_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Ítem activado con éxito.' : 'Ítem desactivado con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 
     public function buscar(Request $r)
     {
-        $productos = DB::select("
-            SELECT
-                i.*,
-                ti.tip_imp_nom,
-                ti.tipo_imp_tasa,
-                i.item_costo,
-                i.id AS item_id,
-                COALESCE(SUM(s.cantidad), 0) AS cantidad_disponible
-            FROM items i
-            JOIN tipos t ON t.id = i.tipo_id
-            LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
-            LEFT JOIN stock s ON s.item_id = i.id
-            WHERE i.deleted_at IS NULL AND i.item_decripcion ILIKE ?
-            GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
-        ", ['%' . $r->item_decripcion . '%']);
+        $depositoId = $r->input('deposito_id');
+
+        if ($depositoId) {
+            // Solo ítems con stock > 0 en el depósito específico
+            $productos = DB::select("
+                SELECT
+                    i.*,
+                    ti.tip_imp_nom,
+                    ti.tipo_imp_tasa,
+                    i.item_costo,
+                    i.id AS item_id,
+                    COALESCE(s.cantidad, 0) AS cantidad_disponible
+                FROM items i
+                JOIN tipos t ON t.id = i.tipo_id
+                LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
+                JOIN stock s ON s.item_id = i.id AND s.deposito_id = ?
+                WHERE i.deleted_at IS NULL
+                  AND i.item_decripcion ILIKE ?
+                  AND s.cantidad > 0
+                GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion, s.cantidad
+            ", [$depositoId, '%' . $r->item_decripcion . '%']);
+        } else {
+            $productos = DB::select("
+                SELECT
+                    i.*,
+                    ti.tip_imp_nom,
+                    ti.tipo_imp_tasa,
+                    i.item_costo,
+                    i.id AS item_id,
+                    COALESCE(SUM(s.cantidad), 0) AS cantidad_disponible
+                FROM items i
+                JOIN tipos t ON t.id = i.tipo_id
+                LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
+                LEFT JOIN stock s ON s.item_id = i.id
+                WHERE i.deleted_at IS NULL AND i.item_decripcion ILIKE ?
+                GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
+            ", ['%' . $r->item_decripcion . '%']);
+        }
 
         return response()->json($productos);
     }
@@ -176,6 +212,18 @@ class ItemController extends Controller
         ", ['%' . $r->item_decripcion . '%']);
 
         return response()->json($productos);
+    }
+
+    private function toArray($value): array
+    {
+        if (is_array($value)) return $value;
+        if (is_null($value) || $value === '') return [];
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : (trim($value) !== '' ? [$value] : []);
+        }
+        // int, float u otro escalar → envolverlo en array
+        return [$value];
     }
 
     private function syncMarcas($itemId, $marcas)

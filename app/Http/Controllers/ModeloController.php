@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Modelo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class ModeloController extends Controller
 {
@@ -37,8 +36,15 @@ class ModeloController extends Controller
 
         $r->validate([
             'modelo_nom'  => [
-                'required', 'string', 'max:100',
-                Rule::unique('modelo', 'modelo_nom')->where(fn($q) => $q->where('marca_id', $r->marca_id)),
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('modelo')
+                        ->whereRaw('LOWER(modelo_nom) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe un modelo con ese nombre.');
+                    }
+                },
             ],
             'modelo_tipo' => 'required|string|max:50',
             'modelo_año'  => "nullable|integer|min:1900|max:{$anoActual}",
@@ -46,7 +52,6 @@ class ModeloController extends Controller
         ], [
             'modelo_nom.required' => 'El nombre del modelo es obligatorio.',
             'modelo_nom.max'      => 'El nombre no puede superar los 100 caracteres.',
-            'modelo_nom.unique'   => 'Ya existe un modelo con ese nombre para la marca seleccionada.',
             'modelo_tipo.required'=> 'El tipo de modelo es obligatorio.',
             'modelo_año.integer'  => 'El año debe ser un número entero.',
             'modelo_año.min'      => 'El año no puede ser anterior a 1900.',
@@ -80,10 +85,16 @@ class ModeloController extends Controller
 
         $r->validate([
             'modelo_nom'  => [
-                'required', 'string', 'max:100',
-                Rule::unique('modelo', 'modelo_nom')
-                    ->where(fn($q) => $q->where('marca_id', $r->marca_id))
-                    ->ignore($id),
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('modelo')
+                        ->whereRaw('LOWER(modelo_nom) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otro modelo con ese nombre.');
+                    }
+                },
             ],
             'modelo_tipo' => 'required|string|max:50',
             'modelo_año'  => "nullable|integer|min:1900|max:{$anoActual}",
@@ -91,7 +102,6 @@ class ModeloController extends Controller
         ], [
             'modelo_nom.required' => 'El nombre del modelo es obligatorio.',
             'modelo_nom.max'      => 'El nombre no puede superar los 100 caracteres.',
-            'modelo_nom.unique'   => 'Ya existe otro modelo con ese nombre para la marca seleccionada.',
             'modelo_tipo.required'=> 'El tipo de modelo es obligatorio.',
             'modelo_año.integer'  => 'El año debe ser un número entero.',
             'modelo_año.min'      => 'El año no puede ser anterior a 1900.',
@@ -114,22 +124,16 @@ class ModeloController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $modelo = Modelo::find($id);
         if (!$modelo) {
             return response()->json(['mensaje' => 'Modelo no encontrado', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $modelo->delete();
-            return response()->json(['mensaje' => 'Modelo eliminado con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar el modelo porque está siendo utilizado en el sistema.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($modelo->modelo_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $modelo->update(['modelo_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Modelo activado con éxito.' : 'Modelo desactivado con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 
     public function buscarPorMarca(Request $r)

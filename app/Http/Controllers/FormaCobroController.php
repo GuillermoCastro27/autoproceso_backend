@@ -19,12 +19,22 @@ class FormaCobroController extends Controller
 
     public function store(Request $r)
     {
-        $datos = $r->validate([
-            'for_cob_descripcion' => 'required|string|max:100|unique:forma_cobro,for_cob_descripcion'
+        $r->validate([
+            'for_cob_descripcion' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('forma_cobro')
+                        ->whereRaw('LOWER(for_cob_descripcion) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe una forma de cobro con esa descripción.');
+                    }
+                },
+            ],
         ], [
             'for_cob_descripcion.required' => 'La descripción es obligatoria.',
-            'for_cob_descripcion.unique'   => 'La forma de cobro ya existe.'
         ]);
+        $datos = $r->only(['for_cob_descripcion']);
 
         $forma = FormaCobro::create($datos);
 
@@ -46,9 +56,21 @@ class FormaCobroController extends Controller
             ], 404);
         }
 
-        $datos = $r->validate([
-            'for_cob_descripcion' => 'required|string|max:100|unique:forma_cobro,for_cob_descripcion,' . $id
+        $r->validate([
+            'for_cob_descripcion' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('forma_cobro')
+                        ->whereRaw('LOWER(for_cob_descripcion) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otra forma de cobro con esa descripción.');
+                    }
+                },
+            ],
         ]);
+        $datos = $r->only(['for_cob_descripcion']);
 
         $forma->update($datos);
 
@@ -59,25 +81,15 @@ class FormaCobroController extends Controller
         ], 200);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $forma = FormaCobro::find($id);
-
         if (!$forma) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo'    => 'error'
-            ], 404);
+            return response()->json(['mensaje' => 'Forma de Cobro no encontrada', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $forma->delete();
-            return response()->json(['mensaje' => 'Forma de cobro eliminada con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar la forma de cobro porque está siendo utilizada en el sistema.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($forma->for_cob_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $forma->update(['for_cob_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Forma de Cobro activada con éxito.' : 'Forma de Cobro desactivada con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 }

@@ -21,7 +21,9 @@ class RecepcionDet extends Model implements Auditable
         'tipo_impuesto_id',
         'recep_det_cantidad',
         'recep_det_costo',
-        'recep_det_cantidad_stock'
+        'recep_det_cantidad_stock',
+        'marca_id',
+        'modelo_id',
     ];
     protected $primaryKey = null;
     public $incrementing = false;

@@ -11,52 +11,109 @@ class OrdenCompraDetController extends Controller
 {
     public function read($id) {
         return DB::select("
-            select 
-                ocd.*, 
-                i.item_decripcion, 
-                i.item_costo,  
-                ti.tip_imp_nom
-            from orden_compra_det ocd
-            join items i on i.id = ocd.item_id
-            join tipo_impuesto ti on ti.id = ocd.tipo_impuesto_id
-            where ocd.orden_compra_cab_id = $id");
+            SELECT ocd.orden_compra_cab_id, ocd.item_id, ocd.tipo_impuesto_id,
+                   ocd.orden_compra_det_cantidad, ocd.orden_compra_det_costo, ocd.deposito_id,
+                   ocd.marca_id, ocd.modelo_id,
+                   i.item_decripcion, i.item_costo, ti.tip_imp_nom,
+                   COALESCE(ma.marc_nom, '')   AS marc_nom,
+                   COALESCE(mo.modelo_nom, '') AS modelo_nom,
+                   COALESCE(SUM(s.cantidad), 0) AS cantidad_disponible
+            FROM orden_compra_det ocd
+            JOIN items i          ON i.id  = ocd.item_id
+            JOIN tipo_impuesto ti  ON ti.id = ocd.tipo_impuesto_id
+            LEFT JOIN marca ma     ON ma.id = ocd.marca_id
+            LEFT JOIN modelo mo    ON mo.id = ocd.modelo_id
+            LEFT JOIN stock s      ON s.item_id = i.id
+            WHERE ocd.orden_compra_cab_id = ?
+            GROUP BY ocd.orden_compra_cab_id, ocd.item_id, ocd.tipo_impuesto_id,
+                     ocd.orden_compra_det_cantidad, ocd.orden_compra_det_costo, ocd.deposito_id,
+                     ocd.marca_id, ocd.modelo_id,
+                     i.item_decripcion, i.item_costo, ti.tip_imp_nom, ma.marc_nom, mo.modelo_nom
+        ", [$id]);
+    }
+
+    public function depositosDeLaOrden($orden_compra_cab_id)
+    {
+        return DB::select("
+            SELECT DISTINCT d.id, d.dep_nombre, s.suc_razon_social
+            FROM orden_compra_det ocd
+            JOIN deposito  d ON d.id  = ocd.deposito_id
+            JOIN sucursal  s ON s.id  = d.sucursal_id
+            WHERE ocd.orden_compra_cab_id = ?
+              AND ocd.deposito_id IS NOT NULL
+            ORDER BY d.id
+        ", [$orden_compra_cab_id]);
     }
     public function store(Request $request)
-{
-    $datosValidados = $request->validate([
-        'orden_compra_cab_id' => 'required|exists:orden_compra_cab,id',
-        'item_id' => 'required|exists:items,id',
-        'tipo_impuesto_id' => 'required|exists:tipo_impuesto,id',
-        'orden_compra_det_cantidad' => 'required|numeric',
-        'orden_compra_det_costo' => 'required|numeric', // Validar el costo
-    ]);
+    {
+        $request->validate([
+            'orden_compra_cab_id'       => 'required|exists:orden_compra_cab,id',
+            'item_id'                   => 'required|exists:items,id',
+            'tipo_impuesto_id'          => 'required|exists:tipo_impuesto,id',
+            'orden_compra_det_cantidad' => 'required|numeric',
+            'orden_compra_det_costo'    => 'required|numeric',
+            'deposito_id'               => 'nullable|exists:deposito,id',
+        ]);
 
-    // Crear el detalle de la orden de compra
-    $detalle = OrdenCompraDet::create($datosValidados);
-    return response()->json([
-        'mensaje' => 'Registro creado con éxito',
-        'tipo' => 'success',
-        'registro' => $detalle
-    ], 201);
-}
+        $deposito = $request->deposito_id ?: null;
+
+        $existente = DB::table('orden_compra_det')
+            ->where('orden_compra_cab_id', $request->orden_compra_cab_id)
+            ->where('item_id', $request->item_id)
+            ->first();
+
+        if ($existente) {
+            if ((string)($existente->deposito_id) !== (string)($deposito)) {
+                return response()->json([
+                    'mensaje' => 'El ítem ya existe en el detalle con un depósito diferente. Modificá el registro existente.',
+                    'tipo'    => 'warning'
+                ], 422);
+            }
+            DB::table('orden_compra_det')
+                ->where('orden_compra_cab_id', $request->orden_compra_cab_id)
+                ->where('item_id', $request->item_id)
+                ->update(['orden_compra_det_cantidad' => $existente->orden_compra_det_cantidad + $request->orden_compra_det_cantidad]);
+
+            return response()->json([
+                'mensaje' => 'Cantidad sumada al ítem existente',
+                'tipo'    => 'success'
+            ], 200);
+        }
+
+        $detalle = OrdenCompraDet::create([
+            'orden_compra_cab_id'       => $request->orden_compra_cab_id,
+            'item_id'                   => $request->item_id,
+            'tipo_impuesto_id'          => $request->tipo_impuesto_id,
+            'orden_compra_det_cantidad' => $request->orden_compra_det_cantidad,
+            'orden_compra_det_costo'    => $request->orden_compra_det_costo,
+            'deposito_id'               => $deposito,
+        ]);
+
+        return response()->json([
+            'mensaje' => 'Registro creado con éxito',
+            'tipo'    => 'success',
+            'registro' => $detalle
+        ], 201);
+    }
 
 public function update(Request $r, $orden_compra_cab_id, $item_id)
 {
     // Validar los datos del request y asignarlos a $datosValidados
     $datosValidados = $r->validate([
         "orden_compra_det_cantidad" => "required|numeric",
-        "tipo_impuesto_id" => "required|exists:tipo_impuesto,id",
-        "orden_compra_det_costo" => "required|numeric", // Validar el costo
+        "tipo_impuesto_id"          => "required|exists:tipo_impuesto,id",
+        "orden_compra_det_costo"    => "required|numeric",
+        "deposito_id"               => "nullable|exists:deposito,id",
     ]);
 
-    // Actualizar el registro en la tabla orden_compra_det
     $ordencompradet = DB::table('orden_compra_det')
         ->where('orden_compra_cab_id', $orden_compra_cab_id)
         ->where('item_id', $item_id)
         ->update([
             'orden_compra_det_cantidad' => $datosValidados['orden_compra_det_cantidad'],
-            'tipo_impuesto_id' => $datosValidados['tipo_impuesto_id'],
-            'orden_compra_det_costo' => $datosValidados['orden_compra_det_costo'], // Asegúrate de incluir el costo aquí
+            'tipo_impuesto_id'          => $datosValidados['tipo_impuesto_id'],
+            'orden_compra_det_costo'    => $datosValidados['orden_compra_det_costo'],
+            'deposito_id'               => $datosValidados['deposito_id'],
         ]);
 
     // Verificar si la actualización fue exitosa

@@ -5,29 +5,44 @@ namespace App\Http\Controllers;
 use App\Models\Ciudad;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class CiudadController extends Controller
 {
     public function read()
     {
-        return DB::select('SELECT c.*, p.pais_descrpcion FROM ciudades c INNER JOIN paises p ON p.id = c.pais_id');
+        return DB::select('SELECT c.*, p.pais_descrpcion FROM ciudades c INNER JOIN paises p ON p.id = c.pais_id ORDER BY c.ciu_descripcion');
+    }
+
+    public function readPorPais($pais_id)
+    {
+        return DB::select(
+            'SELECT c.id, c.ciu_descripcion, c.pais_id FROM ciudades c WHERE c.pais_id = ? ORDER BY c.ciu_descripcion',
+            [$pais_id]
+        );
     }
 
     public function store(Request $r)
     {
         $r->validate([
             'ciu_descripcion' => [
-                'required', 'string', 'max:200',
-                Rule::unique('ciudades', 'ciu_descripcion')->where(fn($q) => $q->where('pais_id', $r->pais_id)),
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($r) {
+                    $existe = \DB::table('ciudades')
+                        ->whereRaw('LOWER(ciu_descripcion) = LOWER(?)', [trim($value)])
+                        ->where('pais_id', $r->pais_id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe una ciudad con ese nombre en el país seleccionado.');
+                    }
+                },
             ],
             'pais_id' => 'required|integer|exists:paises,id',
         ], [
-            'ciu_descripcion.required' => 'El nombre de la ciudad es obligatorio.',
-            'ciu_descripcion.max'      => 'El nombre no puede superar los 200 caracteres.',
-            'ciu_descripcion.unique'   => 'Ya existe una ciudad con ese nombre en el país seleccionado.',
-            'pais_id.required'         => 'Debe seleccionar un país.',
-            'pais_id.exists'           => 'El país seleccionado no existe.',
+            'ciu_descripcion.required'  => 'El nombre de la ciudad es obligatorio.',
+            'ciu_descripcion.max'       => 'El nombre no puede superar los 200 caracteres.',
+            'ciu_descripcion.not_regex' => 'El nombre de la ciudad contiene caracteres no permitidos.',
+            'pais_id.required'          => 'Debe seleccionar un país.',
+            'pais_id.exists'            => 'El país seleccionado no existe.',
         ]);
 
         $ciudad = Ciudad::create([
@@ -51,18 +66,25 @@ class CiudadController extends Controller
 
         $r->validate([
             'ciu_descripcion' => [
-                'required', 'string', 'max:200',
-                Rule::unique('ciudades', 'ciu_descripcion')
-                    ->where(fn($q) => $q->where('pais_id', $r->pais_id))
-                    ->ignore($id),
+                'required', 'string', 'max:200', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($r, $id) {
+                    $existe = \DB::table('ciudades')
+                        ->whereRaw('LOWER(ciu_descripcion) = LOWER(?)', [trim($value)])
+                        ->where('pais_id', $r->pais_id)
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otra ciudad con ese nombre en el país seleccionado.');
+                    }
+                },
             ],
             'pais_id' => 'required|integer|exists:paises,id',
         ], [
-            'ciu_descripcion.required' => 'El nombre de la ciudad es obligatorio.',
-            'ciu_descripcion.max'      => 'El nombre no puede superar los 200 caracteres.',
-            'ciu_descripcion.unique'   => 'Ya existe otra ciudad con ese nombre en el país seleccionado.',
-            'pais_id.required'         => 'Debe seleccionar un país.',
-            'pais_id.exists'           => 'El país seleccionado no existe.',
+            'ciu_descripcion.required'  => 'El nombre de la ciudad es obligatorio.',
+            'ciu_descripcion.max'       => 'El nombre no puede superar los 200 caracteres.',
+            'ciu_descripcion.not_regex' => 'El nombre de la ciudad contiene caracteres no permitidos.',
+            'pais_id.required'          => 'Debe seleccionar un país.',
+            'pais_id.exists'            => 'El país seleccionado no existe.',
         ]);
 
         $ciudad->update([

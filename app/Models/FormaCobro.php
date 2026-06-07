@@ -9,6 +9,7 @@ class FormaCobro extends Model
     protected $table = 'forma_cobro';
 
     protected $fillable = [
-        'for_cob_descripcion'
+        'for_cob_descripcion',
+        'for_cob_estado',
     ];
 }

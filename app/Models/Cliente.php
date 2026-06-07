@@ -20,7 +20,10 @@ class Cliente extends Model implements Auditable
         'cli_correo',
         'pais_id',
         'ciudad_id',
-        'nacionalidad_id'
+        'nacionalidad_id',
+        'cli_estado',
+        'cli_tipo_persona',
+        'cli_razon_social',
     ];
     protected $table = 'clientes';
 }

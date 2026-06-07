@@ -21,7 +21,9 @@ class DiagnosticoDet extends Model implements Auditable
         'tipo_impuesto_id',
         'diag_det_cantidad',
         'diag_det_costo',
-        'diag_det_cantidad_stock'
+        'diag_det_cantidad_stock',
+        'marca_id',
+        'modelo_id',
     ];
     protected $primaryKey = null;
     public $incrementing = false;

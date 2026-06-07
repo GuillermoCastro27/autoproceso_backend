@@ -13,6 +13,7 @@ class MotivoAjuste extends Model
 
     protected $fillable = [
         'descripcion',
-        'tipo_ajuste'
+        'tipo_ajuste',
+        'estado',
     ];
 }

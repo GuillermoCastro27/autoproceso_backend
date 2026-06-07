@@ -14,6 +14,7 @@ use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\AccesosController;
 use App\Http\Controllers\ModulosController;
 use App\Http\Controllers\LoginIntentoController;
+use App\Http\Controllers\AuditoriaTransaccionesController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\TipoController;
 use App\Http\Controllers\ItemController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\TipoDiagnosticoController;
 use App\Http\Controllers\TipoPromocionesController;
 use App\Http\Controllers\TipoDescuentosController;
 use App\Http\Controllers\TipoVehiculoController;
+use App\Http\Controllers\TipoVehiculoDetController;
 use App\Http\Controllers\EquipoTrabajoController;
 use App\Http\Controllers\TipoContratoController;
 use App\Http\Controllers\EntidadEmisoraController;
@@ -80,6 +82,7 @@ use App\Http\Controllers\OrdenServDetController;
 use App\Http\Controllers\ContratoServCabController;
 use App\Http\Controllers\ContratoServDetController;
 use App\Http\Controllers\OrdenServVentaController;
+use App\Http\Controllers\VentasPedidoController;
 use App\Http\Controllers\ReclamoCliCabController;
 use App\Http\Controllers\ReclamoCliDetController;
 use App\Http\Controllers\PromocionesCabController;
@@ -93,12 +96,9 @@ use App\Http\Controllers\CobrosTarjetaController;
 use App\Http\Controllers\CobrosChequeController;
 use App\Http\Controllers\AperturaCierreCajaController;
 use App\Http\Controllers\ArqueoCajaController;
+use App\Http\Controllers\TipoComprobanteController;
+use App\Http\Controllers\TimbradoController;
 
-/*
-|--------------------------------------------------------------------------
-| RUTAS PÚBLICAS
-|--------------------------------------------------------------------------
-*/
 Route::post('registrarse',     [AuthController::class, 'register']);
 Route::post('login',           [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('forgot-password', [ForgotPasswordController::class, 'forgotPassword'])->middleware('throttle:3,1');
@@ -108,11 +108,6 @@ Route::post('/2fa/email/validar', [TwoFactorController::class, 'validarCodigoEma
 // Portal de seguimiento de reclamos (acceso público para clientes)
 Route::get('reclamoclicab/seguimiento/{token}', [ReclamoCliCabController::class, 'seguimiento']);
 
-/*
-|--------------------------------------------------------------------------
-| AUTENTICADO (sin permiso específico)
-|--------------------------------------------------------------------------
-*/
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('logout',            [AuthController::class, 'logout']);
     Route::get('/user',             fn(Request $request) => $request->user());
@@ -120,11 +115,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/2fa/email/enviar', [TwoFactorController::class, 'enviarCodigoEmail']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| SEGURIDAD
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth:sanctum', 'permiso:seguridad'])->group(function () {
     Route::get('users/read',                [UserController::class, 'read']);
     Route::post('users/create',             [UserController::class, 'store']);
@@ -157,23 +147,33 @@ Route::middleware(['auth:sanctum', 'permiso:seguridad'])->group(function () {
 
     Route::get('login-intentos/read',    [LoginIntentoController::class, 'read']);
     Route::delete('login-intentos/limpiar', [LoginIntentoController::class, 'limpiar']);
+
+    Route::get('auditoria/read',   [AuditoriaTransaccionesController::class, 'read']);
+    Route::get('auditoria/tablas', [AuditoriaTransaccionesController::class, 'tablas']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| REFERENCIALES
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth:sanctum', 'permiso:referenciales'])->group(function () {
+    Route::get('tipo-comprobante/read',           [TipoComprobanteController::class, 'read']);
+    Route::post('tipo-comprobante/create',        [TipoComprobanteController::class, 'store']);
+    Route::put('tipo-comprobante/update/{id}',    [TipoComprobanteController::class, 'update']);
+    Route::delete('tipo-comprobante/delete/{id}', [TipoComprobanteController::class, 'destroy']);
+
+    Route::get('timbrado/read',             [TimbradoController::class, 'read']);
+    Route::get('timbrado/siguiente',        [TimbradoController::class, 'siguiente']);
+    Route::get('timbrado/para-ventas',      [TimbradoController::class, 'paraVentas']);
+    Route::post('timbrado/create',          [TimbradoController::class, 'store']);
+    Route::put('timbrado/update/{id}',      [TimbradoController::class, 'update']);
+    Route::delete('timbrado/delete/{id}',   [TimbradoController::class, 'destroy']);
+
     Route::get('tipo/read',           [TipoController::class, 'read']);
     Route::post('tipo/create',        [TipoController::class, 'store']);
     Route::put('tipo/update/{id}',    [TipoController::class, 'update']);
-    Route::delete('tipo/delete/{id}', [TipoController::class, 'destroy']);
+    Route::patch('tipo/estado/{id}',  [TipoController::class, 'cambiarEstado']);
 
     Route::get('items/read',                        [ItemController::class, 'read']);
     Route::post('items/create',                     [ItemController::class, 'store']);
     Route::put('items/update/{id}',                 [ItemController::class, 'update']);
-    Route::delete('items/delete/{id}',              [ItemController::class, 'destroy']);
+    Route::patch('items/estado/{id}',               [ItemController::class, 'cambiarEstado']);
     Route::post('items/buscar',                     [ItemController::class, 'buscar']);
     Route::post('items/buscarItem',                 [ItemController::class, 'buscarItem']);
     Route::get('items/{id}/marcas',                 [ItemController::class, 'getMarcas']);
@@ -194,7 +194,7 @@ Route::middleware(['auth:sanctum', 'permiso:referenciales'])->group(function () 
     Route::get('marca/read',               [MarcaController::class, 'read']);
     Route::post('marca/create',            [MarcaController::class, 'store']);
     Route::put('marca/update/{id}',        [MarcaController::class, 'update']);
-    Route::delete('marca/delete/{id}',     [MarcaController::class, 'destroy']);
+    Route::patch('marca/estado/{id}',      [MarcaController::class, 'cambiarEstado']);
     Route::post('marca/buscar',            [MarcaController::class, 'buscar']);
     Route::post('marca/buscarPorTipo',     [MarcaController::class, 'buscarPorTipo']);
     Route::post('marca/buscarPorMarca',    [MarcaController::class, 'buscarPorMarca']);
@@ -203,7 +203,7 @@ Route::middleware(['auth:sanctum', 'permiso:referenciales'])->group(function () 
     Route::get('modelo/read',                [ModeloController::class, 'read']);
     Route::post('modelo/create',             [ModeloController::class, 'store']);
     Route::put('modelo/update/{id}',         [ModeloController::class, 'update']);
-    Route::delete('modelo/delete/{id}',      [ModeloController::class, 'destroy']);
+    Route::patch('modelo/estado/{id}',       [ModeloController::class, 'cambiarEstado']);
     Route::post('modelo/buscarPorMarca',     [ModeloController::class, 'buscarPorMarca']);
 
     Route::get('paises/read',           [PaisController::class, 'read']);
@@ -211,136 +211,137 @@ Route::middleware(['auth:sanctum', 'permiso:referenciales'])->group(function () 
     Route::put('paises/update/{id}',    [PaisController::class, 'update']);
     Route::delete('paises/delete/{id}', [PaisController::class, 'destroy']);
 
-    Route::get('ciudades/read',           [CiudadController::class, 'read']);
-    Route::post('ciudades/create',        [CiudadController::class, 'store']);
-    Route::put('ciudades/update/{id}',    [CiudadController::class, 'update']);
-    Route::delete('ciudades/delete/{id}', [CiudadController::class, 'destroy']);
-    Route::post('ciudades/buscar',        [CiudadController::class, 'buscar']);
+    Route::get('ciudades/read',             [CiudadController::class, 'read']);
+    Route::get('ciudades/por-pais/{id}',    [CiudadController::class, 'readPorPais']);
+    Route::post('ciudades/create',          [CiudadController::class, 'store']);
+    Route::put('ciudades/update/{id}',      [CiudadController::class, 'update']);
+    Route::delete('ciudades/delete/{id}',   [CiudadController::class, 'destroy']);
+    Route::post('ciudades/buscar',          [CiudadController::class, 'buscar']);
 
-    Route::get('nacionalidad/read',           [NacionalidadController::class, 'read']);
-    Route::post('nacionalidad/create',        [NacionalidadController::class, 'store']);
-    Route::put('nacionalidad/update/{id}',    [NacionalidadController::class, 'update']);
-    Route::delete('nacionalidad/delete/{id}', [NacionalidadController::class, 'destroy']);
+    Route::get('nacionalidad/read',             [NacionalidadController::class, 'read']);
+    Route::get('nacionalidad/por-pais/{id}',    [NacionalidadController::class, 'readPorPais']);
+    Route::post('nacionalidad/create',          [NacionalidadController::class, 'store']);
+    Route::put('nacionalidad/update/{id}',      [NacionalidadController::class, 'update']);
+    Route::delete('nacionalidad/delete/{id}',   [NacionalidadController::class, 'destroy']);
 
-    Route::get('proveedores/read',           [ProveedorController::class, 'read']);
-    Route::post('proveedores/create',        [ProveedorController::class, 'store']);
-    Route::put('proveedores/update/{id}',    [ProveedorController::class, 'update']);
-    Route::delete('proveedores/delete/{id}', [ProveedorController::class, 'destroy']);
-    Route::post('proveedores/buscar',        [ProveedorController::class, 'buscar']);
+    Route::get('proveedores/read',              [ProveedorController::class, 'read']);
+    Route::post('proveedores/create',           [ProveedorController::class, 'store']);
+    Route::put('proveedores/update/{id}',       [ProveedorController::class, 'update']);
+    Route::patch('proveedores/estado/{id}',     [ProveedorController::class, 'cambiarEstado']);
+    Route::post('proveedores/buscar',           [ProveedorController::class, 'buscar']);
 
     Route::get('clientes/read',           [ClienteController::class, 'read']);
     Route::post('clientes/create',        [ClienteController::class, 'store']);
     Route::put('clientes/update/{id}',    [ClienteController::class, 'update']);
-    Route::delete('clientes/delete/{id}', [ClienteController::class, 'destroy']);
+    Route::patch('clientes/estado/{id}',  [ClienteController::class, 'cambiarEstado']);
     Route::post('clientes/buscar',        [ClienteController::class, 'buscar']);
 
     Route::get('empresa/read',           [EmpresaController::class, 'read']);
     Route::post('empresa/create',        [EmpresaController::class, 'store']);
     Route::put('empresa/update/{id}',    [EmpresaController::class, 'update']);
-    Route::delete('empresa/delete/{id}', [EmpresaController::class, 'destroy']);
+    Route::patch('empresa/estado/{id}',  [EmpresaController::class, 'cambiarEstado']);
 
     Route::get('sucursal/read',                [SucursalController::class, 'read']);
     Route::post('sucursal/create',             [SucursalController::class, 'store']);
     Route::put('sucursal/update/{id}', [SucursalController::class, 'update']);
-    Route::delete('sucursal/delete/{id}', [SucursalController::class, 'destroy']);
+    Route::patch('sucursal/estado/{id}',  [SucursalController::class, 'cambiarEstado']);
 
     Route::get('deposito/read',                    [DepositoController::class, 'read']);
     Route::get('deposito/read-by-sucursal/{id}',   [DepositoController::class, 'readBySucursal']);
     Route::post('deposito/create',                 [DepositoController::class, 'store']);
     Route::put('deposito/update/{id}',             [DepositoController::class, 'update']);
-    Route::delete('deposito/delete/{id}',          [DepositoController::class, 'destroy']);
+    Route::patch('deposito/estado/{id}',            [DepositoController::class, 'cambiarEstado']);
 
     Route::get('funcionario/read',           [FuncionarioController::class, 'read']);
     Route::get('funcionario/buscar',         [FuncionarioController::class, 'buscar']);
     Route::post('funcionario/create',        [FuncionarioController::class, 'store']);
     Route::put('funcionario/update/{id}',    [FuncionarioController::class, 'update']);
-    Route::delete('funcionario/delete/{id}', [FuncionarioController::class, 'destroy']);
+    Route::patch('funcionario/estado/{id}',  [FuncionarioController::class, 'cambiarEstado']);
 
     Route::get('tipo-impuesto/read',           [TipoImpuestoController::class, 'read']);
     Route::post('tipo-impuesto/create',        [TipoImpuestoController::class, 'store']);
     Route::put('tipo-impuesto/update/{id}',    [TipoImpuestoController::class, 'update']);
-    Route::delete('tipo-impuesto/delete/{id}', [TipoImpuestoController::class, 'destroy']);
+    Route::patch('tipo-impuesto/estado/{id}',  [TipoImpuestoController::class, 'cambiarEstado']);
     Route::get('tipo-impuesto/buscar',         [TipoImpuestoController::class, 'buscar']);
 
     Route::get('tipo-servicio/read',           [TipoServicioController::class, 'read']);
     Route::post('tipo-servicio/create',        [TipoServicioController::class, 'store']);
     Route::put('tipo-servicio/update/{id}',    [TipoServicioController::class, 'update']);
-    Route::delete('tipo-servicio/delete/{id}', [TipoServicioController::class, 'destroy']);
+    Route::patch('tipo-servicio/estado/{id}',  [TipoServicioController::class, 'cambiarEstado']);
     Route::get('tipo-servicio/buscar',         [TipoServicioController::class, 'buscar']);
 
     Route::get('tipo-diagnostico/read',           [TipoDiagnosticoController::class, 'read']);
     Route::post('tipo-diagnostico/create',        [TipoDiagnosticoController::class, 'store']);
     Route::put('tipo-diagnostico/update/{id}',    [TipoDiagnosticoController::class, 'update']);
-    Route::delete('tipo-diagnostico/delete/{id}', [TipoDiagnosticoController::class, 'destroy']);
+    Route::patch('tipo-diagnostico/estado/{id}',  [TipoDiagnosticoController::class, 'cambiarEstado']);
     Route::get('tipo-diagnostico/buscar',         [TipoDiagnosticoController::class, 'buscar']);
 
     Route::get('tipo-promociones/read',           [TipoPromocionesController::class, 'read']);
     Route::post('tipo-promociones/create',        [TipoPromocionesController::class, 'store']);
     Route::put('tipo-promociones/update/{id}',    [TipoPromocionesController::class, 'update']);
-    Route::delete('tipo-promociones/delete/{id}', [TipoPromocionesController::class, 'destroy']);
+    Route::patch('tipo-promociones/estado/{id}',  [TipoPromocionesController::class, 'cambiarEstado']);
     Route::get('tipo-promociones/buscar',         [TipoPromocionesController::class, 'buscar']);
 
     Route::get('tipo-descuentos/read',           [TipoDescuentosController::class, 'read']);
     Route::post('tipo-descuentos/create',        [TipoDescuentosController::class, 'store']);
     Route::put('tipo-descuentos/update/{id}',    [TipoDescuentosController::class, 'update']);
-    Route::delete('tipo-descuentos/delete/{id}', [TipoDescuentosController::class, 'destroy']);
+    Route::patch('tipo-descuentos/estado/{id}',  [TipoDescuentosController::class, 'cambiarEstado']);
     Route::get('tipo-descuentos/buscar',         [TipoDescuentosController::class, 'buscar']);
 
     Route::get('tipo-vehiculo/read',               [TipoVehiculoController::class, 'read']);
     Route::post('tipo-vehiculo/create',            [TipoVehiculoController::class, 'store']);
     Route::put('tipo-vehiculo/update/{id}',        [TipoVehiculoController::class, 'update']);
-    Route::delete('tipo-vehiculo/delete/{id}',     [TipoVehiculoController::class, 'destroy']);
+    Route::patch('tipo-vehiculo/estado/{id}',       [TipoVehiculoController::class, 'cambiarEstado']);
     Route::get('tipo-vehiculo/buscar',             [TipoVehiculoController::class, 'buscar']);
     Route::get('tipo-vehiculo/buscarPorMarca',     [TipoVehiculoController::class, 'buscarPorMarca']);
+    Route::get('tipo-vehiculo-det/read/{tipo_vehiculo_id}', [TipoVehiculoDetController::class, 'read']);
+    Route::post('tipo-vehiculo-det/create',                 [TipoVehiculoDetController::class, 'store']);
+    Route::put('tipo-vehiculo-det/update/{id}',             [TipoVehiculoDetController::class, 'update']);
+    Route::delete('tipo-vehiculo-det/delete/{id}',          [TipoVehiculoDetController::class, 'destroy']);
 
     Route::get('equipo_trabajo/read',           [EquipoTrabajoController::class, 'read']);
     Route::post('equipo_trabajo/create',        [EquipoTrabajoController::class, 'store']);
     Route::put('equipo_trabajo/update/{id}',    [EquipoTrabajoController::class, 'update']);
-    Route::delete('equipo_trabajo/delete/{id}', [EquipoTrabajoController::class, 'destroy']);
+    Route::patch('equipo_trabajo/estado/{id}',  [EquipoTrabajoController::class, 'cambiarEstado']);
     Route::get('equipo_trabajo/buscar',         [EquipoTrabajoController::class, 'buscar']);
 
     Route::get('tipo_contrato/read',           [TipoContratoController::class, 'read']);
     Route::post('tipo_contrato/create',        [TipoContratoController::class, 'store']);
     Route::put('tipo_contrato/update/{id}',    [TipoContratoController::class, 'update']);
-    Route::delete('tipo_contrato/delete/{id}', [TipoContratoController::class, 'destroy']);
+    Route::patch('tipo_contrato/estado/{id}',  [TipoContratoController::class, 'cambiarEstado']);
 
     Route::get('entidad_emisora/read',           [EntidadEmisoraController::class, 'read']);
     Route::post('entidad_emisora/create',        [EntidadEmisoraController::class, 'store']);
     Route::put('entidad_emisora/update/{id}',    [EntidadEmisoraController::class, 'update']);
-    Route::delete('entidad_emisora/delete/{id}', [EntidadEmisoraController::class, 'destroy']);
+    Route::patch('entidad_emisora/estado/{id}',  [EntidadEmisoraController::class, 'cambiarEstado']);
     Route::get('entidad_emisora/buscar',         [EntidadEmisoraController::class, 'buscarEntidadEmisora']);
 
     Route::get('marca_tarjeta/read',           [MarcaTarjetaController::class, 'read']);
     Route::post('marca_tarjeta/create',        [MarcaTarjetaController::class, 'store']);
     Route::put('marca_tarjeta/update/{id}',    [MarcaTarjetaController::class, 'update']);
-    Route::delete('marca_tarjeta/delete/{id}', [MarcaTarjetaController::class, 'destroy']);
+    Route::patch('marca_tarjeta/estado/{id}',  [MarcaTarjetaController::class, 'cambiarEstado']);
 
     Route::get('entidad_adherida/read',           [EntidadAdheridaController::class, 'read']);
     Route::post('entidad_adherida/create',        [EntidadAdheridaController::class, 'store']);
     Route::put('entidad_adherida/update/{id}',    [EntidadAdheridaController::class, 'update']);
-    Route::delete('entidad_adherida/delete/{id}', [EntidadAdheridaController::class, 'destroy']);
+    Route::patch('entidad_adherida/estado/{id}',  [EntidadAdheridaController::class, 'cambiarEstado']);
 
     Route::get('forma_cobro/read',           [FormaCobroController::class, 'read']);
     Route::post('forma_cobro/create',        [FormaCobroController::class, 'store']);
     Route::put('forma_cobro/update/{id}',    [FormaCobroController::class, 'update']);
-    Route::delete('forma_cobro/delete/{id}', [FormaCobroController::class, 'destroy']);
+    Route::patch('forma_cobro/estado/{id}',  [FormaCobroController::class, 'cambiarEstado']);
 
     Route::get('caja/read',           [CajaController::class, 'read']);
     Route::post('caja/create',        [CajaController::class, 'store']);
     Route::put('caja/update/{id}',    [CajaController::class, 'update']);
-    Route::delete('caja/delete/{id}', [CajaController::class, 'destroy']);
+    Route::patch('caja/estado/{id}',  [CajaController::class, 'cambiarEstado']);
 
     Route::get('motivo_ajuste/read',           [MotivoAjusteController::class, 'read']);
     Route::post('motivo_ajuste/create',        [MotivoAjusteController::class, 'store']);
     Route::put('motivo_ajuste/update/{id}',    [MotivoAjusteController::class, 'update']);
-    Route::delete('motivo_ajuste/delete/{id}', [MotivoAjusteController::class, 'destroy']);
+    Route::patch('motivo_ajuste/estado/{id}',  [MotivoAjusteController::class, 'cambiarEstado']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| COMPRAS
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth:sanctum', 'permiso:compras'])->group(function () {
     Route::post('pedidos/create',              [PedidoController::class, 'store']);
     Route::get('pedidos/read',                 [PedidoController::class, 'read']);
@@ -350,6 +351,8 @@ Route::middleware(['auth:sanctum', 'permiso:compras'])->group(function () {
     Route::put('pedidos/confirmar/{id}',       [PedidoController::class, 'confirmar']);
     Route::post('pedidos/buscar',              [PedidoController::class, 'buscar']);
     Route::get('pedidos/buscar-informe',       [PedidoController::class, 'buscarInforme']);
+    Route::get('pedidos/imprimir/{id}',        [PedidoController::class, 'imprimir']);
+    Route::get('pedidos/enviar-ticket/{id}',   [PedidoController::class, 'enviarTicket']);
 
     Route::post('pedidos-detalles/create',                     [PedidosDetalleController::class, 'store']);
     Route::get('pedidos-detalles/read/{id}',                   [PedidosDetalleController::class, 'read']);
@@ -364,10 +367,13 @@ Route::middleware(['auth:sanctum', 'permiso:compras'])->group(function () {
     Route::put('ordencompracab/confirmar/{id}',     [OrdenCompraCabController::class, 'confirmar']);
     Route::post('ordencompracab/buscar',            [OrdenCompraCabController::class, 'buscar']);
     Route::get('ordenes_compras/buscar-informe',    [OrdenCompraCabController::class, 'buscarInforme']);
+    Route::get('ordencompracab/imprimir/{id}',      [OrdenCompraCabController::class, 'imprimir']);
+    Route::get('ordencompracab/enviar-ticket/{id}', [OrdenCompraCabController::class, 'enviarTicket']);
 
-    Route::post('ordencompradet/create',                                [OrdenCompraDetController::class, 'store']);
-    Route::get('ordencompradet/read/{id}',                              [OrdenCompraDetController::class, 'read']);
-    Route::put('ordencompradet/update/{orden_compra_cab_id}/{item_id}', [OrdenCompraDetController::class, 'update']);
+    Route::post('ordencompradet/create',                                   [OrdenCompraDetController::class, 'store']);
+    Route::get('ordencompradet/read/{id}',                                 [OrdenCompraDetController::class, 'read']);
+    Route::get('ordencompradet/depositos/{id}',                            [OrdenCompraDetController::class, 'depositosDeLaOrden']);
+    Route::put('ordencompradet/update/{orden_compra_cab_id}/{item_id}',    [OrdenCompraDetController::class, 'update']);
     Route::delete('ordencompradet/delete/{orden_compra_cab_id}/{item_id}', [OrdenCompraDetController::class, 'destroy']);
 
     Route::post('compras/create',           [CompraCabController::class, 'store']);
@@ -431,7 +437,9 @@ Route::middleware(['auth:sanctum', 'permiso:compras'])->group(function () {
     Route::get('presupuestos/buscar-informe',   [PresupuestoController::class, 'buscarInforme']);
 
     Route::get('presupuesto-pedidos/read/{presupuesto_id}', [PresupuestoController::class, 'readPedidos']);
-    Route::get('presupuestos-detalles/read/{id}',          [PresupuestosDetalleController::class, 'read']);
+    Route::get('presupuestos-detalles/read/{id}',           [PresupuestosDetalleController::class, 'read']);
+    Route::get('presupuestos-detalles/depositos/{id}',         [PresupuestosDetalleController::class, 'depositosDelPresupuesto']);
+    Route::get('presupuestos/depositos-por-pedidos/{id}',      [PresupuestosDetalleController::class, 'depositosPorPedidos']);
     Route::post('presupuestos-detalles/create',                                  [PresupuestosDetalleController::class, 'store']);
     Route::put('presupuestos-detalles/update/{presupuesto_id}/{item_id}',        [PresupuestosDetalleController::class, 'update']);
     Route::delete('presupuestos-detalles/delete/{presupuesto_id}/{item_id}',     [PresupuestosDetalleController::class, 'destroy']);
@@ -439,11 +447,6 @@ Route::middleware(['auth:sanctum', 'permiso:compras'])->group(function () {
     Route::get('libro_compras/buscar-informe', [LibroComprasController::class, 'buscarInforme']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| VENTAS
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth:sanctum', 'permiso:ventas'])->group(function () {
     Route::get('pedido_ventas/read',               [PedidoVentasController::class, 'read']);
     Route::post('pedido_ventas/create',            [PedidoVentasController::class, 'store']);
@@ -466,6 +469,7 @@ Route::middleware(['auth:sanctum', 'permiso:ventas'])->group(function () {
     Route::put('ventas_cab/confirmar/{id}',         [VentasCabController::class, 'confirmar']);
     Route::get('ventas_cab/buscar',                 [VentasCabController::class, 'buscarVentas']);
     Route::get('ventas_cab/buscarVentasNota',       [VentasCabController::class, 'buscarVentasNota']);
+    Route::get('ventas_cab/imprimir/{id}',          [VentasCabController::class, 'imprimir']);
 
     Route::get('ventas_det/read/{ventas_cab_id}',   [VentasDetController::class, 'read']);
 
@@ -490,11 +494,6 @@ Route::middleware(['auth:sanctum', 'permiso:ventas'])->group(function () {
     Route::delete('notaventdet/delete/{notas_vent_cab_id}/{item_id}',   [NotasVentDetController::class, 'destroy']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| SERVICIOS
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth:sanctum', 'permiso:servicios'])->group(function () {
     Route::post('solicitudcad/create',          [SolicitudCabController::class, 'store']);
     Route::get('solicitudcad/read',             [SolicitudCabController::class, 'read']);
@@ -512,8 +511,11 @@ Route::middleware(['auth:sanctum', 'permiso:servicios'])->group(function () {
     Route::post('recepcab/create',          [RecepcionCabController::class, 'store']);
     Route::get('recepcab/read',             [RecepcionCabController::class, 'read']);
     Route::put('recepcab/update/{id}',      [RecepcionCabController::class, 'update']);
-    Route::put('recepcab/anular/{id}',      [RecepcionCabController::class, 'anular']);
-    Route::put('recepcab/confirmar/{id}',   [RecepcionCabController::class, 'confirmar']);
+    Route::put('recepcab/anular/{id}',           [RecepcionCabController::class, 'anular']);
+    Route::put('recepcab/confirmar/{id}',        [RecepcionCabController::class, 'confirmar']);
+    Route::put('recepcab/registrar-salida/{id}', [RecepcionCabController::class, 'registrarSalida']);
+    Route::get('recepcab/imprimir/{id}',         [RecepcionCabController::class, 'imprimir']);
+    Route::get('recepcab/enviar-ticket/{id}',    [RecepcionCabController::class, 'enviarTicket']);
     Route::post('recepcab/buscar',          [RecepcionCabController::class, 'buscar']);
     Route::get('recepcab/buscar-informe',   [RecepcionCabController::class, 'buscarInforme']);
 
@@ -554,8 +556,9 @@ Route::middleware(['auth:sanctum', 'permiso:servicios'])->group(function () {
     Route::put('ordenserviciocab/update/{id}',      [OrdenServCabController::class, 'update']);
     Route::put('ordenserviciocab/anular/{id}',      [OrdenServCabController::class, 'anular']);
     Route::put('ordenserviciocab/confirmar/{id}',   [OrdenServCabController::class, 'confirmar']);
-    Route::post('ordenserviciocab/buscar',          [OrdenServCabController::class, 'buscar']);
-    Route::get('ordenserviciocab/buscar-informe',   [OrdenServCabController::class, 'buscarInforme']);
+    Route::post('ordenserviciocab/buscar',                [OrdenServCabController::class, 'buscar']);
+    Route::post('ordenserviciocab/buscar-para-contrato', [OrdenServCabController::class, 'buscarParaContrato']);
+    Route::get('ordenserviciocab/buscar-informe',        [OrdenServCabController::class, 'buscarInforme']);
 
     Route::post('ordenservicodet/create',                                [OrdenServDetController::class, 'store']);
     Route::get('ordenserviciodet/read/{id}',                             [OrdenServDetController::class, 'read']);
@@ -567,6 +570,7 @@ Route::middleware(['auth:sanctum', 'permiso:servicios'])->group(function () {
     Route::put('contratoservcab/update/{id}',       [ContratoServCabController::class, 'update']);
     Route::put('contratoservcab/anular/{id}',       [ContratoServCabController::class, 'anular']);
     Route::put('contratoservcab/confirmar/{id}',    [ContratoServCabController::class, 'confirmar']);
+    Route::put('contratoservcab/renovar/{id}',      [ContratoServCabController::class, 'renovar']);
     Route::post('contratoservcab/buscar',           [ContratoServCabController::class, 'buscar']);
     Route::get('contratoservcab/buscar-informe',    [ContratoServCabController::class, 'buscarInforme']);
     Route::get('contratoservcab/imprimir/{id}',     [ContratoServCabController::class, 'imprimir']);
@@ -580,6 +584,10 @@ Route::middleware(['auth:sanctum', 'permiso:servicios'])->group(function () {
     Route::get('ordenservventa/by-venta/{id}',      [OrdenServVentaController::class, 'readByVenta']);
     Route::delete('ordenservventa/delete/{id}',     [OrdenServVentaController::class, 'destroy']);
     Route::get('ordenservventa/buscar-ordenes',     [OrdenServVentaController::class, 'buscarOrdenes']);
+
+    Route::post('ventas-pedidos/create',            [VentasPedidoController::class, 'store']);
+    Route::get('ventas-pedidos/by-venta/{id}',      [VentasPedidoController::class, 'readByVenta']);
+    Route::delete('ventas-pedidos/delete/{id}',     [VentasPedidoController::class, 'destroy']);
 
     Route::post('reclamoclicab/create',         [ReclamoCliCabController::class, 'store']);
     Route::get('reclamoclicab/read',            [ReclamoCliCabController::class, 'read']);
@@ -621,11 +629,6 @@ Route::middleware(['auth:sanctum', 'permiso:servicios'])->group(function () {
     Route::delete('descuentos_det/delete/{promociones_cab_id}/{item_id}',   [DescuentosDetController::class, 'destroy']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| DASHBOARD
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('informes/compras',   [InformeComprasController::class,  'buscar']);
     Route::get('informes/servicio',  [InformeServicioController::class, 'buscar']);
@@ -635,13 +638,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('dashboard/top-productos',       [DashboardController::class, 'topProductos']);
     Route::get('dashboard/ventas-por-sucursal',  [DashboardController::class, 'ventasPorSucursal']);
     Route::get('dashboard/presupuestos-detalle', [DashboardController::class, 'presupuestosDetalle']);
+    Route::get('dashboard/ventas-vs-compras',    [DashboardController::class, 'ventasVsCompras']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| COBROS
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth:sanctum', 'permiso:cobros'])->group(function () {
     Route::get('cobros_cab/read',           [CobrosCabController::class, 'read']);
     Route::post('cobros_cab/create',        [CobrosCabController::class, 'store']);

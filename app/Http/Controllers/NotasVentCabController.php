@@ -279,17 +279,33 @@ class NotasVentCabController extends Controller
 
 protected function agregarAlStock($depositoId, $itemId, $cantidad)
 {
-    $stock = Stock::firstOrCreate(
-        ['deposito_id' => $depositoId, 'item_id' => $itemId],
-        ['cantidad' => 0]
-    );
-    $stock->cantidad += $cantidad;
-    $stock->save();
+    $stock = DB::table('stock')
+        ->where('deposito_id', $depositoId)
+        ->where('item_id', $itemId)
+        ->first();
+
+    if ($stock) {
+        DB::table('stock')
+            ->where('deposito_id', $depositoId)
+            ->where('item_id', $itemId)
+            ->update(['cantidad' => $stock->cantidad + $cantidad, 'updated_at' => now()]);
+    } else {
+        DB::table('stock')->insert([
+            'deposito_id'     => $depositoId,
+            'item_id'         => $itemId,
+            'cantidad'        => $cantidad,
+            'cantidad_minima' => 0,
+            'cantidad_maxima' => 0,
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+    }
 }
 
 protected function restarDeStock($depositoId, $itemId, $cantidad)
 {
-    $stock = Stock::where('deposito_id', $depositoId)
+    $stock = DB::table('stock')
+        ->where('deposito_id', $depositoId)
         ->where('item_id', $itemId)
         ->first();
 
@@ -297,8 +313,10 @@ protected function restarDeStock($depositoId, $itemId, $cantidad)
         throw new \Exception("Stock insuficiente para el item ID $itemId.");
     }
 
-    $stock->cantidad -= $cantidad;
-    $stock->save();
+    DB::table('stock')
+        ->where('deposito_id', $depositoId)
+        ->where('item_id', $itemId)
+        ->update(['cantidad' => $stock->cantidad - $cantidad, 'updated_at' => now()]);
 }
 public function update(Request $r, $id)
 {

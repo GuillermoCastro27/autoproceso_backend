@@ -10,5 +10,5 @@ use OwenIt\Auditing\Auditable as AuditableTrait;
 class Tipo extends Model implements Auditable
 {
     use HasFactory, AuditableTrait;
-    protected $fillable = ['tipo_descripcion', 'tipo_objeto'];
+    protected $fillable = ['tipo_descripcion', 'tipo_objeto', 'tipo_estado'];
 }

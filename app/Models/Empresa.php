@@ -14,7 +14,8 @@ class Empresa extends Model implements Auditable
         'emp_razon_social',
         'emp_direccion',
         'emp_telefono',
-        'emp_correo'
+        'emp_correo',
+        'emp_estado',
     ];
     protected $table = 'empresa';
 }

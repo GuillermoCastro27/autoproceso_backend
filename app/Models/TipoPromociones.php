@@ -15,7 +15,8 @@ class TipoPromociones extends Model
     'tipo_prom_fechaInicio',
     'tipo_prom_fechaFin',
     'tipo_prom_modo',
-    'tipo_prom_valor'
+    'tipo_prom_valor',
+    'tipo_prom_estado',
     ]; 
     use HasFactory;
 }

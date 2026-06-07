@@ -22,6 +22,7 @@ class OrdenServCab extends Model implements Auditable
         'clientes_id',
         'equipo_trabajo_id',
         'diagnostico_cab_id',
+        'recep_cab_id',
         'tipo_diagnostico_id',
         'tipo_vehiculo_id',
         'empresa_id',

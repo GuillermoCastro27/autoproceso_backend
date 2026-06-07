@@ -24,6 +24,8 @@ class PedidoVentasDet extends Model implements Auditable
         'det_cantidad',
         'cantidad_stock',
         'deposito_id',
+        'marca_id',
+        'modelo_id',
     ];
 
     public $incrementing = false; // clave compuesta

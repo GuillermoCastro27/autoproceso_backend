@@ -19,6 +19,14 @@ class DashboardController extends Controller
             FROM ventas_cab v
             JOIN ventas_det vd ON vd.ventas_cab_id = v.id
             WHERE v.vent_fecha >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
+              AND v.vent_estado != 'ANULADO'
+        ");
+
+        $cobros = DB::selectOne("
+            SELECT COALESCE(SUM(cobro_importe), 0) AS total
+            FROM cobros_cab
+            WHERE cobro_estado = 'CONFIRMADO'
+              AND DATE_TRUNC('month', cobro_fecha) = DATE_TRUNC('month', CURRENT_DATE)
         ");
 
         $pedidos = DB::selectOne("
@@ -45,12 +53,13 @@ class DashboardController extends Controller
         ");
 
         return response()->json([
-            'ventas_mes_actual'   => (float) ($ventas->mes_actual   ?? 0),
-            'ventas_mes_anterior' => (float) ($ventas->mes_anterior  ?? 0),
-            'pedidos_pendientes'  => (int)   ($pedidos->total        ?? 0),
-            'stock_critico'       => (int)   ($stock->total          ?? 0),
-            'reclamos_abiertos'   => (int)   ($reclamos->total       ?? 0),
-            'presupuestos_viejos' => (int)   ($presupuestos->total   ?? 0),
+            'ventas_mes_actual'   => (float) ($ventas->mes_actual    ?? 0),
+            'ventas_mes_anterior' => (float) ($ventas->mes_anterior   ?? 0),
+            'cobros_mes'          => (float) ($cobros->total          ?? 0),
+            'pedidos_pendientes'  => (int)   ($pedidos->total         ?? 0),
+            'stock_critico'       => (int)   ($stock->total           ?? 0),
+            'reclamos_abiertos'   => (int)   ($reclamos->total        ?? 0),
+            'presupuestos_viejos' => (int)   ($presupuestos->total    ?? 0),
         ]);
     }
 
@@ -65,6 +74,7 @@ class DashboardController extends Controller
             FROM ventas_cab v
             JOIN ventas_det vd ON vd.ventas_cab_id = v.id
             WHERE v.vent_fecha >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+              AND v.vent_estado != 'ANULADO'
             GROUP BY TO_CHAR(v.vent_fecha, 'YYYY-MM'),
                      EXTRACT(MONTH FROM v.vent_fecha),
                      EXTRACT(YEAR  FROM v.vent_fecha)
@@ -84,6 +94,7 @@ class DashboardController extends Controller
             JOIN items      i  ON i.id  = vd.item_id
             JOIN ventas_cab v  ON v.id  = vd.ventas_cab_id
             WHERE v.vent_fecha >= CURRENT_DATE - INTERVAL '6 months'
+              AND v.vent_estado != 'ANULADO'
             GROUP BY i.id, i.item_decripcion
             ORDER BY total_vendido DESC
             LIMIT 5
@@ -121,8 +132,53 @@ class DashboardController extends Controller
             JOIN ventas_det vd ON vd.ventas_cab_id = v.id
             JOIN sucursal   s  ON s.id = v.sucursal_id
             WHERE v.vent_fecha >= CURRENT_DATE - INTERVAL '6 months'
+              AND v.vent_estado != 'ANULADO'
             GROUP BY s.id, s.suc_razon_social
             ORDER BY total DESC
+        ");
+
+        return response()->json($rows);
+    }
+
+    public function ventasVsCompras()
+    {
+        $rows = DB::select("
+            SELECT mes_key, mes_num, anio,
+                   SUM(ventas)  AS ventas,
+                   SUM(compras) AS compras
+            FROM (
+                SELECT
+                    TO_CHAR(v.vent_fecha, 'YYYY-MM')       AS mes_key,
+                    EXTRACT(MONTH FROM v.vent_fecha)::int  AS mes_num,
+                    EXTRACT(YEAR  FROM v.vent_fecha)::int  AS anio,
+                    COALESCE(SUM(vd.vent_det_cantidad * vd.vent_det_precio), 0) AS ventas,
+                    0::numeric AS compras
+                FROM ventas_cab v
+                JOIN ventas_det vd ON vd.ventas_cab_id = v.id
+                WHERE v.vent_fecha >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+                  AND v.vent_estado != 'ANULADO'
+                GROUP BY TO_CHAR(v.vent_fecha, 'YYYY-MM'),
+                         EXTRACT(MONTH FROM v.vent_fecha),
+                         EXTRACT(YEAR  FROM v.vent_fecha)
+
+                UNION ALL
+
+                SELECT
+                    TO_CHAR(cc.comp_fecha, 'YYYY-MM')      AS mes_key,
+                    EXTRACT(MONTH FROM cc.comp_fecha)::int AS mes_num,
+                    EXTRACT(YEAR  FROM cc.comp_fecha)::int AS anio,
+                    0::numeric AS ventas,
+                    COALESCE(SUM(cd.comp_det_cantidad * cd.comp_det_costo), 0) AS compras
+                FROM compra_cab cc
+                JOIN compra_det cd ON cd.compra_cab_id = cc.id
+                WHERE cc.comp_fecha >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+                  AND cc.comp_estado = 'RECIBIDO'
+                GROUP BY TO_CHAR(cc.comp_fecha, 'YYYY-MM'),
+                         EXTRACT(MONTH FROM cc.comp_fecha),
+                         EXTRACT(YEAR  FROM cc.comp_fecha)
+            ) t
+            GROUP BY mes_key, mes_num, anio
+            ORDER BY mes_key
         ");
 
         return response()->json($rows);

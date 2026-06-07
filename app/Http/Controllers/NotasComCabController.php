@@ -35,9 +35,12 @@ class NotasComCabController extends Controller
     p.prov_telefono AS prov_telefono,
     p.prov_correo AS prov_correo,
     ncc.nota_comp_tipo,
+    ncc.nota_comp_afecta_stock,
     ncc.nota_comp_observaciones,
-    COALESCE(ncc.nota_comp_timbrado, '') AS nota_comp_timbrado,
-    COALESCE(cc.comp_timbrado, '')       AS comp_timbrado,
+    COALESCE(ncc.nota_comp_timbrado, '')   AS nota_comp_timbrado,
+    COALESCE(ncc.nota_comp_nro_nota, '')  AS nota_comp_nro_nota,
+    COALESCE(cc.comp_timbrado, '')        AS comp_timbrado,
+    COALESCE(cc.comp_nro_factura, '')     AS comp_nro_factura,
     ncc.nota_comp_condicion_pago,
     f.fun_nom || ' ' || f.fun_apellido AS funcionario,
     s.suc_razon_social AS suc_razon_social,
@@ -73,13 +76,15 @@ public function store(Request $r) {
         'nota_comp_fecha' => 'required|date',
         'nota_comp_estado' => 'required',
         'nota_comp_cant_cuota' => 'nullable|integer',
-        'nota_comp_tipo' => 'required',
-        'nota_comp_observaciones' => 'required',
-        'nota_comp_timbrado' => 'nullable|string|max:20',
-        'funcionario_id' => 'nullable',
-        'compra_cab_id' => 'required|integer',
-        'empresa_id' => 'required|integer',
-        'sucursal_id' => 'required|integer',
+        'nota_comp_tipo'           => 'required',
+        'nota_comp_afecta_stock'   => 'nullable|boolean',
+        'nota_comp_observaciones'  => 'required',
+        'nota_comp_timbrado'       => 'nullable|string|max:20',
+        'nota_comp_nro_nota'       => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
+        'funcionario_id'           => 'nullable',
+        'compra_cab_id'            => 'required|integer',
+        'empresa_id'               => 'required|integer',
+        'sucursal_id'              => 'required|integer',
         'nota_comp_condicion_pago' => 'required|string|max:20'
     ]);
 
@@ -144,10 +149,11 @@ public function update(Request $r, $id)
         'nota_comp_cant_cuota' => 'nullable|integer',
         'nota_comp_tipo' => 'required',
         'nota_comp_observaciones' => 'required',
-        'nota_comp_timbrado' => 'nullable|string|max:20',
-        'compra_cab_id' => 'required|integer',
-        'empresa_id' => 'required|integer',
-        'sucursal_id' => 'required|integer',
+        'nota_comp_timbrado'  => 'nullable|string|max:20',
+        'nota_comp_nro_nota'  => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
+        'compra_cab_id'       => 'required|integer',
+        'empresa_id'          => 'required|integer',
+        'sucursal_id'         => 'required|integer',
         'nota_comp_condicion_pago' => 'required|string|max:20'
     ]);
 
@@ -203,50 +209,46 @@ public function anular(Request $r, $id)
     if ($estadoAnterior === 'CONFIRMADO') {
         $tipoNota = trim($notacompcab->nota_comp_tipo); // Crédito o Débito
 
-        // Libro de compras
-        $libro = LibroCompras::where('compra_cab_id', $notacompcab->compra_cab_id)->first();
-        if ($libro) {
-            $libro->update([
-                'libC_estado' => 'ANULADO',
-                'updated_at'  => now()
-            ]);
+        // Calcular total de la nota para revertir
+        $detallesParaMonto = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->get();
+        $totalNota = 0;
+        foreach ($detallesParaMonto as $det) {
+            $totalNota += $det->notas_comp_det_cantidad * $det->notas_comp_det_costo;
         }
 
-        // Cuentas por pagar - revertir el ajuste de monto aplicado en confirmación
-        $detallesParaMonto = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)
-            ->with('tipoImpuesto')->get();
-        $totalImpuesto = 0;
-        foreach ($detallesParaMonto as $det) {
-            $subtotal = $det->notas_comp_det_cantidad * $det->notas_comp_det_costo;
-            if ($det->tipoImpuesto?->tip_imp_nom === 'IVA10') {
-                $totalImpuesto += $subtotal / 11;
-            } elseif ($det->tipoImpuesto?->tip_imp_nom === 'IVA5') {
-                $totalImpuesto += $subtotal / 21;
+        // Revertir Libro de Compras
+        $libro = LibroCompras::where('compra_cab_id', $notacompcab->compra_cab_id)->first();
+        if ($libro && $totalNota > 0) {
+            $libro->libC_monto = $tipoNota === 'Crédito'
+                ? $libro->libC_monto + $totalNota   // NC había restado → devolvemos
+                : max(0, $libro->libC_monto - $totalNota); // ND había sumado → quitamos
+            $libro->libC_tipo_nota = null;
+            $libro->update(['libC_estado' => 'ACTIVO', 'libC_monto' => $libro->libC_monto, 'libC_tipo_nota' => null]);
+        }
+
+        // Revertir Cuentas a Pagar: distribuir entre todas las cuotas
+        $cuotas = CtasPagar::where('compra_cab_id', $notacompcab->compra_cab_id)->get();
+        if ($cuotas->isNotEmpty() && $totalNota > 0) {
+            $ajustePorCuota = $totalNota / $cuotas->count();
+            foreach ($cuotas as $cuota) {
+                $cuota->cta_pag_monto = $tipoNota === 'Crédito'
+                    ? $cuota->cta_pag_monto + $ajustePorCuota   // NC había restado → devolvemos
+                    : max(0, $cuota->cta_pag_monto - $ajustePorCuota); // ND había sumado → quitamos
+                $cuota->save();
             }
         }
 
-        $ctaPagar = CtasPagar::where('compra_cab_id', $notacompcab->compra_cab_id)->first();
-        if ($ctaPagar && $totalImpuesto > 0) {
-            // NC restó el monto → al anular lo sumamos de vuelta
-            // ND sumó el monto → al anular lo restamos
-            $ctaPagar->cta_pag_monto = $tipoNota === 'Crédito'
-                ? $ctaPagar->cta_pag_monto + $totalImpuesto
-                : max(0, $ctaPagar->cta_pag_monto - $totalImpuesto);
-            $ctaPagar->save();
-        }
-
-        // Revertir stock usando deposito_id del detalle
-        $detallesNota = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->get();
-        foreach ($detallesNota as $detalle) {
-            if (!$detalle->deposito_id) continue;
-            $cantidad = $detalle->notas_comp_det_cantidad;
-
-            if ($tipoNota === 'Debito') {
-                // Confirmación sumó stock → al anular resta
-                $this->restarDeStock($detalle->deposito_id, $detalle->item_id, $cantidad);
-            } elseif ($tipoNota === 'Crédito') {
-                // Confirmación restó stock → al anular suma
-                $this->agregarAlStock($detalle->deposito_id, $detalle->item_id, $cantidad);
+        // Revertir stock solo si la nota afectaba stock
+        if ($notacompcab->nota_comp_afecta_stock) {
+            $detallesNota = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->get();
+            foreach ($detallesNota as $detalle) {
+                if (!$detalle->deposito_id) continue;
+                $cantidad = $detalle->notas_comp_det_cantidad;
+                if ($tipoNota === 'Debito') {
+                    $this->restarDeStock($detalle->deposito_id, $detalle->item_id, $cantidad);
+                } elseif ($tipoNota === 'Crédito') {
+                    $this->agregarAlStock($detalle->deposito_id, $detalle->item_id, $cantidad);
+                }
             }
         }
     }
@@ -323,53 +325,44 @@ public function anular(Request $r, $id)
                 ], 404);
             }
 
-            $detalles = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->with('tipo_impuesto')->get();
-            $totalImpuesto = 0;
+            $detalles = NotaCompDet::where('notas_comp_cab_id', $notacompcab->id)->get();
 
+            // Calcular total de la nota (monto completo de los ítems)
+            $totalNota = 0;
             foreach ($detalles as $detalle) {
-                $subtotal = $detalle->notas_comp_det_cantidad * $detalle->notas_comp_det_costo;
+                $totalNota += $detalle->notas_comp_det_cantidad * $detalle->notas_comp_det_costo;
+            }
 
-                if ($detalle->tipo_impuesto) {
-                    if ($detalle->tipo_impuesto->tip_imp_nom === 'IVA10') {
-                        $totalImpuesto += $subtotal / 11;
-                    } elseif ($detalle->tipo_impuesto->tip_imp_nom === 'IVA5') {
-                        $totalImpuesto += $subtotal / 21;
+            // Mover stock solo si la nota lo indica
+            if ($notacompcab->nota_comp_afecta_stock) {
+                foreach ($detalles as $detalle) {
+                    if (!$detalle->deposito_id) continue;
+                    if ($tipoNota === 'Debito') {
+                        $this->agregarAlStock($detalle->deposito_id, $detalle->item_id, $detalle->notas_comp_det_cantidad);
+                    } elseif ($tipoNota === 'Crédito') {
+                        $this->restarDeStock($detalle->deposito_id, $detalle->item_id, $detalle->notas_comp_det_cantidad);
                     }
                 }
-
-                // Actualiza stock según tipo de nota y depósito del detalle
-                if (!$detalle->deposito_id) continue;
-                if ($tipoNota === 'Debito') {
-                    $this->agregarAlStock($detalle->deposito_id, $detalle->item_id, $detalle->notas_comp_det_cantidad);
-                } elseif ($tipoNota === 'Crédito') {
-                    $this->restarDeStock($detalle->deposito_id, $detalle->item_id, $detalle->notas_comp_det_cantidad);
-                }
             }
 
-            // Asigna valores directamente calculados desde detalle
+            // Ajustar Libro de Compras: solo cambia el monto y registra el tipo de nota
             $LibroCompras->libC_tipo_nota = $tipoNota === 'Crédito' ? 'NC' : 'ND';
-            $LibroCompras->libC_monto = $totalImpuesto;
-
-            if ($notacompcab->proveedor) {
-                $LibroCompras->prov_razonsocial = $notacompcab->proveedor->prov_razonsocial ?? null;
-                $LibroCompras->prov_ruc = $notacompcab->proveedor->prov_ruc ?? null;
-            }
-
-            $detalleEjemplo = $detalles->first();
-            if ($detalleEjemplo && $detalleEjemplo->tipo_impuesto) {
-                $LibroCompras->tip_imp_nom = $detalleEjemplo->tipo_impuesto->tip_imp_nom;
-            }
-
+            $LibroCompras->libC_monto = $tipoNota === 'Crédito'
+                ? max(0, $LibroCompras->libC_monto - $totalNota)
+                : $LibroCompras->libC_monto + $totalNota;
             $LibroCompras->save();
 
-            // Ajuste a cuentas a pagar
-            // NC: proveedor reconoce menor valor → disminuye lo que se debe
-            // ND: proveedor cobra adicional → aumenta lo que se debe
-            $CtasPagar->cta_pag_monto = $tipoNota === 'Crédito'
-                ? max(0, $CtasPagar->cta_pag_monto - $totalImpuesto)
-                : $CtasPagar->cta_pag_monto + $totalImpuesto;
-
-            $CtasPagar->save();
+            // Ajustar Cuentas a Pagar: distribuir el ajuste entre todas las cuotas
+            $cuotas = CtasPagar::where('compra_cab_id', $notacompcab->compra_cab_id)->get();
+            if ($cuotas->isNotEmpty() && $totalNota > 0) {
+                $ajustePorCuota = $totalNota / $cuotas->count();
+                foreach ($cuotas as $cuota) {
+                    $cuota->cta_pag_monto = $tipoNota === 'Crédito'
+                        ? max(0, $cuota->cta_pag_monto - $ajustePorCuota)
+                        : $cuota->cta_pag_monto + $ajustePorCuota;
+                    $cuota->save();
+                }
+            }
         }
 
         DB::commit();
@@ -389,25 +382,41 @@ public function anular(Request $r, $id)
 }
 protected function agregarAlStock($depositoId, $itemId, $cantidad)
 {
-    $stock = Stock::where('deposito_id', $depositoId)->where('item_id', $itemId)->first();
+    $stock = DB::table('stock')
+        ->where('deposito_id', $depositoId)
+        ->where('item_id', $itemId)
+        ->first();
+
     if ($stock) {
-        $stock->cantidad += $cantidad;
-        $stock->save();
+        DB::table('stock')
+            ->where('deposito_id', $depositoId)
+            ->where('item_id', $itemId)
+            ->update(['cantidad' => $stock->cantidad + $cantidad, 'updated_at' => now()]);
     } else {
-        Stock::create([
-            'deposito_id' => $depositoId,
-            'item_id'     => $itemId,
-            'cantidad'    => $cantidad,
+        DB::table('stock')->insert([
+            'deposito_id'     => $depositoId,
+            'item_id'         => $itemId,
+            'cantidad'        => $cantidad,
+            'cantidad_minima' => 0,
+            'cantidad_maxima' => 0,
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
     }
 }
 
 protected function restarDeStock($depositoId, $itemId, $cantidad)
 {
-    $stock = Stock::where('deposito_id', $depositoId)->where('item_id', $itemId)->first();
+    $stock = DB::table('stock')
+        ->where('deposito_id', $depositoId)
+        ->where('item_id', $itemId)
+        ->first();
+
     if ($stock) {
-        $stock->cantidad = max(0, $stock->cantidad - $cantidad);
-        $stock->save();
+        DB::table('stock')
+            ->where('deposito_id', $depositoId)
+            ->where('item_id', $itemId)
+            ->update(['cantidad' => max(0, $stock->cantidad - $cantidad), 'updated_at' => now()]);
     }
 }
 public function buscarInforme(Request $r)

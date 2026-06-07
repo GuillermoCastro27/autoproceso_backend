@@ -17,14 +17,16 @@ class ModulosController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'mod_nombre'      => 'required|string|max:100|unique:modulos,mod_nombre',
-            'mod_descripcion' => 'required|string|max:200',
+            'mod_nombre'      => 'required|string|max:100|unique:modulos,mod_nombre|not_regex:/[*<>{}|]/',
+            'mod_descripcion' => 'required|string|max:200|not_regex:/[*<>{}|]/',
             'mod_estado'      => 'required|string|max:20',
         ], [
-            'mod_nombre.required'      => 'El nombre del módulo es obligatorio.',
-            'mod_nombre.unique'        => 'Ya existe un módulo con ese nombre.',
-            'mod_descripcion.required' => 'La descripción es obligatoria.',
-            'mod_estado.required'      => 'El estado es obligatorio.',
+            'mod_nombre.required'       => 'El nombre del módulo es obligatorio.',
+            'mod_nombre.unique'         => 'Ya existe un módulo con ese nombre.',
+            'mod_nombre.not_regex'      => 'El nombre del módulo contiene caracteres no permitidos.',
+            'mod_descripcion.required'  => 'La descripción es obligatoria.',
+            'mod_descripcion.not_regex' => 'La descripción contiene caracteres no permitidos.',
+            'mod_estado.required'       => 'El estado es obligatorio.',
         ]);
 
         $modulo = Modulo::create([
@@ -48,14 +50,16 @@ class ModulosController extends Controller
         }
 
         $r->validate([
-            'mod_nombre'      => ['required', 'string', 'max:100', Rule::unique('modulos', 'mod_nombre')->ignore($id)],
-            'mod_descripcion' => 'required|string|max:200',
+            'mod_nombre'      => ['required', 'string', 'max:100', Rule::unique('modulos', 'mod_nombre')->ignore($id), 'not_regex:/[*<>{}|]/'],
+            'mod_descripcion' => 'required|string|max:200|not_regex:/[*<>{}|]/',
             'mod_estado'      => 'required|string|max:20',
         ], [
-            'mod_nombre.required'      => 'El nombre del módulo es obligatorio.',
-            'mod_nombre.unique'        => 'Ya existe otro módulo con ese nombre.',
-            'mod_descripcion.required' => 'La descripción es obligatoria.',
-            'mod_estado.required'      => 'El estado es obligatorio.',
+            'mod_nombre.required'       => 'El nombre del módulo es obligatorio.',
+            'mod_nombre.unique'         => 'Ya existe otro módulo con ese nombre.',
+            'mod_nombre.not_regex'      => 'El nombre del módulo contiene caracteres no permitidos.',
+            'mod_descripcion.required'  => 'La descripción es obligatoria.',
+            'mod_descripcion.not_regex' => 'La descripción contiene caracteres no permitidos.',
+            'mod_estado.required'       => 'El estado es obligatorio.',
         ]);
 
         $modulo->update([

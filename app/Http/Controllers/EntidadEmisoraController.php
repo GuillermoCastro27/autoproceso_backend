@@ -25,14 +25,23 @@ class EntidadEmisoraController extends Controller
     {
         // ✅ Validación
         $datosValidados = $r->validate([
-            'ent_emis_nombre'    => 'required|string|max:150|unique:entidad_emisora,ent_emis_nombre',
+            'ent_emis_nombre'    => [
+                'required', 'string', 'max:150', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('entidad_emisora')
+                        ->whereRaw('LOWER(ent_emis_nombre) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe una entidad emisora con ese nombre.');
+                    }
+                },
+            ],
             'ent_emis_direccion' => 'nullable|string|max:200',
             'ent_emis_telefono'  => 'nullable|string|max:50',
             'ent_emis_email'     => 'nullable|email|max:100',
             'ent_emis_estado'    => 'required|string|max:20'
         ], [
             'ent_emis_nombre.required' => 'El nombre de la entidad emisora es obligatorio.',
-            'ent_emis_nombre.unique'   => 'La entidad emisora ya existe.',
             'ent_emis_email.email'     => 'El formato del correo electrónico no es válido.',
             'ent_emis_estado.required' => 'El estado es obligatorio.'
         ]);
@@ -60,14 +69,24 @@ class EntidadEmisoraController extends Controller
 
     // ✅ Validación (ignora el mismo registro en unique)
     $datosValidados = $r->validate([
-        'ent_emis_nombre'    => 'required|string|max:150|unique:entidad_emisora,ent_emis_nombre,' . $id,
+        'ent_emis_nombre'    => [
+            'required', 'string', 'max:150', 'not_regex:/[*<>{}|]/',
+            function ($attribute, $value, $fail) use ($id) {
+                $existe = \DB::table('entidad_emisora')
+                    ->whereRaw('LOWER(ent_emis_nombre) = LOWER(?)', [trim($value)])
+                    ->where('id', '!=', $id)
+                    ->exists();
+                if ($existe) {
+                    $fail('Ya existe otra entidad emisora con ese nombre.');
+                }
+            },
+        ],
         'ent_emis_direccion' => 'nullable|string|max:200',
         'ent_emis_telefono'  => 'nullable|string|max:50',
         'ent_emis_email'     => 'nullable|email|max:100',
         'ent_emis_estado'    => 'required|string|max:20'
     ], [
         'ent_emis_nombre.required' => 'El nombre de la entidad emisora es obligatorio.',
-        'ent_emis_nombre.unique'   => 'La entidad emisora ya existe.',
         'ent_emis_email.email'     => 'El formato del correo electrónico no es válido.',
         'ent_emis_estado.required' => 'El estado es obligatorio.'
     ]);
@@ -81,25 +100,16 @@ class EntidadEmisoraController extends Controller
         'registro' => $entidadEmisora
     ], 200);
 }
-public function destroy($id)
+public function cambiarEstado($id)
 {
     $entidadEmisora = EntidadEmisora::find($id);
-
     if (!$entidadEmisora) {
-        return response()->json([
-            'mensaje' => 'Registro no encontrado',
-            'tipo'    => 'error'
-        ], 404);
+        return response()->json(['mensaje' => 'Entidad Emisora no encontrada', 'tipo' => 'error'], 404);
     }
-
-    $entidadEmisora->update([
-        'ent_emis_estado' => 'INACTIVO'
-    ]);
-
-    return response()->json([
-        'mensaje' => 'Entidad emisora anulada con éxito',
-        'tipo'    => 'success'
-    ], 200);
+    $nuevoEstado = strtolower($entidadEmisora->ent_emis_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+    $entidadEmisora->update(['ent_emis_estado' => $nuevoEstado]);
+    $msg = $nuevoEstado === 'activo' ? 'Entidad Emisora activada con éxito.' : 'Entidad Emisora desactivada con éxito.';
+    return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
 }
 public function buscarEntidadEmisora()
 {
@@ -111,7 +121,7 @@ public function buscarEntidadEmisora()
             'ent_emis_telefono',
             'ent_emis_email'
         )
-        ->where('ent_emis_estado', 'ACTIVO')
+        ->whereRaw("LOWER(ent_emis_estado) = 'activo'")
         ->orderBy('ent_emis_nombre')
         ->get()
     );

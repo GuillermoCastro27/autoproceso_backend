@@ -112,23 +112,51 @@ class PresupuestoServCabController extends Controller
 
 
 public function store(Request $r){
-        $datosValidados = $r->validate([
-            'pres_serv_cab_observaciones'=>'required',
-            'pres_serv_cab_fecha'=>'required',
-            'pres_serv_cab_fecha_vence'=>'required',
-            'pres_serv_cab_estado'=>'required',
-            'funcionario_id'=>'nullable',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required',
-            'diagnostico_cab_id'=>'required',
-            'tipo_servicio_id'=>'required',
-            'tipo_vehiculo_id'=>'required',
-            'promociones_cab_id'=>'nullable|integer',
-            'descuentos_cab_id'=>'nullable|integer',
-            'clientes_id'=>'required'
+        $r->validate([
+            'pres_serv_cab_observaciones' => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'pres_serv_cab_fecha'         => 'required|date_format:d/m/Y H:i:s',
+            'pres_serv_cab_fecha_vence'   => 'required|date_format:d/m/Y H:i:s|after_or_equal:pres_serv_cab_fecha',
+            'empresa_id'                  => 'required|integer|exists:empresa,id',
+            'sucursal_id'                 => 'required|integer|exists:sucursal,id',
+            'diagnostico_cab_id'          => 'required|integer|exists:diagnostico_cab,id',
+            'tipo_servicio_id'            => 'required|integer|exists:tipo_servicio,id',
+            'tipo_vehiculo_id'            => 'required|integer|exists:tipo_vehiculo,id',
+            'clientes_id'                 => 'required|integer|exists:clientes,id',
+            'promociones_cab_id'          => 'nullable|integer|exists:promociones_cab,id',
+            'descuentos_cab_id'           => 'nullable|integer|exists:descuentos_cab,id',
+        ], [
+            'pres_serv_cab_observaciones.required'    => 'Las observaciones son obligatorias.',
+            'pres_serv_cab_observaciones.max'         => 'Las observaciones no pueden superar 500 caracteres.',
+            'pres_serv_cab_observaciones.not_regex'   => 'Las observaciones contienen caracteres no permitidos.',
+            'pres_serv_cab_fecha.required'            => 'La fecha del presupuesto es obligatoria.',
+            'pres_serv_cab_fecha.date_format'         => 'El formato de la fecha no es válido.',
+            'pres_serv_cab_fecha_vence.required'      => 'La fecha de vencimiento es obligatoria.',
+            'pres_serv_cab_fecha_vence.date_format'   => 'El formato de la fecha de vencimiento no es válido.',
+            'pres_serv_cab_fecha_vence.after_or_equal'=> 'La fecha de vencimiento no puede ser anterior a la fecha del presupuesto.',
+            'diagnostico_cab_id.required'             => 'Debe seleccionar un diagnóstico.',
+            'tipo_servicio_id.required'               => 'Debe seleccionar el tipo de servicio.',
+            'tipo_vehiculo_id.required'               => 'Debe seleccionar el tipo de vehículo.',
+            'clientes_id.required'                    => 'Debe seleccionar un cliente.',
         ]);
-        $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
-        $presupuestoservcab = PresupuestoServCab::create($datosValidados);
+
+        $diagnosticoParaRecep = \DB::table('diagnostico_cab')->where('id', $r->diagnostico_cab_id)->first();
+
+        $presupuestoservcab = PresupuestoServCab::create([
+            'pres_serv_cab_observaciones' => $r->pres_serv_cab_observaciones,
+            'pres_serv_cab_fecha'         => $r->pres_serv_cab_fecha,
+            'pres_serv_cab_fecha_vence'   => $r->pres_serv_cab_fecha_vence,
+            'pres_serv_cab_estado'        => 'PENDIENTE',
+            'empresa_id'                  => $r->empresa_id,
+            'sucursal_id'                 => $r->sucursal_id,
+            'diagnostico_cab_id'          => $r->diagnostico_cab_id,
+            'recep_cab_id'                => $diagnosticoParaRecep->recep_cab_id ?? null,
+            'tipo_servicio_id'            => $r->tipo_servicio_id,
+            'tipo_vehiculo_id'            => $r->tipo_vehiculo_id,
+            'clientes_id'                 => $r->clientes_id,
+            'promociones_cab_id'          => $r->promociones_cab_id ?: null,
+            'descuentos_cab_id'           => $r->descuentos_cab_id  ?: null,
+            'funcionario_id'              => auth()->user()->funcionario_id,
+        ]);
         $presupuestoservcab->save();
 
         $diagnosticocab = DiagnosticoCab::find($r->diagnostico_cab_id); // Cambiado a diagnostico_cab_id
@@ -140,30 +168,34 @@ public function store(Request $r){
                 'tipo' => 'error',
             ], 404);
         }
-        $diagnosticocab->diag_cab_estado = "PROCESADO"; // Cambiado a pre_estado
+        $diagnosticocab->diag_cab_estado = "PROCESADO";
         $diagnosticocab->save();
 
-    $detalles = DB::select("SELECT 
-    dd.*, 
-    i.item_decripcion,
-    dd.diag_det_costo  as pres_serv_det_costo,
-    dd.diag_det_cantidad  as pres_serv_det_cantidad,
-    dd.diag_det_cantidad_stock as pres_serv_det_cantidad_stock,
-    i.tipo_impuesto_id
-    FROM  diagnostico_det dd 
-    JOIN items i ON i.id = dd.item_id 
-    WHERE dd.diagnostico_cab_id  = $diagnosticocab->id;");
+        $detalles = DB::select("
+            SELECT dd.item_id,
+                   dd.diag_det_costo            AS pres_serv_det_costo,
+                   dd.diag_det_cantidad         AS pres_serv_det_cantidad,
+                   dd.diag_det_cantidad_stock   AS pres_serv_det_cantidad_stock,
+                   dd.tipo_impuesto_id,
+                   dd.marca_id,
+                   dd.modelo_id
+            FROM diagnostico_det dd
+            JOIN items i ON i.id = dd.item_id
+            WHERE dd.diagnostico_cab_id = ?
+        ", [$diagnosticocab->id]);
 
-    foreach ($detalles as $ocd) {
-        $presupuestoservdet = new PresupuestoServDet();
-        $presupuestoservdet->presupuesto_serv_cab_id = $presupuestoservcab->id;
-        $presupuestoservdet->item_id = $ocd->item_id;
-        $presupuestoservdet->pres_serv_det_costo = $ocd->pres_serv_det_costo;
-        $presupuestoservdet->pres_serv_det_cantidad = $ocd->pres_serv_det_cantidad;
-        $presupuestoservdet->pres_serv_det_cantidad_stock = $ocd->pres_serv_det_cantidad_stock;
-        $presupuestoservdet->tipo_impuesto_id = $ocd->tipo_impuesto_id; 
-        $presupuestoservdet->save();
-    }
+        foreach ($detalles as $ocd) {
+            $presupuestoservdet = new PresupuestoServDet();
+            $presupuestoservdet->presupuesto_serv_cab_id    = $presupuestoservcab->id;
+            $presupuestoservdet->item_id                    = $ocd->item_id;
+            $presupuestoservdet->pres_serv_det_costo        = $ocd->pres_serv_det_costo;
+            $presupuestoservdet->pres_serv_det_cantidad     = $ocd->pres_serv_det_cantidad;
+            $presupuestoservdet->pres_serv_det_cantidad_stock = $ocd->pres_serv_det_cantidad_stock;
+            $presupuestoservdet->tipo_impuesto_id           = $ocd->tipo_impuesto_id;
+            $presupuestoservdet->marca_id                   = $ocd->marca_id  ?? null;
+            $presupuestoservdet->modelo_id                  = $ocd->modelo_id ?? null;
+            $presupuestoservdet->save();
+        }
         return response()->json([
             'mensaje'=>'Registro creado con exito',
             'tipo'=>'success',
@@ -172,69 +204,63 @@ public function store(Request $r){
     }
     public function update(Request $r, $id){
         $presupuestoservcab = PresupuestoServCab::find($id);
-        if(!$presupuestoservcab){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$presupuestoservcab) {
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
-        $datosValidados = $r->validate([
-            'pres_serv_cab_observaciones'=>'required',
-            'pres_serv_cab_fecha'=>'required',
-            'pres_serv_cab_fecha_vence'=>'required',
-            'pres_serv_cab_estado'=>'required',
-            'funcionario_id'=>'nullable',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required',
-            'diagnostico_cab_id'=>'required',
-            'tipo_servicio_id'=>'required',
-            'tipo_vehiculo_id'=>'required',
-            'promociones_cab_id'=>'required',
-            'descuentos_cab_id'=>'required',
-            'clientes_id'=>'required'
+        if ($presupuestoservcab->pres_serv_cab_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se pueden editar presupuestos en estado PENDIENTE.', 'tipo' => 'warning'], 400);
+        }
+
+        $r->validate([
+            'pres_serv_cab_observaciones' => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'pres_serv_cab_fecha'         => 'required|date_format:d/m/Y H:i:s',
+            'pres_serv_cab_fecha_vence'   => 'required|date_format:d/m/Y H:i:s|after_or_equal:pres_serv_cab_fecha',
+            'empresa_id'                  => 'required|integer|exists:empresa,id',
+            'sucursal_id'                 => 'required|integer|exists:sucursal,id',
+            'diagnostico_cab_id'          => 'required|integer|exists:diagnostico_cab,id',
+            'tipo_servicio_id'            => 'required|integer|exists:tipo_servicio,id',
+            'tipo_vehiculo_id'            => 'required|integer|exists:tipo_vehiculo,id',
+            'clientes_id'                 => 'required|integer|exists:clientes,id',
+            'promociones_cab_id'          => 'nullable|integer|exists:promociones_cab,id',
+            'descuentos_cab_id'           => 'nullable|integer|exists:descuentos_cab,id',
         ]);
-        $presupuestoservcab->update($datosValidados);
+
+        $presupuestoservcab->update([
+            'pres_serv_cab_observaciones' => $r->pres_serv_cab_observaciones,
+            'pres_serv_cab_fecha'         => $r->pres_serv_cab_fecha,
+            'pres_serv_cab_fecha_vence'   => $r->pres_serv_cab_fecha_vence,
+            'empresa_id'                  => $r->empresa_id,
+            'sucursal_id'                 => $r->sucursal_id,
+            'diagnostico_cab_id'          => $r->diagnostico_cab_id,
+            'tipo_servicio_id'            => $r->tipo_servicio_id,
+            'tipo_vehiculo_id'            => $r->tipo_vehiculo_id,
+            'clientes_id'                 => $r->clientes_id,
+            'promociones_cab_id'          => $r->promociones_cab_id ?: null,
+            'descuentos_cab_id'           => $r->descuentos_cab_id  ?: null,
+        ]);
+
         return response()->json([
-            'mensaje'=>'Registro modificado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuestoservcab
-        ],200);
+            'mensaje'  => 'Presupuesto modificado con éxito',
+            'tipo'     => 'success',
+            'registro' => $presupuestoservcab,
+        ], 200);
     }
     public function anular(Request $r, $id)
     {
         $presupuestoservcab = PresupuestoServCab::find($id);
         if (!$presupuestoservcab) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
-            ], 404);
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
+        }
+        if ($presupuestoservcab->pres_serv_cab_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se pueden anular presupuestos en estado PENDIENTE.', 'tipo' => 'warning'], 400);
         }
 
-        // ⚠️ Solo validamos los campos realmente necesarios
-        $datosValidados = $r->validate([
-            'pres_serv_cab_observaciones' => 'required',
-            'pres_serv_cab_fecha' => 'required',
-            'pres_serv_cab_fecha_vence' => 'required',
-            'pres_serv_cab_estado' => 'required',
-            'funcionario_id' => 'nullable',
-            'empresa_id' => 'required',
-            'sucursal_id' => 'required',
-            'diagnostico_cab_id' => 'required',
-            'tipo_servicio_id'=>'required',
-            'tipo_vehiculo_id'=>'required',
-            'clientes_id' => 'required'
-        ]);
-
-        // 💡 Asignamos NULL a los campos de FK opcionales (evita error FK)
         $presupuestoservcab->update([
-            ...$datosValidados,
-            'promociones_cab_id' => $r->input('promociones_cab_id') ?: null,
-            'descuentos_cab_id'  => $r->input('descuentos_cab_id') ?: null,
             'pres_serv_cab_estado' => 'ANULADO',
-            'updated_at' => now(),
+            'promociones_cab_id'   => null,
+            'descuentos_cab_id'    => null,
         ]);
 
-        // Revertir DiagnosticoCab a CONFIRMADO
         $diagnostico = DiagnosticoCab::find($presupuestoservcab->diagnostico_cab_id);
         if ($diagnostico) {
             $diagnostico->diag_cab_estado = 'CONFIRMADO';
@@ -242,40 +268,29 @@ public function store(Request $r){
         }
 
         return response()->json([
-            'mensaje' => 'Presupuesto anulado con éxito',
-            'tipo' => 'success',
-            'registro' => $presupuestoservcab
+            'mensaje'  => 'Presupuesto anulado con éxito',
+            'tipo'     => 'success',
+            'registro' => $presupuestoservcab,
         ], 200);
     }
-    public function confirmar(Request $r, $id){
+
+    public function confirmar(Request $r, $id)
+    {
         $presupuestoservcab = PresupuestoServCab::find($id);
-        if(!$presupuestoservcab){
-            return response()->json([
-                'mensaje'=>'Registro no encontrado',
-                'tipo'=>'error'
-            ],404);
+        if (!$presupuestoservcab) {
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
-        $datosValidados = $r->validate([
-            'pres_serv_cab_observaciones'=>'required',
-            'pres_serv_cab_fecha'=>'required',
-            'pres_serv_cab_fecha_vence'=>'required',
-            'pres_serv_cab_estado'=>'required',
-            'funcionario_id'=>'nullable',
-            'empresa_id'=>'required',
-            'sucursal_id'=>'required',
-            'diagnostico_cab_id'=>'required',
-            'tipo_servicio_id'=>'required',
-            'tipo_vehiculo_id'=>'required',
-            'promociones_cab_id'=>'nullable|integer',
-            'descuentos_cab_id'=>'nullable|integer',
-            'clientes_id'=>'required'
-        ]);
-        $presupuestoservcab->update($datosValidados);
+        if ($presupuestoservcab->pres_serv_cab_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se pueden confirmar presupuestos en estado PENDIENTE.', 'tipo' => 'warning'], 400);
+        }
+
+        $presupuestoservcab->update(['pres_serv_cab_estado' => 'CONFIRMADO']);
+
         return response()->json([
-            'mensaje'=>'Registro confirmado con exito',
-            'tipo'=>'success',
-            'registro'=> $presupuestoservcab
-        ],200);
+            'mensaje'  => 'Presupuesto confirmado con éxito',
+            'tipo'     => 'success',
+            'registro' => $presupuestoservcab,
+        ], 200);
     }
     public function buscar(Request $r)
 {
@@ -345,13 +360,19 @@ public function store(Request $r){
         JOIN marca m             ON m.id = tv.marca_id
         JOIN modelo mo           ON mo.id = tv.modelo_id
 
-        WHERE 
-            psc.pres_serv_cab_estado = 'CONFIRMADO'
-        AND psc.funcionario_id = {$r->funcionario_id}
-        AND (f.fun_nom || ' ' || f.fun_apellido) ILIKE '%{$r->name}%'
+        WHERE psc.pres_serv_cab_estado = 'CONFIRMADO'
+          AND psc.funcionario_id = ?
+          AND (f.fun_nom || ' ' || f.fun_apellido) ILIKE ?
 
-        ORDER BY psc.id DESC
-    ");
+        ORDER BY
+            CASE dg.diag_cab_prioridad
+                WHEN 'ALTA'  THEN 1
+                WHEN 'MEDIA' THEN 2
+                WHEN 'BAJA'  THEN 3
+                ELSE 4
+            END,
+            psc.id DESC
+    ", [$r->funcionario_id, '%' . $r->name . '%']);
 }
 public function readById($id)
 {

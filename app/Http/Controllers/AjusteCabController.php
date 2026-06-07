@@ -33,20 +33,36 @@ class AjusteCabController extends Controller
         JOIN motivo_ajuste ma ON ma.id = ac.motivo_ajuste_id;");
     }
 
+    private function validarFecha(string $fecha): ?array
+    {
+        if (!$fecha) return ['La fecha es obligatoria.', 422];
+        $dt = \DateTime::createFromFormat('d/m/Y H:i:s', $fecha);
+        if (!$dt) return ['El formato de fecha es inválido. Use DD/MM/YYYY HH:mm:ss.', 422];
+        $hoy = (new \DateTime())->format('d/m/Y');
+        $fechaDia = $dt->format('d/m/Y');
+        if ($fechaDia !== $hoy) {
+            return ['La fecha debe ser la de hoy (' . $hoy . ').', 422];
+        }
+        return null;
+    }
+
     public function store(Request $r){
+        if ($err = $this->validarFecha($r->ajus_cab_fecha)) {
+            return response()->json(['mensaje' => $err[0], 'tipo' => 'error'], $err[1]);
+        }
+
         $datosValidados = $r->validate([
-            'ajus_cab_fecha' => 'required',
-            'ajus_cab_estado' => 'required',
-            'tipo_ajuste' => 'required',
-            'funcionario_id' => 'nullable',
-            'empresa_id' => 'required',
-            'sucursal_id' => 'required',
+            'ajus_cab_fecha'   => 'required',
+            'ajus_cab_estado'  => 'required',
+            'tipo_ajuste'      => 'required',
+            'funcionario_id'   => 'nullable',
+            'empresa_id'       => 'required',
+            'sucursal_id'      => 'required',
             'motivo_ajuste_id' => 'required'
         ]);
 
         $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
         $ajustecab = AjusteCab::create($datosValidados);
-        $ajustecab->save();
 
         return response()->json([
             'mensaje' => 'Registro creado con éxito',
@@ -56,6 +72,9 @@ class AjusteCabController extends Controller
     }
 
     public function update(Request $r, $id){
+        if ($err = $this->validarFecha($r->ajus_cab_fecha)) {
+            return response()->json(['mensaje' => $err[0], 'tipo' => 'error'], $err[1]);
+        }
         $ajustecab = AjusteCab::find($id);
         if (!$ajustecab) {
             return response()->json([
@@ -116,23 +135,28 @@ class AjusteCabController extends Controller
         $ajusteDetalles = AjusteDet::where('ajuste_cab_id', $ajustecab->id)->get();
 
         foreach ($ajusteDetalles as $detalle) {
-            $stock = Stock::where('item_id', $detalle->item_id)->first();
+            $stock = Stock::where('item_id', $detalle->item_id)
+                ->where('deposito_id', $detalle->deposito_id)
+                ->first();
 
             if ($stock) {
                 if ($ajustecab->tipo_ajuste === 'Entrada') {
-                    // Revertir una entrada → restar
                     if ($stock->cantidad < $detalle->ajus_det_cantidad) {
                         return response()->json([
-                            'mensaje' => "No se puede anular. El stock del item {$detalle->item_id} es insuficiente para revertir la entrada.",
+                            'mensaje' => "No se puede anular. El stock del ítem {$detalle->item_id} es insuficiente para revertir la entrada.",
                             'tipo' => 'error'
                         ], 400);
                     }
-                    $stock->cantidad -= $detalle->ajus_det_cantidad;
+                    DB::table('stock')
+                        ->where('item_id', $detalle->item_id)
+                        ->where('deposito_id', $detalle->deposito_id)
+                        ->update(['cantidad' => $stock->cantidad - $detalle->ajus_det_cantidad, 'updated_at' => now()]);
                 } elseif ($ajustecab->tipo_ajuste === 'Salida') {
-                    // Revertir una salida → sumar
-                    $stock->cantidad += $detalle->ajus_det_cantidad;
+                    DB::table('stock')
+                        ->where('item_id', $detalle->item_id)
+                        ->where('deposito_id', $detalle->deposito_id)
+                        ->update(['cantidad' => $stock->cantidad + $detalle->ajus_det_cantidad, 'updated_at' => now()]);
                 }
-                $stock->save();
             }
         }
     }
@@ -201,40 +225,64 @@ class AjusteCabController extends Controller
                 ], 400);
             }
 
-            $stock = Stock::where('item_id', $detalle->item_id)->first();
-            if (!$stock) {
+            if (!$detalle->deposito_id) {
                 return response()->json([
-                    'mensaje' => 'El item ' . $detalle->item_id . ' no tiene stock registrado.',
+                    'mensaje' => 'El ítem ' . $detalle->item_id . ' no tiene depósito asignado en el detalle.',
+                    'tipo'    => 'error'
+                ], 400);
+            }
+
+            $stock = Stock::where('item_id', $detalle->item_id)
+                ->where('deposito_id', $detalle->deposito_id)
+                ->first();
+
+            if (!$stock) {
+                if ($ajustecab->tipo_ajuste === 'Entrada') {
+                    // Crear el registro de stock si no existe (entrada de nuevo ítem)
+                    DB::table('stock')->insert([
+                        'deposito_id'     => $detalle->deposito_id,
+                        'item_id'         => $detalle->item_id,
+                        'cantidad'        => $cantidad,
+                        'cantidad_minima' => 0,
+                        'cantidad_maxima' => 0,
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
+                    ]);
+                    continue;
+                }
+                return response()->json([
+                    'mensaje' => 'No hay stock del ítem ' . $detalle->item_id . ' en el depósito indicado para realizar la salida.',
                     'tipo' => 'error'
                 ], 400);
             }
 
             if ($ajustecab->tipo_ajuste === 'Entrada') {
-                // Sumar siempre
                 $nuevaCantidad = $stock->cantidad + $cantidad;
 
-                // Validación de tope (mantengo tu regla: máximo 30)
-                if ($nuevaCantidad > 30) {
+                if ($stock->cantidad_maxima > 0 && $nuevaCantidad > $stock->cantidad_maxima) {
                     return response()->json([
-                        'mensaje' => 'La cantidad en stock no puede superar el límite máximo de 30 para el item: ' . $detalle->item_id,
+                        'mensaje' => "La cantidad en stock no puede superar el máximo de {$stock->cantidad_maxima} para el ítem {$detalle->item_id}.",
                         'tipo' => 'error'
                     ], 400);
                 }
 
-                $stock->cantidad = $nuevaCantidad;
-                $stock->save();
+                DB::table('stock')
+                    ->where('item_id', $detalle->item_id)
+                    ->where('deposito_id', $detalle->deposito_id)
+                    ->update(['cantidad' => $nuevaCantidad, 'updated_at' => now()]);
             }
             elseif ($ajustecab->tipo_ajuste === 'Salida') {
-                // Restar siempre
                 if ($stock->cantidad < $cantidad) {
                     return response()->json([
-                        'mensaje' => 'No hay suficiente stock para realizar la salida del item: ' . $detalle->item_id,
+                        'mensaje' => 'Stock insuficiente para el ítem ' . $detalle->item_id . '. Disponible: ' . $stock->cantidad . ', requerido: ' . $cantidad . '.',
                         'tipo' => 'error'
                     ], 400);
                 }
 
-                $stock->cantidad = $stock->cantidad - $cantidad;
-                $stock->save();
+                DB::table('stock')
+                    ->where('item_id', $detalle->item_id)
+                    ->where('deposito_id', $detalle->deposito_id)
+                    ->update(['cantidad' => $stock->cantidad - $cantidad, 'updated_at' => now()]);
             }
             else {
                 return response()->json([

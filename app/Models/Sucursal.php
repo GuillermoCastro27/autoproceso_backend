@@ -15,7 +15,8 @@ class Sucursal extends Model implements Auditable
         'suc_razon_social',
         'suc_direccion',
         'suc_telefono',
-        'suc_correo'
+        'suc_correo',
+        'suc_estado',
     ];
 
     protected $table = 'sucursal';

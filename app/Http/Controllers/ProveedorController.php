@@ -17,8 +17,8 @@ class ProveedorController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'prov_razonsocial' => 'required|string|max:200',
-            'prov_ruc'         => ['required', 'string', 'max:30', Rule::unique('proveedores', 'prov_ruc')->whereNull('deleted_at')],
+            'prov_razonsocial' => 'required|string|max:200|not_regex:/[*<>{}|]/',
+            'prov_ruc'         => ['required', 'string', 'max:20', 'regex:/^([A-Za-z]{1,2}\d{6,9}|\d{6,8}(-\d{1,2})?)$/', Rule::unique('proveedores', 'prov_ruc')->whereNull('deleted_at')],
             'prov_direccion'   => 'required|string|max:300',
             'prov_telefono'    => 'required|string|max:30',
             'prov_correo'      => 'required|email|max:100',
@@ -27,8 +27,9 @@ class ProveedorController extends Controller
             'nacionalidad_id'  => 'required|integer|exists:nacionalidad,id',
         ], [
             'prov_razonsocial.required' => 'La razón social es obligatoria.',
-            'prov_ruc.required'         => 'El RUC es obligatorio.',
-            'prov_ruc.unique'           => 'Ya existe un proveedor con ese RUC.',
+            'prov_ruc.required'         => 'El Nro. Documento es obligatorio.',
+            'prov_ruc.regex'            => 'Formato inválido. Use CI (1234567), RUC (80123456-7) o Pasaporte (AA123456).',
+            'prov_ruc.unique'           => 'Ya existe un proveedor con ese Nro. Documento.',
             'prov_direccion.required'   => 'La dirección es obligatoria.',
             'prov_telefono.required'    => 'El teléfono es obligatorio.',
             'prov_correo.required'      => 'El correo electrónico es obligatorio.',
@@ -64,8 +65,8 @@ class ProveedorController extends Controller
         }
 
         $r->validate([
-            'prov_razonsocial' => 'required|string|max:200',
-            'prov_ruc'         => ['required', 'string', 'max:30', Rule::unique('proveedores', 'prov_ruc')->ignore($id)->whereNull('deleted_at')],
+            'prov_razonsocial' => 'required|string|max:200|not_regex:/[*<>{}|]/',
+            'prov_ruc'         => ['required', 'string', 'max:20', 'regex:/^([A-Za-z]{1,2}\d{6,9}|\d{6,8}(-\d{1,2})?)$/', Rule::unique('proveedores', 'prov_ruc')->ignore($id)->whereNull('deleted_at')],
             'prov_direccion'   => 'required|string|max:300',
             'prov_telefono'    => 'required|string|max:30',
             'prov_correo'      => 'required|email|max:100',
@@ -74,8 +75,9 @@ class ProveedorController extends Controller
             'nacionalidad_id'  => 'required|integer|exists:nacionalidad,id',
         ], [
             'prov_razonsocial.required' => 'La razón social es obligatoria.',
-            'prov_ruc.required'         => 'El RUC es obligatorio.',
-            'prov_ruc.unique'           => 'Ya existe otro proveedor con ese RUC.',
+            'prov_ruc.required'         => 'El Nro. Documento es obligatorio.',
+            'prov_ruc.regex'            => 'Formato inválido. Use CI (1234567), RUC (80123456-7) o Pasaporte (AA123456).',
+            'prov_ruc.unique'           => 'Ya existe otro proveedor con ese Nro. Documento.',
             'prov_direccion.required'   => 'La dirección es obligatoria.',
             'prov_telefono.required'    => 'El teléfono es obligatorio.',
             'prov_correo.required'      => 'El correo electrónico es obligatorio.',
@@ -103,29 +105,25 @@ class ProveedorController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $proveedor = Proveedor::find($id);
         if (!$proveedor) {
             return response()->json(['mensaje' => 'Proveedor no encontrado', 'tipo' => 'error'], 404);
         }
 
-        try {
-            $proveedor->delete();
-            return response()->json(['mensaje' => 'Proveedor eliminado con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar el proveedor porque tiene órdenes de compra u otros registros asociados.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = $proveedor->prov_estado === 'activo' ? 'inactivo' : 'activo';
+        $proveedor->update(['prov_estado' => $nuevoEstado]);
+
+        $msg = $nuevoEstado === 'activo' ? 'Proveedor activado con éxito.' : 'Proveedor desactivado con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 
     public function buscar(Request $r)
     {
         $q = '%' . $r->prov_razonsocial . '%';
         return DB::select(
-            "SELECT p.*, p.id AS proveedor_id FROM proveedores p WHERE (prov_razonsocial ILIKE ? OR prov_ruc ILIKE ?) AND p.deleted_at IS NULL",
+            "SELECT p.*, p.id AS proveedor_id FROM proveedores p WHERE (prov_razonsocial ILIKE ? OR prov_ruc ILIKE ?) AND p.deleted_at IS NULL AND p.prov_estado = 'activo'",
             [$q, $q]
         );
     }

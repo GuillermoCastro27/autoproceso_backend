@@ -26,8 +26,8 @@ class CobrosDetController extends Controller
         JOIN tipo_impuesto ti
             ON ti.id = cd.tipo_impuesto_id
 
-        WHERE cd.cobros_cab_id = $id
-    ");
+        WHERE cd.cobros_cab_id = ?
+    ", [$id]);
 }
 
 }

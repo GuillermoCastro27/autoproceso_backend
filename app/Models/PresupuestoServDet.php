@@ -21,7 +21,9 @@ class PresupuestoServDet extends Model implements Auditable
         'tipo_impuesto_id',
         'pres_serv_det_cantidad',
         'pres_serv_det_costo',
-        'pres_serv_det_cantidad_stock'
+        'pres_serv_det_cantidad_stock',
+        'marca_id',
+        'modelo_id',
     ];
     protected $primaryKey = null;
     public $incrementing = false;

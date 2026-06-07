@@ -11,7 +11,8 @@ class EquipoTrabajo extends Model
     protected $fillable = [
         'equipo_nombre',
         'equipo_descripcion',
-        'equipo_categoria'
+        'equipo_categoria',
+        'equipo_estado',
     ];
     protected $table = 'equipo_trabajo';
 }

@@ -17,5 +17,6 @@ class Item extends Model implements Auditable
         'item_precio',
         'tipo_id',
         'tipo_impuesto_id',
+        'item_estado',
     ];
 }

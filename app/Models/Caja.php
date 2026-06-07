@@ -11,6 +11,7 @@ class Caja extends Model
     protected $table = 'caja'; 
 
     protected $fillable = [
-        'caja_descripcion'
+        'caja_descripcion',
+        'caja_estado',
     ];
 }

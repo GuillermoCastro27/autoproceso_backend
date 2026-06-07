@@ -11,5 +11,5 @@ class TipoServicio extends Model implements Auditable
 {
     use HasFactory, AuditableTrait;
     protected $table = 'tipo_servicio';
-    protected $fillable = ['tipo_serv_nombre', 'tip_serv_precio'];
+    protected $fillable = ['tipo_serv_nombre', 'tip_serv_precio', 'tipo_serv_estado'];
 }

@@ -18,6 +18,8 @@ class RecepcionCab extends Model implements Auditable
         'recep_cab_prioridad',
         'recep_cab_kilometraje',
         'recep_cab_nivel_combustible',
+        'recep_cab_num_chasis',
+        'recep_cab_fecha_salida',
         'recep_cab_estado',
         'funcionario_id',
         'clientes_id',

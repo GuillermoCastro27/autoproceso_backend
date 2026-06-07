@@ -17,10 +17,11 @@ class NotaRemiComDet extends Model implements Auditable
     protected array $auditKeyColumns = ['nota_remi_comp_id', 'item_id'];
     protected $table = 'nota_remi_com_det';
     protected $fillable = [
-    'nota_remi_comp_id',
-    'item_id',
-    'deposito_id',
-    'nota_remi_com_det_cantidad'
+        'nota_remi_comp_id',
+        'item_id',
+        'deposito_id',
+        'deposito_destino_id',
+        'nota_remi_com_det_cantidad',
     ];
     protected $primaryKey = null;
     public $incrementing = false; 

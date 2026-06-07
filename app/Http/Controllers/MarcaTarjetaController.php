@@ -19,12 +19,22 @@ class MarcaTarjetaController extends Controller
 
     public function store(Request $r)
     {
-        $datos = $r->validate([
-            'marca_nombre' => 'required|string|max:100|unique:marca_tarjeta,marca_nombre'
+        $r->validate([
+            'marca_nombre' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('marca_tarjeta')
+                        ->whereRaw('LOWER(marca_nombre) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe una marca de tarjeta con ese nombre.');
+                    }
+                },
+            ],
         ], [
             'marca_nombre.required' => 'El nombre de la marca es obligatorio.',
-            'marca_nombre.unique'   => 'La marca ya existe.'
         ]);
+        $datos = $r->only(['marca_nombre']);
 
         $marca = MarcaTarjeta::create($datos);
 
@@ -46,12 +56,23 @@ class MarcaTarjetaController extends Controller
             ], 404);
         }
 
-        $datos = $r->validate([
-            'marca_nombre' => 'required|string|max:100|unique:marca_tarjeta,marca_nombre,' . $id
+        $r->validate([
+            'marca_nombre' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('marca_tarjeta')
+                        ->whereRaw('LOWER(marca_nombre) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otra marca de tarjeta con ese nombre.');
+                    }
+                },
+            ],
         ], [
             'marca_nombre.required' => 'El nombre de la marca es obligatorio.',
-            'marca_nombre.unique'   => 'La marca ya existe.'
         ]);
+        $datos = $r->only(['marca_nombre']);
 
         $marca->update($datos);
 
@@ -62,25 +83,15 @@ class MarcaTarjetaController extends Controller
         ], 200);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $marca = MarcaTarjeta::find($id);
-
         if (!$marca) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo'    => 'error'
-            ], 404);
+            return response()->json(['mensaje' => 'Marca de Tarjeta no encontrada', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $marca->delete();
-            return response()->json(['mensaje' => 'Marca eliminada con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar la marca porque está siendo utilizada en el sistema.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($marca->marca_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $marca->update(['marca_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Marca de Tarjeta activada con éxito.' : 'Marca de Tarjeta desactivada con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 }

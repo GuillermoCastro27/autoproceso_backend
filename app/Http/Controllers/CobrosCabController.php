@@ -57,6 +57,10 @@ public function store(Request $r)
         // Cheque
         'monto_cheque' => 'nullable|numeric|min:0',
         'entidad_emisora_cheque_id' => 'nullable|integer|exists:entidad_emisora,id',
+
+        // Transferencia y QR
+        'transferencias' => 'nullable|string',
+        'qrs'            => 'nullable|string',
     ]);
 
     DB::beginTransaction();
@@ -105,16 +109,27 @@ public function store(Request $r)
         // ==================================================
         // 3) Validar suma de medios de cobro (BLINDAJE)
         // ==================================================
-        $tarjetasVal = json_decode($r->input('tarjetas', '[]'), true) ?? [];
-        $chequesVal  = json_decode($r->input('cheques',  '[]'), true) ?? [];
+        $tarjetasVal      = json_decode($r->input('tarjetas',      '[]'), true) ?? [];
+        $chequesVal       = json_decode($r->input('cheques',       '[]'), true) ?? [];
+        $transferenciasVal = json_decode($r->input('transferencias','[]'), true) ?? [];
+        $qrsVal           = json_decode($r->input('qrs',           '[]'), true) ?? [];
 
-        $totalTarjetas = array_sum(array_column($tarjetasVal, 'monto_tarjeta'));
-        $totalCheques  = array_sum(array_column($chequesVal,  'monto_cheque'));
+        $totalTarjetas      = array_sum(array_column($tarjetasVal,       'monto_tarjeta'));
+        $totalCheques       = array_sum(array_column($chequesVal,        'monto_cheque'));
+        $totalTransferencias = array_sum(array_column($transferenciasVal, 'monto_transferencia'));
+        $totalQrs           = array_sum(array_column($qrsVal,            'monto_qr'));
 
-        $totalMedios = (float)($r->monto_efectivo ?? 0) + $totalTarjetas + $totalCheques;
+        $totalMedios  = (float)($r->monto_efectivo ?? 0) + $totalTarjetas + $totalCheques + $totalTransferencias + $totalQrs;
+        $cobroImporte = (float)$r->cobro_importe;
 
-        if (abs($totalMedios - (float)$r->cobro_importe) > 0.01) {
-            throw new \Exception('La suma de los medios de cobro no coincide con el importe');
+        // Medios digitales no pueden superar el importe
+        $totalDigital = $totalTarjetas + $totalCheques + $totalTransferencias + $totalQrs;
+        if ($totalDigital > $cobroImporte + 0.01) {
+            throw new \Exception('La suma de los medios de cobro supera el importe total');
+        }
+        // El total entregado debe cubrir el importe (el efectivo puede ser mayor → genera vuelto)
+        if ($totalMedios < $cobroImporte - 0.01) {
+            throw new \Exception('El monto entregado no alcanza para cubrir el importe total');
         }
 
         // ==================================================
@@ -229,7 +244,40 @@ public function store(Request $r)
         }
 
         // ==================================================
-        // 9) Detalle EFECTIVO
+        // 9) Transferencias (array JSON)
+        // ==================================================
+        $transferencias = json_decode($r->input('transferencias', '[]'), true) ?? [];
+        foreach ($transferencias as $tr) {
+            if ((float)($tr['monto_transferencia'] ?? 0) > 0) {
+                DB::table('cobros_transferencia')->insert([
+                    'cobros_cab_id'  => $cobroId,
+                    'banco_entidad'  => $tr['banco_entidad']  ?? null,
+                    'nro_referencia' => $tr['nro_referencia'] ?? null,
+                    'monto_transferencia' => $tr['monto_transferencia'],
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+            }
+        }
+
+        // ==================================================
+        // 10) QRs (array JSON)
+        // ==================================================
+        $qrs = json_decode($r->input('qrs', '[]'), true) ?? [];
+        foreach ($qrs as $qr) {
+            if ((float)($qr['monto_qr'] ?? 0) > 0) {
+                DB::table('cobros_qr')->insert([
+                    'cobros_cab_id'  => $cobroId,
+                    'nro_referencia' => $qr['nro_referencia'] ?? null,
+                    'monto_qr'       => $qr['monto_qr'],
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+            }
+        }
+
+        // ==================================================
+        // 11) Detalle EFECTIVO
         // ==================================================
         if ($r->filled('monto_efectivo') && (float)$r->monto_efectivo > 0) {
             DB::table('cobro_efectivo')->insert([
@@ -293,6 +341,10 @@ public function update(Request $r, $id)
 
         // Cheque
         'monto_cheque'   => 'nullable|numeric|min:0',
+
+        // Transferencia y QR
+        'transferencias' => 'nullable|string',
+        'qrs'            => 'nullable|string',
     ]);
 
     DB::beginTransaction();
@@ -312,15 +364,24 @@ public function update(Request $r, $id)
         // ==================================================
         // 🔹 Validar suma de medios
         // ==================================================
-        $tarjetasUpd = json_decode($r->input('tarjetas', '[]'), true) ?? [];
-        $chequesUpd  = json_decode($r->input('cheques',  '[]'), true) ?? [];
+        $tarjetasUpd       = json_decode($r->input('tarjetas',       '[]'), true) ?? [];
+        $chequesUpd        = json_decode($r->input('cheques',        '[]'), true) ?? [];
+        $transferenciasUpd = json_decode($r->input('transferencias', '[]'), true) ?? [];
+        $qrsUpd            = json_decode($r->input('qrs',            '[]'), true) ?? [];
 
-        $totalTarjUpd  = array_sum(array_column($tarjetasUpd, 'monto_tarjeta'));
-        $totalCheqUpd  = array_sum(array_column($chequesUpd,  'monto_cheque'));
-        $totalMedios   = (float)($r->monto_efectivo ?? 0) + $totalTarjUpd + $totalCheqUpd;
+        $totalTarjUpd  = array_sum(array_column($tarjetasUpd,       'monto_tarjeta'));
+        $totalCheqUpd  = array_sum(array_column($chequesUpd,        'monto_cheque'));
+        $totalTransUpd = array_sum(array_column($transferenciasUpd, 'monto_transferencia'));
+        $totalQrUpd    = array_sum(array_column($qrsUpd,            'monto_qr'));
 
-        if (abs($totalMedios - (float)$cobro->cobro_importe) > 0.01) {
-            throw new \Exception('La suma de los medios de cobro no coincide con el importe');
+        $totalMedios  = (float)($r->monto_efectivo ?? 0) + $totalTarjUpd + $totalCheqUpd + $totalTransUpd + $totalQrUpd;
+        $cobroImporte = (float)$cobro->cobro_importe;
+
+        if ($totalTarjUpd + $totalCheqUpd + $totalTransUpd + $totalQrUpd > $cobroImporte + 0.01) {
+            throw new \Exception('La suma de los medios de cobro supera el importe total');
+        }
+        if ($totalMedios < $cobroImporte - 0.01) {
+            throw new \Exception('El monto entregado no alcanza para cubrir el importe total');
         }
 
         // ==================================================
@@ -361,6 +422,39 @@ public function update(Request $r, $id)
                     'estado_cheque'             => 'RECIBIDO',
                     'created_at'                => now(),
                     'updated_at'                => now(),
+                ]);
+            }
+        }
+
+        // ==================================================
+        // 🔹 TRANSFERENCIAS — borrar y re-insertar
+        // ==================================================
+        DB::table('cobros_transferencia')->where('cobros_cab_id', $id)->delete();
+        foreach ($transferenciasUpd as $tr) {
+            if ((float)($tr['monto_transferencia'] ?? 0) > 0) {
+                DB::table('cobros_transferencia')->insert([
+                    'cobros_cab_id'  => $id,
+                    'banco_entidad'  => $tr['banco_entidad']  ?? null,
+                    'nro_referencia' => $tr['nro_referencia'] ?? null,
+                    'monto_transferencia' => $tr['monto_transferencia'],
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+            }
+        }
+
+        // ==================================================
+        // 🔹 QRs — borrar y re-insertar
+        // ==================================================
+        DB::table('cobros_qr')->where('cobros_cab_id', $id)->delete();
+        foreach ($qrsUpd as $qr) {
+            if ((float)($qr['monto_qr'] ?? 0) > 0) {
+                DB::table('cobros_qr')->insert([
+                    'cobros_cab_id'  => $id,
+                    'nro_referencia' => $qr['nro_referencia'] ?? null,
+                    'monto_qr'       => $qr['monto_qr'],
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
                 ]);
             }
         }
@@ -429,6 +523,18 @@ public function anular(Request $r, $id)
     DB::beginTransaction();
 
     try {
+
+        // Revertir ctas_cobrar de ASIGNADO a PENDIENTE
+        $cuotaIds = DB::table('cobros_ctas_cobrar')
+            ->where('cobros_cab_id', $id)
+            ->pluck('ctas_cobrar_id');
+
+        if ($cuotaIds->isNotEmpty()) {
+            DB::table('ctas_cobrar')
+                ->whereIn('id', $cuotaIds)
+                ->where('cta_cob_estado', 'ASIGNADO')
+                ->update(['cta_cob_estado' => 'PENDIENTE', 'updated_at' => now()]);
+        }
 
         $cobro->update([
             'cobro_estado'      => 'ANULADO',
@@ -501,6 +607,17 @@ public function confirmar(Request $r, $id)
                     'cta_cob_estado' => 'COBRADA'
                 ]);
         }
+
+        // =========================
+        // 🔹 MARCAR ORDEN DE SERVICIO COMO TERMINADO
+        // =========================
+        DB::table('orden_serv_cab')
+            ->whereIn('id', function ($q) use ($cobro) {
+                $q->select('orden_serv_cab_id')
+                  ->from('orden_serv_venta')
+                  ->where('ventas_cab_id', $cobro->ventas_cab_id);
+            })
+            ->update(['ord_serv_estado' => 'terminado', 'updated_at' => now()]);
 
         DB::commit();
 
@@ -594,9 +711,15 @@ private function datosRecibo($id): ?array
     $cuotas = DB::select("
         SELECT
             ccc.monto_cobrado,
+            cc2.id           AS cta_cobrar_id,
             cc2.nro_cuota,
+            cc2.cta_cob_monto,
+            cc2.cta_cob_estado,
             TO_CHAR(cc2.cta_cob_fecha_vencimiento, 'DD/MM/YYYY') AS fecha_vencimiento,
-            'VENTA NRO: ' || TO_CHAR(v.id, '0000000') AS venta_nro
+            'VENTA NRO: ' || TO_CHAR(v.id, '0000000') AS venta_nro,
+            v.id             AS ventas_cab_id,
+            v.vent_cant_cuota,
+            v.condicion_pago
         FROM cobros_ctas_cobrar ccc
         JOIN ctas_cobrar cc2 ON cc2.id = ccc.ctas_cobrar_id
         JOIN ventas_cab v    ON v.id   = cc2.ventas_cab_id
@@ -604,10 +727,28 @@ private function datosRecibo($id): ?array
         ORDER BY cc2.nro_cuota
     ", [$id]);
 
-    $tarjeta = DB::table('cobros_tarjeta')->where('cobros_cab_id', $id)->first();
-    $cheque  = DB::table('cobros_cheque')->where('cobros_cab_id', $id)->first();
+    // Resumen del crédito (para recibo tipo CRÉDITO)
+    $resumenCredito = null;
+    if (!empty($cuotas)) {
+        $ventaId = $cuotas[0]->ventas_cab_id;
+        $resumenCredito = DB::selectOne("
+            SELECT
+                COUNT(*)                                                              AS total_cuotas,
+                COALESCE(SUM(cc.cta_cob_monto), 0)                                   AS total_financiado,
+                COUNT(CASE WHEN cc.cta_cob_estado = 'COBRADA' THEN 1 END)            AS cuotas_cobradas,
+                COALESCE(SUM(CASE WHEN cc.cta_cob_estado = 'COBRADA'
+                                  THEN cc.cta_cob_monto ELSE 0 END), 0)              AS total_ya_cobrado
+            FROM ctas_cobrar cc
+            WHERE cc.ventas_cab_id = ?
+        ", [$ventaId]);
+    }
 
-    return compact('cobro', 'detalles', 'cuotas', 'tarjeta', 'cheque');
+    $tarjeta        = DB::table('cobros_tarjeta')->where('cobros_cab_id', $id)->get();
+    $cheque         = DB::table('cobros_cheque')->where('cobros_cab_id', $id)->get();
+    $transferencias = DB::table('cobros_transferencia')->where('cobros_cab_id', $id)->get();
+    $qrs            = DB::table('cobros_qr')->where('cobros_cab_id', $id)->get();
+
+    return compact('cobro', 'detalles', 'cuotas', 'resumenCredito', 'tarjeta', 'cheque', 'transferencias', 'qrs');
 }
 
 public function imprimir($id)
@@ -619,11 +760,14 @@ public function imprimir($id)
     }
 
     return response()->json([
-        'cab'      => $data['cobro'],
-        'detalles' => $data['detalles'],
-        'cuotas'   => $data['cuotas'],
-        'tarjeta'  => $data['tarjeta'],
-        'cheque'   => $data['cheque'],
+        'cab'             => $data['cobro'],
+        'detalles'        => $data['detalles'],
+        'cuotas'          => $data['cuotas'],
+        'resumen_credito' => $data['resumenCredito'],
+        'tarjeta'         => $data['tarjeta'],
+        'cheque'          => $data['cheque'],
+        'transferencias'  => $data['transferencias'],
+        'qrs'             => $data['qrs'],
     ]);
 }
 
@@ -642,10 +786,12 @@ public function enviarRecibo($id)
     }
 
     $datos = array_merge((array) $cobro, [
-        'detalles' => $data['detalles'],
-        'cuotas'   => $data['cuotas'],
-        'tarjeta'  => $data['tarjeta'],
-        'cheque'   => $data['cheque'],
+        'detalles'       => $data['detalles'],
+        'cuotas'         => $data['cuotas'],
+        'tarjeta'        => $data['tarjeta'],
+        'cheque'         => $data['cheque'],
+        'transferencias' => $data['transferencias'],
+        'qrs'            => $data['qrs'],
     ]);
 
     Mail::to($cobro->cli_correo)->send(new ReciboCobro($datos));
@@ -711,7 +857,15 @@ public function detalle($id)
         ORDER BY cc2.nro_cuota
     ", [$id]);
 
-    return response()->json(compact('tarjeta', 'cheque', 'detalles', 'cuotas'));
+    $transferencias = DB::table('cobros_transferencia')
+        ->where('cobros_cab_id', $id)
+        ->get();
+
+    $qrs = DB::table('cobros_qr')
+        ->where('cobros_cab_id', $id)
+        ->get();
+
+    return response()->json(compact('tarjeta', 'cheque', 'transferencias', 'qrs', 'detalles', 'cuotas'));
 }
 
 public function ctas($cobro_id)

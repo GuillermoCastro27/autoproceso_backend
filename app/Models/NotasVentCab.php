@@ -25,6 +25,13 @@ class NotasVentCab extends Model implements Auditable
         'ventas_cab_id',
         'funcionario_id',
         'empresa_id',
-        'sucursal_id'
+        'sucursal_id',
+        'timbrado_id',
+        'nota_vent_nro_comprobante',
     ];
+
+    public function timbrado()
+    {
+        return $this->belongsTo(Timbrado::class);
+    }
 }

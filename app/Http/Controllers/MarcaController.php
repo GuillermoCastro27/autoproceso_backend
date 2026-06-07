@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Marca;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class MarcaController extends Controller
 {
@@ -25,14 +24,20 @@ class MarcaController extends Controller
     {
         $r->validate([
             'marc_nom' => [
-                'required', 'string', 'max:100',
-                Rule::unique('marca', 'marc_nom')->where(fn($q) => $q->where('mar_tipo', $r->mar_tipo)),
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('marca')
+                        ->whereRaw('LOWER(marc_nom) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe una marca con ese nombre.');
+                    }
+                },
             ],
             'mar_tipo' => 'required|string|max:50',
         ], [
             'marc_nom.required' => 'El nombre de la marca es obligatorio.',
             'marc_nom.max'      => 'El nombre no puede superar los 100 caracteres.',
-            'marc_nom.unique'   => 'Ya existe una marca con ese nombre para el tipo seleccionado.',
             'mar_tipo.required' => 'El tipo de marca es obligatorio.',
         ]);
 
@@ -57,16 +62,21 @@ class MarcaController extends Controller
 
         $r->validate([
             'marc_nom' => [
-                'required', 'string', 'max:100',
-                Rule::unique('marca', 'marc_nom')
-                    ->where(fn($q) => $q->where('mar_tipo', $r->mar_tipo))
-                    ->ignore($id),
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('marca')
+                        ->whereRaw('LOWER(marc_nom) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otra marca con ese nombre.');
+                    }
+                },
             ],
             'mar_tipo' => 'required|string|max:50',
         ], [
             'marc_nom.required' => 'El nombre de la marca es obligatorio.',
             'marc_nom.max'      => 'El nombre no puede superar los 100 caracteres.',
-            'marc_nom.unique'   => 'Ya existe otra marca con ese nombre para el tipo seleccionado.',
             'mar_tipo.required' => 'El tipo de marca es obligatorio.',
         ]);
 
@@ -82,22 +92,16 @@ class MarcaController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $marca = Marca::find($id);
         if (!$marca) {
             return response()->json(['mensaje' => 'Marca no encontrada', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $marca->delete();
-            return response()->json(['mensaje' => 'Marca eliminada con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar la marca porque tiene modelos asociados.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($marca->marc_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $marca->update(['marc_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Marca activada con éxito.' : 'Marca desactivada con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 
     public function buscar(Request $r)

@@ -42,6 +42,8 @@ class ContratoServCab extends Model implements Auditable
         'tipo_contrato_id',
         'funcionario_id',
         'orden_serv_cab_id',
+        'contrato_representante',
+        'contrato_numero',
     ];
     public function tipoContrato()
 {

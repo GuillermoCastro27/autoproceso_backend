@@ -19,7 +19,8 @@ class Proveedor extends Model implements Auditable
         'prov_correo',
         'pais_id',
         'ciudad_id',
-        'nacionalidad_id'
+        'nacionalidad_id',
+        'prov_estado',
     ];
     protected $table = 'proveedores';
 }

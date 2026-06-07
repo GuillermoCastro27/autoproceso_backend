@@ -26,8 +26,10 @@ class EntidadAdheridaController extends Controller
                     'ea.ent_adh_nombre',
                     'ea.ent_adh_direccion',
                     'ea.ent_adh_telefono',
-                    'ea.ent_adh_email'
+                    'ea.ent_adh_email',
+                    'ea.ent_adh_estado'
                 )
+                ->where('ea.ent_adh_estado', 'ACTIVO')
                 ->orderBy('ea.id')
                 ->get()
         );
@@ -37,7 +39,19 @@ class EntidadAdheridaController extends Controller
         $datosValidados = $r->validate([
             'entidad_emisora_id' => 'required|exists:entidad_emisora,id',
             'marca_tarjeta_id'   => 'required|exists:marca_tarjeta,id',
-            'ent_adh_nombre'     => 'required|string|max:150',
+            'ent_adh_nombre'     => [
+                'required', 'string', 'max:150', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($r) {
+                    $existe = \DB::table('entidad_adherida')
+                        ->whereRaw('LOWER(ent_adh_nombre) = LOWER(?)', [trim($value)])
+                        ->where('entidad_emisora_id', $r->entidad_emisora_id)
+                        ->where('marca_tarjeta_id', $r->marca_tarjeta_id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe una entidad adherida con ese nombre para la emisora y marca seleccionadas.');
+                    }
+                },
+            ],
             'ent_adh_direccion'  => 'nullable|string|max:200',
             'ent_adh_telefono'   => 'nullable|string|max:50',
             'ent_adh_email'      => 'nullable|email|max:100'
@@ -71,7 +85,20 @@ class EntidadAdheridaController extends Controller
         $datosValidados = $r->validate([
             'entidad_emisora_id' => 'required|exists:entidad_emisora,id',
             'marca_tarjeta_id'   => 'required|exists:marca_tarjeta,id',
-            'ent_adh_nombre'     => 'required|string|max:150',
+            'ent_adh_nombre'     => [
+                'required', 'string', 'max:150', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($r, $entidadAdherida) {
+                    $existe = \DB::table('entidad_adherida')
+                        ->whereRaw('LOWER(ent_adh_nombre) = LOWER(?)', [trim($value)])
+                        ->where('entidad_emisora_id', $r->entidad_emisora_id)
+                        ->where('marca_tarjeta_id', $r->marca_tarjeta_id)
+                        ->where('id', '!=', $entidadAdherida->id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otra entidad adherida con ese nombre para la emisora y marca seleccionadas.');
+                    }
+                },
+            ],
             'ent_adh_direccion'  => 'nullable|string|max:200',
             'ent_adh_telefono'   => 'nullable|string|max:50',
             'ent_adh_email'      => 'nullable|email|max:100'
@@ -86,25 +113,15 @@ class EntidadAdheridaController extends Controller
         ], 200);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $entidadAdherida = EntidadAdherida::find($id);
-
         if (!$entidadAdherida) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo'    => 'error'
-            ], 404);
+            return response()->json(['mensaje' => 'Entidad Adherida no encontrada', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $entidadAdherida->delete();
-            return response()->json(['mensaje' => 'Entidad adherida eliminada con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar la entidad adherida porque tiene registros asociados.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($entidadAdherida->ent_adh_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $entidadAdherida->update(['ent_adh_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Entidad Adherida activada con éxito.' : 'Entidad Adherida desactivada con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 }

@@ -20,7 +20,8 @@ class Funcionario extends Model implements Auditable
         'fun_ci',
         'pais_id',
         'ciudad_id',
-        'nacionalidad_id'
+        'nacionalidad_id',
+        'fun_estado',
     ];
     protected $table = 'funcionario';
 }

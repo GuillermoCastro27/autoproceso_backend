@@ -11,15 +11,16 @@ class CompraDetController extends Controller
 {
     public function read($id) {
         return DB::select("
-            select 
-                cd.*, 
-                i.item_decripcion, 
-                i.item_costo,  
-                ti.tip_imp_nom
-            from compra_det cd
-            join items i on i.id = cd.item_id
-            join tipo_impuesto ti on ti.id = cd.tipo_impuesto_id
-            where cd.compra_cab_id = $id");
+            SELECT cd.*, i.item_decripcion, i.item_costo, ti.tip_imp_nom,
+                   COALESCE(ma.marc_nom,'')   AS marc_nom,
+                   COALESCE(mo.modelo_nom,'') AS modelo_nom
+            FROM compra_det cd
+            JOIN items i ON i.id = cd.item_id
+            JOIN tipo_impuesto ti ON ti.id = cd.tipo_impuesto_id
+            LEFT JOIN marca ma  ON ma.id = cd.marca_id
+            LEFT JOIN modelo mo ON mo.id = cd.modelo_id
+            WHERE cd.compra_cab_id = ?
+        ", [$id]);
     }
     public function store(Request $request)
 {

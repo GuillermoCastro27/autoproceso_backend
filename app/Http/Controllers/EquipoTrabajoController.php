@@ -4,12 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\EquipoTrabajo;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class EquipoTrabajoController extends Controller
 {
-     public function read()
+    public function read()
     {
         return response()->json(
             EquipoTrabajo::select(
@@ -24,41 +22,60 @@ class EquipoTrabajoController extends Controller
     public function store(Request $r)
     {
         $datosValidados = $r->validate([
-            'equipo_nombre' => 'required|string|max:100|unique:equipo_trabajo,equipo_nombre',
-            'equipo_descripcion' => 'nullable|string|max:255',
-            'equipo_categoria' => 'nullable|string|max:50'
+            'equipo_nombre'      => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('equipo_trabajo')
+                        ->whereRaw('LOWER(equipo_nombre) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe un equipo con ese nombre.');
+                    }
+                },
+            ],
+            'equipo_descripcion' => 'nullable|string|max:255|not_regex:/[*<>{}|]/',
+            'equipo_categoria'   => 'nullable|string|max:50|not_regex:/[*<>{}|]/',
         ], [
-            'equipo_nombre.required' => 'El campo nombre es obligatorio.',
-            'equipo_nombre.unique' => 'Ya existe un equipo con este nombre.'
+            'equipo_nombre.required'       => 'El campo nombre es obligatorio.',
+            'equipo_nombre.not_regex'      => 'El nombre contiene caracteres no permitidos.',
+            'equipo_descripcion.not_regex' => 'La descripción contiene caracteres no permitidos.',
         ]);
 
         $equipo = EquipoTrabajo::create($datosValidados);
 
         return response()->json([
-            'mensaje' => 'Registro creado con éxito',
-            'tipo' => 'success',
-            'registro' => $equipo
+            'mensaje'  => 'Registro creado con éxito',
+            'tipo'     => 'success',
+            'registro' => $equipo,
         ]);
     }
 
-    // Actualizar tipo de servicio
     public function update(Request $r, $id)
     {
         $equipo = EquipoTrabajo::find($id);
         if (!$equipo) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
-            ], 404);
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
         $r->validate([
-            'equipo_nombre'      => ['required', 'string', 'max:100', Rule::unique('equipo_trabajo', 'equipo_nombre')->ignore($id)],
-            'equipo_descripcion' => 'nullable|string|max:255',
-            'equipo_categoria'   => 'nullable|string|max:50',
+            'equipo_nombre'      => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('equipo_trabajo')
+                        ->whereRaw('LOWER(equipo_nombre) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otro equipo con ese nombre.');
+                    }
+                },
+            ],
+            'equipo_descripcion' => 'nullable|string|max:255|not_regex:/[*<>{}|]/',
+            'equipo_categoria'   => 'nullable|string|max:50|not_regex:/[*<>{}|]/',
         ], [
-            'equipo_nombre.required' => 'El campo nombre es obligatorio.',
-            'equipo_nombre.unique'   => 'Ya existe otro equipo con ese nombre.',
+            'equipo_nombre.required'       => 'El campo nombre es obligatorio.',
+            'equipo_nombre.not_regex'      => 'El nombre contiene caracteres no permitidos.',
+            'equipo_descripcion.not_regex' => 'La descripción contiene caracteres no permitidos.',
         ]);
 
         $equipo->update([
@@ -68,31 +85,21 @@ class EquipoTrabajoController extends Controller
         ]);
 
         return response()->json([
-            'mensaje' => 'Registro modificado con éxito',
-            'tipo' => 'success',
-            'registro' => $equipo
+            'mensaje'  => 'Registro modificado con éxito',
+            'tipo'     => 'success',
+            'registro' => $equipo,
         ], 200);
     }
 
-    // 🗑️ Eliminar tipo de servicio
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $equipo = EquipoTrabajo::find($id);
         if (!$equipo) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
-            ], 404);
+            return response()->json(['mensaje' => 'Equipo de Trabajo no encontrado', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $equipo->delete();
-            return response()->json(['mensaje' => 'Equipo de trabajo eliminado con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar el equipo porque tiene registros asociados en el sistema.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = strtolower($equipo->equipo_estado ?? 'activo') === 'activo' ? 'inactivo' : 'activo';
+        $equipo->update(['equipo_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Equipo de Trabajo activado con éxito.' : 'Equipo de Trabajo desactivado con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 }

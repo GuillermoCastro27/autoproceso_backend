@@ -17,8 +17,8 @@ class FuncionarioController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'fun_nom'         => 'required|string|max:100',
-            'fun_apellido'    => 'required|string|max:100',
+            'fun_nom'         => 'required|string|max:100|not_regex:/[*<>{}|]/',
+            'fun_apellido'    => 'required|string|max:100|not_regex:/[*<>{}|]/',
             'fun_ci'          => ['required', 'string', 'max:30', Rule::unique('funcionario', 'fun_ci')->whereNull('deleted_at')],
             'fun_direccion'   => 'required|string|max:200',
             'fun_telefono'    => 'required|string|max:30',
@@ -28,7 +28,9 @@ class FuncionarioController extends Controller
             'nacionalidad_id' => 'required|integer|exists:nacionalidad,id',
         ], [
             'fun_nom.required'         => 'El nombre es obligatorio.',
+            'fun_nom.not_regex'        => 'El nombre contiene caracteres no permitidos.',
             'fun_apellido.required'    => 'El apellido es obligatorio.',
+            'fun_apellido.not_regex'   => 'El apellido contiene caracteres no permitidos.',
             'fun_ci.required'          => 'La cédula de identidad es obligatoria.',
             'fun_ci.unique'            => 'Ya existe un funcionario con esa cédula de identidad.',
             'fun_direccion.required'   => 'La dirección es obligatoria.',
@@ -67,8 +69,8 @@ class FuncionarioController extends Controller
         }
 
         $r->validate([
-            'fun_nom'         => 'required|string|max:100',
-            'fun_apellido'    => 'required|string|max:100',
+            'fun_nom'         => 'required|string|max:100|not_regex:/[*<>{}|]/',
+            'fun_apellido'    => 'required|string|max:100|not_regex:/[*<>{}|]/',
             'fun_ci'          => ['required', 'string', 'max:30', Rule::unique('funcionario', 'fun_ci')->ignore($id)->whereNull('deleted_at')],
             'fun_direccion'   => 'required|string|max:200',
             'fun_telefono'    => 'required|string|max:30',
@@ -78,7 +80,9 @@ class FuncionarioController extends Controller
             'nacionalidad_id' => 'required|integer|exists:nacionalidad,id',
         ], [
             'fun_nom.required'         => 'El nombre es obligatorio.',
+            'fun_nom.not_regex'        => 'El nombre contiene caracteres no permitidos.',
             'fun_apellido.required'    => 'El apellido es obligatorio.',
+            'fun_apellido.not_regex'   => 'El apellido contiene caracteres no permitidos.',
             'fun_ci.required'          => 'La cédula de identidad es obligatoria.',
             'fun_ci.unique'            => 'Ya existe otro funcionario con esa cédula de identidad.',
             'fun_direccion.required'   => 'La dirección es obligatoria.',
@@ -109,22 +113,16 @@ class FuncionarioController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function cambiarEstado($id)
     {
         $funcionario = Funcionario::find($id);
         if (!$funcionario) {
             return response()->json(['mensaje' => 'Funcionario no encontrado', 'tipo' => 'error'], 404);
         }
-
-        try {
-            $funcionario->delete();
-            return response()->json(['mensaje' => 'Funcionario eliminado con éxito', 'tipo' => 'success']);
-        } catch (\Exception $e) {
-            return response()->json([
-                'mensaje' => 'No se puede eliminar el funcionario porque tiene registros asociados en el sistema.',
-                'tipo'    => 'error',
-            ], 409);
-        }
+        $nuevoEstado = $funcionario->fun_estado === 'activo' ? 'inactivo' : 'activo';
+        $funcionario->update(['fun_estado' => $nuevoEstado]);
+        $msg = $nuevoEstado === 'activo' ? 'Funcionario activado con éxito.' : 'Funcionario desactivado con éxito.';
+        return response()->json(['mensaje' => $msg, 'tipo' => 'success', 'estado' => $nuevoEstado]);
     }
 
     public function buscar(Request $r)
@@ -138,6 +136,7 @@ class FuncionarioController extends Controller
                 f.fun_telefono
             FROM funcionario f
             WHERE f.deleted_at IS NULL
+              AND f.fun_estado = 'activo'
               AND (f.fun_nom ILIKE ? OR f.fun_apellido ILIKE ? OR f.fun_ci ILIKE ?)
             ORDER BY f.fun_nom
             LIMIT 20

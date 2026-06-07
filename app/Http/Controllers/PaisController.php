@@ -3,35 +3,64 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pais;
+use App\Models\Nacionalidad;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class PaisController extends Controller
 {
     public function read()
     {
-        return Pais::all();
+        return \DB::select(
+            'SELECT p.id, p.pais_descrpcion, p.pais_siglas,
+                    n.id AS nacio_id, n.nacio_descripcion
+             FROM paises p
+             LEFT JOIN nacionalidad n ON n.pais_id = p.id
+             ORDER BY p.pais_descrpcion'
+        );
     }
 
     public function store(Request $r)
     {
         $r->validate([
-            'pais_descrpcion' => 'required|string|max:100|unique:paises,pais_descrpcion',
-            'pais_gentilicio' => 'required|string|max:100',
-            'pais_siglas'     => 'required|string|max:10|unique:paises,pais_siglas',
+            'pais_descrpcion' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('paises')
+                        ->whereRaw('LOWER(pais_descrpcion) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe un país con ese nombre.');
+                    }
+                },
+            ],
+            'pais_siglas' => [
+                'required', 'string', 'max:10',
+                function ($attribute, $value, $fail) {
+                    $existe = \DB::table('paises')
+                        ->whereRaw('LOWER(pais_siglas) = LOWER(?)', [trim($value)])
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe un país con esas siglas.');
+                    }
+                },
+            ],
         ], [
-            'pais_descrpcion.required' => 'El nombre del país es obligatorio.',
-            'pais_descrpcion.unique'   => 'Ya existe un país con ese nombre.',
-            'pais_gentilicio.required' => 'El gentilicio es obligatorio.',
-            'pais_siglas.required'     => 'Las siglas son obligatorias.',
-            'pais_siglas.unique'       => 'Ya existe un país con esas siglas.',
+            'pais_descrpcion.required'  => 'El nombre del país es obligatorio.',
+            'pais_descrpcion.not_regex' => 'El nombre del país contiene caracteres no permitidos.',
+            'pais_siglas.required'      => 'Las siglas son obligatorias.',
         ]);
 
         $pais = Pais::create([
             'pais_descrpcion' => $r->pais_descrpcion,
-            'pais_gentilicio' => $r->pais_gentilicio,
             'pais_siglas'     => $r->pais_siglas,
         ]);
+
+        if ($r->filled('nacio_descripcion')) {
+            Nacionalidad::create([
+                'nacio_descripcion' => $r->nacio_descripcion,
+                'pais_id'           => $pais->id,
+            ]);
+        }
 
         return response()->json([
             'mensaje'  => 'País creado con éxito',
@@ -48,22 +77,47 @@ class PaisController extends Controller
         }
 
         $r->validate([
-            'pais_descrpcion' => ['required', 'string', 'max:100', Rule::unique('paises', 'pais_descrpcion')->ignore($id)],
-            'pais_gentilicio' => 'required|string|max:100',
-            'pais_siglas'     => ['required', 'string', 'max:10', Rule::unique('paises', 'pais_siglas')->ignore($id)],
+            'pais_descrpcion' => [
+                'required', 'string', 'max:100', 'not_regex:/[*<>{}|]/',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('paises')
+                        ->whereRaw('LOWER(pais_descrpcion) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otro país con ese nombre.');
+                    }
+                },
+            ],
+            'pais_siglas' => [
+                'required', 'string', 'max:10',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existe = \DB::table('paises')
+                        ->whereRaw('LOWER(pais_siglas) = LOWER(?)', [trim($value)])
+                        ->where('id', '!=', $id)
+                        ->exists();
+                    if ($existe) {
+                        $fail('Ya existe otro país con esas siglas.');
+                    }
+                },
+            ],
         ], [
-            'pais_descrpcion.required' => 'El nombre del país es obligatorio.',
-            'pais_descrpcion.unique'   => 'Ya existe otro país con ese nombre.',
-            'pais_gentilicio.required' => 'El gentilicio es obligatorio.',
-            'pais_siglas.required'     => 'Las siglas son obligatorias.',
-            'pais_siglas.unique'       => 'Ya existe otro país con esas siglas.',
+            'pais_descrpcion.required'  => 'El nombre del país es obligatorio.',
+            'pais_descrpcion.not_regex' => 'El nombre del país contiene caracteres no permitidos.',
+            'pais_siglas.required'      => 'Las siglas son obligatorias.',
         ]);
 
         $pais->update([
             'pais_descrpcion' => $r->pais_descrpcion,
-            'pais_gentilicio' => $r->pais_gentilicio,
             'pais_siglas'     => $r->pais_siglas,
         ]);
+
+        if ($r->filled('nacio_descripcion')) {
+            Nacionalidad::updateOrCreate(
+                ['pais_id' => $pais->id],
+                ['nacio_descripcion' => $r->nacio_descripcion]
+            );
+        }
 
         return response()->json([
             'mensaje'  => 'País actualizado con éxito',

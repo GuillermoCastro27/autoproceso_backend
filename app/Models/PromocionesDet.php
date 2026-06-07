@@ -15,12 +15,14 @@ class PromocionesDet extends Model implements Auditable
         CompositeKeyAuditable::transformAudit insteadof AuditableTrait;
     }
     protected array $auditKeyColumns = ['promociones_cab_id', 'item_id'];
-    protected $fillable =[
+    protected $fillable = [
         'promociones_cab_id',
         'item_id',
         'tipo_impuesto_id',
         'prom_det_cantidad',
         'prom_det_costo',
+        'marca_id',
+        'modelo_id',
     ];
     protected $primaryKey = null;
     public $incrementing = false;
