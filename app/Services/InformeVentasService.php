@@ -210,6 +210,71 @@ class InformeVentasService
                 {$pg}
             ",
 
+            'apertura_cierre_caja' => "
+                SELECT acc.id,
+                       TO_CHAR(acc.fecha_apertura, 'dd/mm/yyyy HH24:MI') AS fecha_apertura,
+                       CASE WHEN acc.fecha_cierre IS NOT NULL
+                            THEN TO_CHAR(acc.fecha_cierre, 'dd/mm/yyyy HH24:MI')
+                            ELSE 'Abierta' END                            AS fecha_cierre,
+                       c.caja_descripcion                                 AS caja,
+                       COALESCE(acc.monto_apertura, 0)                    AS monto_apertura,
+                       COALESCE(acc.monto_efectivo_cierre, 0)             AS monto_efectivo_cierre,
+                       COALESCE(acc.monto_tarjeta_cierre, 0)              AS monto_tarjeta_cierre,
+                       COALESCE(acc.monto_cheque_cierre, 0)               AS monto_cheque_cierre,
+                       f.fun_nom || ' ' || f.fun_apellido                 AS funcionario,
+                       e.emp_razon_social                                 AS empresa,
+                       s.suc_razon_social                                 AS sucursal,
+                       acc.estado
+                FROM apertura_cierre_caja acc
+                JOIN caja       c ON c.id = acc.caja_id
+                JOIN funcionario f ON f.id = acc.funcionario_id
+                JOIN empresa    e ON e.id = acc.empresa_id
+                JOIN sucursal   s ON s.id = acc.sucursal_id
+                WHERE acc.fecha_apertura BETWEEN :desde AND :hasta
+                ORDER BY acc.fecha_apertura DESC
+                {$pg}
+            ",
+
+            'arqueo_caja' => "
+                SELECT a.id,
+                       TO_CHAR(a.arqueo_fecha, 'dd/mm/yyyy HH24:MI') AS fecha,
+                       a.tipo_arqueo,
+                       c.caja_descripcion                             AS caja,
+                       f.fun_nom || ' ' || f.fun_apellido             AS funcionario,
+                       e.emp_razon_social                             AS empresa,
+                       s.suc_razon_social                             AS sucursal,
+                       a.estado
+                FROM arqueo_caja a
+                JOIN apertura_cierre_caja acc ON acc.id = a.apertura_cierre_caja_id
+                JOIN caja       c ON c.id = acc.caja_id
+                JOIN funcionario f ON f.id = acc.funcionario_id
+                JOIN empresa    e ON e.id = acc.empresa_id
+                JOIN sucursal   s ON s.id = acc.sucursal_id
+                WHERE a.arqueo_fecha BETWEEN :desde AND :hasta
+                ORDER BY a.arqueo_fecha DESC
+                {$pg}
+            ",
+
+            'recaudaciones' => "
+                SELECT rd.id,
+                       TO_CHAR(rd.reca_dep_fecha, 'dd/mm/yyyy HH24:MI') AS fecha,
+                       rd.reca_dep_met_pago                              AS met_pago,
+                       c.caja_descripcion                                AS caja,
+                       f.fun_nom || ' ' || f.fun_apellido                AS funcionario,
+                       e.emp_razon_social                                AS empresa,
+                       s.suc_razon_social                                AS sucursal,
+                       rd.reca_dep_estado                                AS estado
+                FROM recaudaciones_depositar rd
+                JOIN apertura_cierre_caja acc ON acc.id = rd.apertura_cierre_caja_id
+                JOIN caja       c ON c.id = acc.caja_id
+                JOIN funcionario f ON f.id = acc.funcionario_id
+                JOIN empresa    e ON e.id = acc.empresa_id
+                JOIN sucursal   s ON s.id = acc.sucursal_id
+                WHERE rd.reca_dep_fecha BETWEEN :desde AND :hasta
+                ORDER BY rd.reca_dep_fecha DESC
+                {$pg}
+            ",
+
             default => throw new \InvalidArgumentException("SQL no definido para: {$tipo}"),
         };
     }
@@ -239,6 +304,15 @@ class InformeVentasService
 
             'libro_ventas'   => "SELECT COUNT(*) AS total FROM libro_ventas
                                  WHERE \"libV_fecha\" BETWEEN :desde AND :hasta",
+
+            'apertura_cierre_caja' => "SELECT COUNT(*) AS total FROM apertura_cierre_caja
+                                       WHERE fecha_apertura BETWEEN :desde AND :hasta",
+
+            'arqueo_caja'  => "SELECT COUNT(*) AS total FROM arqueo_caja
+                               WHERE arqueo_fecha BETWEEN :desde AND :hasta",
+
+            'recaudaciones' => "SELECT COUNT(*) AS total FROM recaudaciones_depositar
+                                WHERE reca_dep_fecha BETWEEN :desde AND :hasta",
 
             default => throw new \InvalidArgumentException("SQL COUNT no definido para: {$tipo}"),
         };

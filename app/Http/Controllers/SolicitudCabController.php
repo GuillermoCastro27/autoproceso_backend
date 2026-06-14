@@ -53,7 +53,7 @@ class SolicitudCabController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'soli_cab_observaciones'  => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'soli_cab_observaciones'  => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'soli_cab_fecha'          => 'required|date_format:d/m/Y H:i:s',
             'soli_cab_fecha_estimada' => 'required|date_format:d/m/Y H:i:s|after_or_equal:soli_cab_fecha',
             'soli_cab_prioridad'      => 'required|in:ALTA,MEDIA,BAJA',
@@ -111,7 +111,7 @@ class SolicitudCabController extends Controller
         }
 
         $r->validate([
-            'soli_cab_observaciones'  => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'soli_cab_observaciones'  => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'soli_cab_fecha'          => 'required|date_format:d/m/Y H:i:s',
             'soli_cab_fecha_estimada' => 'required|date_format:d/m/Y H:i:s|after_or_equal:soli_cab_fecha',
             'soli_cab_prioridad'      => 'required|in:ALTA,MEDIA,BAJA',

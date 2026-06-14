@@ -39,13 +39,13 @@ class TipoContratoController extends Controller
                 },
             ],
 
-        'tip_con_objeto'          => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_alcance'         => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_garantia'        => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_responsabilidad' => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_limitacion'      => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_fuerza_mayor'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_jurisdiccion'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_objeto'          => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_alcance'         => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_garantia'        => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_responsabilidad' => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_limitacion'      => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_fuerza_mayor'    => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_jurisdiccion'    => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
 
         'tip_con_estado' => 'nullable|string|max:20'
     ], [
@@ -100,13 +100,13 @@ public function update(Request $r, $id)
                 },
             ],
 
-        'tip_con_objeto'          => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_alcance'         => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_garantia'        => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_responsabilidad' => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_limitacion'      => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_fuerza_mayor'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
-        'tip_con_jurisdiccion'    => 'required|string|max:2000|not_regex:/[*<>{}|]/',
+        'tip_con_objeto'          => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_alcance'         => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_garantia'        => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_responsabilidad' => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_limitacion'      => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_fuerza_mayor'    => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
+        'tip_con_jurisdiccion'    => ['required', 'string', 'max:2000', 'not_regex:/[*<>{}|]/'],
 
         'tip_con_estado' => 'nullable|string|max:20'
     ], [

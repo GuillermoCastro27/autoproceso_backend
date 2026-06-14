@@ -176,6 +176,10 @@ class OrdenServCabController extends Controller
             return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
+        if ($ordenservcab->ord_serv_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede modificar una orden de servicio en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
+
         $r->validate([
             'ord_serv_observaciones'  => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'ord_serv_fecha'          => 'required|date_format:d/m/Y H:i:s',
@@ -220,6 +224,14 @@ class OrdenServCabController extends Controller
             return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
+        if ($ordenservcab->ord_serv_estado === 'ANULADO') {
+            return response()->json(['mensaje' => 'La orden de servicio ya está anulada.', 'tipo' => 'warning'], 409);
+        }
+
+        if ($ordenservcab->ord_serv_estado === 'CONFIRMADO') {
+            return response()->json(['mensaje' => 'No se puede anular una orden de servicio CONFIRMADA. Contáctese con el administrador.', 'tipo' => 'warning'], 409);
+        }
+
         $ordenservcab->ord_serv_estado = 'ANULADO';
         $ordenservcab->save();
 
@@ -241,6 +253,10 @@ class OrdenServCabController extends Controller
             return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
+        if ($ordenservcab->ord_serv_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede confirmar una orden de servicio en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
+
         $ordenservcab->ord_serv_estado = 'CONFIRMADO';
         $ordenservcab->save();
 
@@ -260,9 +276,16 @@ class OrdenServCabController extends Controller
                 'ORDEN Nº: ' || TO_CHAR(osc.id, '0000000') ||
                 ' (' || COALESCE(osc.ord_serv_observaciones, '') || ')' AS orden_texto,
                 c.cli_nombre,
-                c.cli_apellido
+                c.cli_apellido,
+                osc.ord_serv_estado,
+                osc.ord_serv_fecha,
+                osc.ord_serv_observaciones,
+                et.equipo_nombre,
+                tv.tip_veh_nombre
             FROM orden_serv_cab osc
-            JOIN clientes c ON c.id = osc.clientes_id
+            JOIN clientes c        ON c.id  = osc.clientes_id
+            JOIN equipo_trabajo et ON et.id = osc.equipo_trabajo_id
+            JOIN tipo_vehiculo tv  ON tv.id = osc.tipo_vehiculo_id
             WHERE osc.ord_serv_estado IN ('PENDIENTE', 'CONFIRMADO')
             AND (osc.ord_serv_observaciones ILIKE ? OR c.cli_nombre ILIKE ? OR c.cli_apellido ILIKE ?)
             ORDER BY osc.id DESC

@@ -63,18 +63,21 @@ class CompraCabController extends Controller
         // Validación de datos
         $datosValidados = $r->validate([
             'comp_intervalo_fecha_vence' => 'nullable|date',
-            'comp_fecha'                 => 'nullable|date',
-            'comp_estado'                => 'required',
+            'comp_fecha'                 => 'required|date',
+            'comp_estado'                => 'required|in:PENDIENTE,CONFIRMADO,ANULADO,PROCESADO,RECIBIDO',
             'comp_cant_cuota'            => 'nullable|integer',
-            'condicion_pago'             => 'required',
+            'condicion_pago'             => 'required|in:CONTADO,CREDITO',
             'comp_timbrado'              => 'nullable|string|max:20',
             'comp_nro_factura'           => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
             'comp_fecha_emision'         => 'nullable|date|before_or_equal:today',
             'funcionario_id'             => 'nullable',
-            'orden_compra_cab_id'        => 'required',
-            'proveedor_id'               => 'required',
-            'empresa_id'                 => 'required',
-            'sucursal_id'                => 'required'
+            'orden_compra_cab_id'        => 'required|integer|exists:orden_compra_cab,id',
+            'proveedor_id'               => 'required|integer|exists:proveedores,id',
+            'empresa_id'                 => 'required|integer|exists:empresa,id',
+            'sucursal_id'                => 'required|integer|exists:sucursal,id',
+        ], [
+            'comp_estado.in'    => 'El estado no es válido.',
+            'condicion_pago.in' => 'La condición de pago debe ser CONTADO o CREDITO.',
         ]);
 
         $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
@@ -115,32 +118,40 @@ class CompraCabController extends Controller
 
     public function update(Request $r, $id){
         $compracab = CompraCab::find($id);
-        // Convertir cadena vacía a null antes de la validación
-    if ($r->comp_intervalo_fecha_vence === '') {
-        $r->merge(['comp_intervalo_fecha_vence' => null]);
-    }
+        if (!$compracab) {
+            return response()->json(['mensaje' => 'Compra no encontrada', 'tipo' => 'error'], 404);
+        }
 
-    // Establecer   _comp_cant_cuota como null si la condición de pago es "CONTADO"
-    if ($r->condicion_pago === 'CONTADO') {
-        // Asegurar que estos campos sean null para pagos al contado
-        $r->merge(['comp_intervalo_fecha_vence' => null, 'comp_cant_cuota' => null]);
-    }
+        if ($compracab->comp_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede modificar una compra en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
+
+        if ($r->comp_intervalo_fecha_vence === '') {
+            $r->merge(['comp_intervalo_fecha_vence' => null]);
+        }
+        if ($r->condicion_pago === 'CONTADO') {
+            $r->merge(['comp_intervalo_fecha_vence' => null, 'comp_cant_cuota' => null]);
+        }
+
         $datosValidados = $r->validate([
             'comp_intervalo_fecha_vence' => 'nullable|date',
-            'comp_fecha'                 => 'nullable|date',
-            'comp_estado'                => 'required',
+            'comp_fecha'                 => 'required|date',
+            'comp_estado'                => 'required|in:PENDIENTE,CONFIRMADO,ANULADO,PROCESADO,RECIBIDO',
             'comp_cant_cuota'            => 'nullable|integer',
-            'condicion_pago'             => 'required',
+            'condicion_pago'             => 'required|in:CONTADO,CREDITO',
             'comp_timbrado'              => 'nullable|string|max:20',
             'comp_nro_factura'           => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
-            'orden_compra_cab_id'        => 'required',
-            'proveedor_id'               => 'required',
-            'empresa_id'                 => 'required',
-            'sucursal_id'                => 'required'
+            'orden_compra_cab_id'        => 'required|integer|exists:orden_compra_cab,id',
+            'proveedor_id'               => 'required|integer|exists:proveedores,id',
+            'empresa_id'                 => 'required|integer|exists:empresa,id',
+            'sucursal_id'                => 'required|integer|exists:sucursal,id',
+        ], [
+            'comp_estado.in'    => 'El estado no es válido.',
+            'condicion_pago.in' => 'La condición de pago debe ser CONTADO o CREDITO.',
         ]);
         if ($r->condicion_pago === 'CONTADO') {
-            $datosValidados['comp_intervalo_fecha_vence'] = null; // Establece null si es "CONTADO"
-            $datosValidados['comp_cant_cuota'] = null; // Establece null si es "CONTADO"
+            $datosValidados['comp_intervalo_fecha_vence'] = null;
+            $datosValidados['comp_cant_cuota'] = null;
         }
         $compracab->update($datosValidados);
         return response()->json([
@@ -161,43 +172,12 @@ class CompraCabController extends Controller
         ], 404);
     }
 
-    if ($r->comp_intervalo_fecha_vence === '') {
-        $r->merge(['comp_intervalo_fecha_vence' => null]);
+    if ($compracab->comp_estado === 'ANULADO') {
+        return response()->json(['mensaje' => 'La compra ya está anulada.', 'tipo' => 'warning'], 409);
     }
 
-    // Si la condición de pago es "CONTADO", limpiar campos
-    if ($r->condicion_pago === 'CONTADO') {
-        $r->merge([
-            'comp_intervalo_fecha_vence' => null,
-            'comp_cant_cuota'            => null
-        ]);
-    }
-
-    // Validar datos
-    $datosValidados = $r->validate([
-        'comp_intervalo_fecha_vence' => 'nullable|date',
-        'comp_fecha'                 => 'nullable|date',
-        'comp_estado'                => 'required',
-        'comp_cant_cuota'            => 'nullable|integer',
-        'condicion_pago'             => 'required',
-        'comp_timbrado'              => 'nullable|string|max:20',
-        'orden_compra_cab_id'        => 'required',
-        'proveedor_id'               => 'required',
-        'empresa_id'                 => 'required',
-        'sucursal_id'                => 'required'
-    ]);
-
-    if ($r->condicion_pago === 'CONTADO') {
-        $datosValidados['comp_intervalo_fecha_vence'] = null;
-        $datosValidados['comp_cant_cuota']            = null;
-    }
-
-    // Guardar estado anterior
     $estadoAnterior = $compracab->comp_estado;
-
-    // Actualizar compra a ANULADO
-    $compracab->update($datosValidados);
-    $compracab->comp_estado = "ANULADO";
+    $compracab->comp_estado = 'ANULADO';
     $compracab->save();
 
     // Inicializar mensaje según estado anterior
@@ -307,6 +287,10 @@ public function confirmar(Request $r, $id) {
 
     if (!$compracab) {
         return response()->json(['error' => 'Compra no encontrada.'], 404);
+    }
+
+    if ($compracab->comp_estado !== 'PENDIENTE') {
+        return response()->json(['mensaje' => 'Solo se puede confirmar una compra en estado PENDIENTE.', 'tipo' => 'warning'], 409);
     }
 
     // Ajustar valores en función de la condición de pago

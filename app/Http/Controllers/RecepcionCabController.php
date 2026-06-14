@@ -77,7 +77,7 @@ class RecepcionCabController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'recep_cab_observaciones'    => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'recep_cab_observaciones'    => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'recep_cab_fecha'            => 'required|date_format:d/m/Y H:i:s',
             'recep_cab_fecha_estimada'   => 'required|date_format:d/m/Y H:i:s|after_or_equal:recep_cab_fecha',
             'recep_cab_prioridad'        => 'required|in:ALTA,MEDIA,BAJA',
@@ -179,7 +179,7 @@ class RecepcionCabController extends Controller
         }
 
         $r->validate([
-            'recep_cab_observaciones'    => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'recep_cab_observaciones'    => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'recep_cab_fecha'            => 'required|date_format:d/m/Y H:i:s',
             'recep_cab_fecha_estimada'   => 'required|date_format:d/m/Y H:i:s|after_or_equal:recep_cab_fecha',
             'recep_cab_prioridad'        => 'required|in:ALTA,MEDIA,BAJA',

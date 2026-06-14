@@ -28,6 +28,8 @@ class NotasVentDet extends Model implements Auditable
         'notas_vent_det_precio',
         'tipo_impuesto_id',
         'deposito_id',
+        'marca_id',
+        'modelo_id',
     ];
 
     /**

@@ -36,7 +36,7 @@ class TipoDescuentosController extends Controller
                     }
                 },
             ],
-            'tipo_desc_descrip'     => 'required|string|max:255|not_regex:/[*<>{}|]/',
+            'tipo_desc_descrip'     => ['required', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
             'tipo_desc_fechaInicio' => 'required|date_format:d/m/Y H:i:s',
             'tipo_desc_fechaFin'    => 'required|date_format:d/m/Y H:i:s|after_or_equal:tipo_desc_fechaInicio',
         ], [
@@ -84,7 +84,7 @@ class TipoDescuentosController extends Controller
                     }
                 },
             ],
-            'tipo_desc_descrip'     => 'required|string|max:255|not_regex:/[*<>{}|]/',
+            'tipo_desc_descrip'     => ['required', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
             'tipo_desc_fechaInicio' => 'required|date',
             'tipo_desc_fechaFin'    => 'required|date|after_or_equal:tipo_desc_fechaInicio',
         ], [

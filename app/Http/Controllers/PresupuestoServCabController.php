@@ -113,7 +113,7 @@ class PresupuestoServCabController extends Controller
 
 public function store(Request $r){
         $r->validate([
-            'pres_serv_cab_observaciones' => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'pres_serv_cab_observaciones' => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'pres_serv_cab_fecha'         => 'required|date_format:d/m/Y H:i:s',
             'pres_serv_cab_fecha_vence'   => 'required|date_format:d/m/Y H:i:s|after_or_equal:pres_serv_cab_fecha',
             'empresa_id'                  => 'required|integer|exists:empresa,id',
@@ -212,7 +212,7 @@ public function store(Request $r){
         }
 
         $r->validate([
-            'pres_serv_cab_observaciones' => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'pres_serv_cab_observaciones' => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'pres_serv_cab_fecha'         => 'required|date_format:d/m/Y H:i:s',
             'pres_serv_cab_fecha_vence'   => 'required|date_format:d/m/Y H:i:s|after_or_equal:pres_serv_cab_fecha',
             'empresa_id'                  => 'required|integer|exists:empresa,id',

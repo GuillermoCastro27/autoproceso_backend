@@ -73,19 +73,25 @@ public function store(Request $r) {
 
     $datosValidados = $r->validate([
         'nota_comp_intervalo_fecha_vence' => 'nullable|date',
-        'nota_comp_fecha' => 'required|date',
-        'nota_comp_estado' => 'required',
-        'nota_comp_cant_cuota' => 'nullable|integer',
-        'nota_comp_tipo'           => 'required',
+        'nota_comp_fecha'          => 'required|date',
+        'nota_comp_estado'         => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
+        'nota_comp_cant_cuota'     => 'nullable|integer',
+        'nota_comp_tipo'           => 'required|in:Crédito,Débito',
         'nota_comp_afecta_stock'   => 'nullable|boolean',
-        'nota_comp_observaciones'  => 'required',
+        'nota_comp_observaciones'  => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
         'nota_comp_timbrado'       => 'nullable|string|max:20',
         'nota_comp_nro_nota'       => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
         'funcionario_id'           => 'nullable',
-        'compra_cab_id'            => 'required|integer',
-        'empresa_id'               => 'required|integer',
-        'sucursal_id'              => 'required|integer',
-        'nota_comp_condicion_pago' => 'required|string|max:20'
+        'compra_cab_id'            => 'required|integer|exists:compra_cab,id',
+        'empresa_id'               => 'required|integer|exists:empresa,id',
+        'sucursal_id'              => 'required|integer|exists:sucursal,id',
+        'nota_comp_condicion_pago' => 'required|in:CONTADO,CRÉDITO',
+    ], [
+        'nota_comp_estado.in'              => 'El estado no es válido.',
+        'nota_comp_tipo.in'                => 'El tipo debe ser Crédito o Débito.',
+        'nota_comp_observaciones.not_regex'=> 'Las observaciones contienen caracteres no permitidos.',
+        'nota_comp_observaciones.max'      => 'Las observaciones no pueden superar 500 caracteres.',
+        'nota_comp_condicion_pago.in'      => 'La condición de pago debe ser CONTADO o CRÉDITO.',
     ]);
 
     $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
@@ -131,30 +137,37 @@ public function update(Request $r, $id)
             'tipo' => 'error'
         ], 404);
     }
-     // Convertir cadena vacía a null antes de la validación
+
+    if ($notacompcab->nota_comp_estado !== 'PENDIENTE') {
+        return response()->json(['mensaje' => 'Solo se puede modificar una nota en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+    }
+
     if ($r->nota_comp_intervalo_fecha_vence === '') {
         $r->merge(['nota_comp_intervalo_fecha_vence' => null]);
     }
 
-    // Establecer ord_comp_cant_cuota como null si la condición de pago es "CONTADO"
     if ($r->nota_comp_condicion_pago === 'CONTADO') {
         $r->merge(['nota_comp_intervalo_fecha_vence' => null, 'nota_comp_cant_cuota' => null]);
     }
 
-
     $datosValidados = $r->validate([
         'nota_comp_intervalo_fecha_vence' => 'nullable|date',
-        'nota_comp_fecha' => 'required|date',
-        'nota_comp_estado' => 'required',
-        'nota_comp_cant_cuota' => 'nullable|integer',
-        'nota_comp_tipo' => 'required',
-        'nota_comp_observaciones' => 'required',
-        'nota_comp_timbrado'  => 'nullable|string|max:20',
-        'nota_comp_nro_nota'  => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
-        'compra_cab_id'       => 'required|integer',
-        'empresa_id'          => 'required|integer',
-        'sucursal_id'         => 'required|integer',
-        'nota_comp_condicion_pago' => 'required|string|max:20'
+        'nota_comp_fecha'          => 'required|date',
+        'nota_comp_estado'         => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
+        'nota_comp_cant_cuota'     => 'nullable|integer',
+        'nota_comp_tipo'           => 'required|in:Crédito,Débito',
+        'nota_comp_observaciones'  => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
+        'nota_comp_timbrado'       => 'nullable|string|max:20',
+        'nota_comp_nro_nota'       => ['nullable','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'],
+        'compra_cab_id'            => 'required|integer|exists:compra_cab,id',
+        'empresa_id'               => 'required|integer|exists:empresa,id',
+        'sucursal_id'              => 'required|integer|exists:sucursal,id',
+        'nota_comp_condicion_pago' => 'required|in:CONTADO,CRÉDITO',
+    ], [
+        'nota_comp_estado.in'              => 'El estado no es válido.',
+        'nota_comp_tipo.in'                => 'El tipo debe ser Crédito o Débito.',
+        'nota_comp_observaciones.not_regex'=> 'Las observaciones contienen caracteres no permitidos.',
+        'nota_comp_condicion_pago.in'      => 'La condición de pago debe ser CONTADO o CRÉDITO.',
     ]);
 
     if ($r->nota_comp_condicion_pago === 'CONTADO') {
@@ -182,27 +195,13 @@ public function anular(Request $r, $id)
     }
 
     // Guardamos estado previo
+    if ($notacompcab->nota_comp_estado === 'ANULADO') {
+        return response()->json(['mensaje' => 'La nota ya está anulada.', 'tipo' => 'warning'], 409);
+    }
+
     $estadoAnterior = $notacompcab->nota_comp_estado;
 
-    // Validar datos
-    $datosValidados = $r->validate([
-        'nota_comp_intervalo_fecha_vence' => 'nullable|date',
-        'nota_comp_fecha'                 => 'required|date',
-        'nota_comp_estado'                => 'required',
-        'nota_comp_cant_cuota'            => 'nullable|integer',
-        'nota_comp_tipo'                  => 'required',
-        'nota_comp_observaciones'         => 'required',
-        'nota_comp_timbrado'              => 'nullable|string|max:20',
-        'funcionario_id'                  => 'nullable|integer',
-        'compra_cab_id'                   => 'required|integer',
-        'empresa_id'                      => 'required|integer',
-        'sucursal_id'                     => 'required|integer',
-        'nota_comp_condicion_pago'        => 'required|string|max:20'
-    ]);
-
-    // Actualizamos cabecera
-    $notacompcab->update($datosValidados);
-    $notacompcab->nota_comp_estado = "ANULADO";
+    $notacompcab->nota_comp_estado = 'ANULADO';
     $notacompcab->save();
 
     // Solo revertimos si estaba CONFIRMADO

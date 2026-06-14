@@ -83,8 +83,8 @@ class TimbradoController extends Controller
 
         $abreviaturas = [
             'factura'            => null,
-            'nota_credito'       => null,
-            'nota_debito'        => null,
+            'nota_credito'       => 'NC',
+            'nota_debito'        => 'ND',
             'nota_remision_comp' => 'NRC',
             'nota_remision_vent' => 'NRV',
         ];
@@ -97,7 +97,7 @@ class TimbradoController extends Controller
             'nota_remision_vent' => '%Remisi%Vent%',
         ];
 
-        $patron    = $patrones[$r->tipo_documento];
+        $patron      = $patrones[$r->tipo_documento];
         $abreviatura = $abreviaturas[$r->tipo_documento];
         $hoy       = now()->toDateString();
 

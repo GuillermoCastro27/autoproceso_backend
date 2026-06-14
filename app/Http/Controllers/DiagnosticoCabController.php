@@ -73,7 +73,7 @@ class DiagnosticoCabController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'diag_cab_observaciones'    => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'diag_cab_observaciones'    => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'diag_cab_fecha'            => 'required|date_format:d/m/Y H:i:s',
             'diag_cab_prioridad'        => 'required|in:ALTA,MEDIA,BAJA',
             'diag_cab_kilometraje'      => 'required|numeric|min:0',
@@ -171,7 +171,7 @@ class DiagnosticoCabController extends Controller
         }
 
         $r->validate([
-            'diag_cab_observaciones'    => 'required|string|max:500|not_regex:/[*<>{}|]/',
+            'diag_cab_observaciones'    => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
             'diag_cab_fecha'            => 'required|date_format:d/m/Y H:i:s',
             'diag_cab_prioridad'        => 'required|in:ALTA,MEDIA,BAJA',
             'diag_cab_kilometraje'      => 'required|numeric|min:0',

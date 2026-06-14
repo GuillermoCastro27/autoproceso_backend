@@ -33,8 +33,8 @@ class EquipoTrabajoController extends Controller
                     }
                 },
             ],
-            'equipo_descripcion' => 'nullable|string|max:255|not_regex:/[*<>{}|]/',
-            'equipo_categoria'   => 'nullable|string|max:50|not_regex:/[*<>{}|]/',
+            'equipo_descripcion' => ['nullable', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
+            'equipo_categoria'   => ['nullable', 'string', 'max:50', 'not_regex:/[*<>{}|]/'],
         ], [
             'equipo_nombre.required'       => 'El campo nombre es obligatorio.',
             'equipo_nombre.not_regex'      => 'El nombre contiene caracteres no permitidos.',
@@ -70,8 +70,8 @@ class EquipoTrabajoController extends Controller
                     }
                 },
             ],
-            'equipo_descripcion' => 'nullable|string|max:255|not_regex:/[*<>{}|]/',
-            'equipo_categoria'   => 'nullable|string|max:50|not_regex:/[*<>{}|]/',
+            'equipo_descripcion' => ['nullable', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
+            'equipo_categoria'   => ['nullable', 'string', 'max:50', 'not_regex:/[*<>{}|]/'],
         ], [
             'equipo_nombre.required'       => 'El campo nombre es obligatorio.',
             'equipo_nombre.not_regex'      => 'El nombre contiene caracteres no permitidos.',

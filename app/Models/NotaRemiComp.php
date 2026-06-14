@@ -33,6 +33,8 @@ class NotaRemiComp extends Model implements Auditable
         'vehiculo_nro',
         'tipo_vehiculo',
         'funcionario_id',
+        'conductor_id',
+        'tipo_vehiculo_det_id',
         'empresa_id',
         'sucursal_id',
     ];

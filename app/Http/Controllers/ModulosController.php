@@ -17,8 +17,8 @@ class ModulosController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'mod_nombre'      => 'required|string|max:100|unique:modulos,mod_nombre|not_regex:/[*<>{}|]/',
-            'mod_descripcion' => 'required|string|max:200|not_regex:/[*<>{}|]/',
+            'mod_nombre'      => ['required', 'string', 'max:100', 'unique:modulos,mod_nombre', 'not_regex:/[*<>{}|]/'],
+            'mod_descripcion' => ['required', 'string', 'max:200', 'not_regex:/[*<>{}|]/'],
             'mod_estado'      => 'required|string|max:20',
         ], [
             'mod_nombre.required'       => 'El nombre del módulo es obligatorio.',
@@ -51,7 +51,7 @@ class ModulosController extends Controller
 
         $r->validate([
             'mod_nombre'      => ['required', 'string', 'max:100', Rule::unique('modulos', 'mod_nombre')->ignore($id), 'not_regex:/[*<>{}|]/'],
-            'mod_descripcion' => 'required|string|max:200|not_regex:/[*<>{}|]/',
+            'mod_descripcion' => ['required', 'string', 'max:200', 'not_regex:/[*<>{}|]/'],
             'mod_estado'      => 'required|string|max:20',
         ], [
             'mod_nombre.required'       => 'El nombre del módulo es obligatorio.',

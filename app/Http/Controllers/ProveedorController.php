@@ -17,7 +17,7 @@ class ProveedorController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'prov_razonsocial' => 'required|string|max:200|not_regex:/[*<>{}|]/',
+            'prov_razonsocial' => ['required', 'string', 'max:200', 'not_regex:/[*<>{}|]/'],
             'prov_ruc'         => ['required', 'string', 'max:20', 'regex:/^([A-Za-z]{1,2}\d{6,9}|\d{6,8}(-\d{1,2})?)$/', Rule::unique('proveedores', 'prov_ruc')->whereNull('deleted_at')],
             'prov_direccion'   => 'required|string|max:300',
             'prov_telefono'    => 'required|string|max:30',
@@ -65,7 +65,7 @@ class ProveedorController extends Controller
         }
 
         $r->validate([
-            'prov_razonsocial' => 'required|string|max:200|not_regex:/[*<>{}|]/',
+            'prov_razonsocial' => ['required', 'string', 'max:200', 'not_regex:/[*<>{}|]/'],
             'prov_ruc'         => ['required', 'string', 'max:20', 'regex:/^([A-Za-z]{1,2}\d{6,9}|\d{6,8}(-\d{1,2})?)$/', Rule::unique('proveedores', 'prov_ruc')->ignore($id)->whereNull('deleted_at')],
             'prov_direccion'   => 'required|string|max:300',
             'prov_telefono'    => 'required|string|max:30',

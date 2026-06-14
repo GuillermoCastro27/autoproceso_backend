@@ -93,6 +93,58 @@ return [
         ],
     ],
 
+    'apertura_cierre_caja' => [
+        'titulo'    => 'Listado de Aperturas y Cierres de Caja',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',                      'label' => 'Código'],
+            ['key' => 'fecha_apertura',           'label' => 'Fecha Apertura'],
+            ['key' => 'fecha_cierre',             'label' => 'Fecha Cierre'],
+            ['key' => 'caja',                     'label' => 'Caja'],
+            ['key' => 'monto_apertura',           'label' => 'Monto Apertura'],
+            ['key' => 'monto_efectivo_cierre',    'label' => 'Cierre Efectivo'],
+            ['key' => 'monto_tarjeta_cierre',     'label' => 'Cierre Tarjeta'],
+            ['key' => 'monto_cheque_cierre',      'label' => 'Cierre Cheque'],
+            ['key' => 'funcionario',              'label' => 'Encargado'],
+            ['key' => 'empresa',                  'label' => 'Empresa'],
+            ['key' => 'sucursal',                 'label' => 'Sucursal'],
+            ['key' => 'estado',                   'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'arqueo_caja' => [
+        'titulo'    => 'Listado de Arqueos de Caja',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',          'label' => 'Código'],
+            ['key' => 'fecha',       'label' => 'Fecha'],
+            ['key' => 'tipo_arqueo', 'label' => 'Tipo Arqueo'],
+            ['key' => 'caja',        'label' => 'Caja'],
+            ['key' => 'funcionario', 'label' => 'Encargado'],
+            ['key' => 'empresa',     'label' => 'Empresa'],
+            ['key' => 'sucursal',    'label' => 'Sucursal'],
+            ['key' => 'estado',      'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'recaudaciones' => [
+        'titulo'    => 'Listado de Recaudaciones a Depositar',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',          'label' => 'Código'],
+            ['key' => 'fecha',       'label' => 'Fecha'],
+            ['key' => 'met_pago',    'label' => 'Método de Pago'],
+            ['key' => 'caja',        'label' => 'Caja'],
+            ['key' => 'funcionario', 'label' => 'Encargado'],
+            ['key' => 'empresa',     'label' => 'Empresa'],
+            ['key' => 'sucursal',    'label' => 'Sucursal'],
+            ['key' => 'estado',      'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
     'libro_ventas' => [
         'titulo'    => 'Libro de Ventas',
         'cache_ttl' => 900,

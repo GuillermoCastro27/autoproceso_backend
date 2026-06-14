@@ -327,15 +327,16 @@ class InformeService
 
     private function getSqlTotales(string $tipo, array $defs): string
     {
+        if ($tipo === 'libro_compras') {
+            return "SELECT SUM(\"libC_monto\") AS total_monto, COUNT(*) AS registros
+                    FROM libro_compras
+                    WHERE \"libC_fecha\" BETWEEN :desde AND :hasta";
+        }
+
         $selects = collect($defs)
             ->map(fn ($d) => "{$d['query']} AS {$d['label']}")
             ->implode(', ');
 
-        return match ($tipo) {
-            'libro_compras' => "SELECT SUM(\"libC_monto\") AS total_monto, COUNT(*) AS registros
-                                FROM libro_compras
-                                WHERE \"libC_fecha\" BETWEEN :desde AND :hasta",
-            default => "SELECT {$selects} FROM (SELECT 1) t WHERE FALSE",
-        };
+        return "SELECT {$selects} FROM (SELECT 1) t WHERE FALSE";
     }
 }

@@ -32,7 +32,7 @@ class TipoDiagnosticoController extends Controller
                     }
                 },
             ],
-            'tipo_diag_descrip' => 'required|string|max:255|not_regex:/[*<>{}|]/',
+            'tipo_diag_descrip' => ['required', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
         ], [
             'tipo_diag_nombre.required'  => 'El nombre del tipo de diagnóstico es obligatorio.',
             'tipo_diag_nombre.max'       => 'El nombre no puede superar los 100 caracteres.',
@@ -75,7 +75,7 @@ class TipoDiagnosticoController extends Controller
                     }
                 },
             ],
-            'tipo_diag_descrip' => 'required|string|max:255|not_regex:/[*<>{}|]/',
+            'tipo_diag_descrip' => ['required', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
         ], [
             'tipo_diag_nombre.required'  => 'El nombre del tipo de diagnóstico es obligatorio.',
             'tipo_diag_nombre.max'       => 'El nombre no puede superar los 100 caracteres.',

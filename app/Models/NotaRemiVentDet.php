@@ -17,11 +17,11 @@ class NotaRemiVentDet extends Model implements Auditable
     protected array $auditKeyColumns = ['nota_remi_vent_id', 'item_id'];
     protected $table = 'nota_remi_vent_det';
     protected $fillable = [
-    'nota_remi_vent_id',
-    'item_id', 
-    'nota_remi_vent_det_cantidad',
-    'nota_remi_vent_det_precio'
+        'nota_remi_vent_id',
+        'item_id',
+        'nota_remi_vent_det_cantidad',
+        'nota_remi_vent_det_precio',
+        'tipo_origen',
+        'orden_serv_cab_id',
     ];
-    protected $primaryKey = null;
-    public $incrementing = false; 
 }

@@ -35,12 +35,12 @@ public function store(Request $r)
         // Cabecera
         'numero_documento' => 'nullable|string|max:50',
         'nro_voucher' => 'nullable|string|max:50',
-        'portador' => 'nullable|string|max:100',
+        'portador' => ['nullable', 'string', 'max:100', 'not_regex:/[*<>{}|]/'],
         'fecha_cobro_diferido' => 'nullable|date',
         'entidad_emisora_id' => 'nullable|integer|exists:entidad_emisora,id',
         'marca_tarjeta_id' => 'nullable|integer|exists:marca_tarjeta,id',
         'entidad_adherida_id' => 'nullable|integer|exists:entidad_adherida,id',
-        'cobro_observacion' => 'nullable|string|max:200',
+        'cobro_observacion' => ['nullable', 'string', 'max:200', 'not_regex:/[*<>{}|]/'],
 
         // Cuotas
         'cuotas' => 'required|array|min:1',

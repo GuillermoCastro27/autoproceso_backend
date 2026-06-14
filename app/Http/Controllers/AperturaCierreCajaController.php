@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AperturaCierreCaja;
+use App\Models\RecaudacionDepositar;
 use Illuminate\Support\Facades\DB;
 
 class AperturaCierreCajaController extends Controller
@@ -51,11 +52,11 @@ class AperturaCierreCajaController extends Controller
     public function store(Request $request)
 {
     $request->validate([
-        'empresa_id'      => 'required|integer',
-        'sucursal_id'     => 'required|integer',
-        'caja_id'         => 'required|integer',
+        'empresa_id'      => 'required|integer|exists:empresa,id',
+        'sucursal_id'     => 'required|integer|exists:sucursal,id',
+        'caja_id'         => 'required|integer|exists:caja,id',
         'fecha_apertura'  => 'required|date',
-        'monto_apertura'  => 'required|numeric|min:0'
+        'monto_apertura'  => 'required|numeric|min:0',
     ]);
 
     $existeCajaAbierta = AperturaCierreCaja::where('empresa_id', $request->empresa_id)
@@ -170,6 +171,25 @@ class AperturaCierreCajaController extends Controller
             'estado'                => 'CERRADA'
         ]);
 
+        // ============================
+        // 🔹 RECAUDACIÓN A DEPOSITAR (solo efectivo)
+        // Se genera automáticamente si hubo cobros en efectivo
+        // ============================
+        if ($efectivo > 0) {
+            $yaExiste = RecaudacionDepositar::where('apertura_cierre_caja_id', $acc->id)
+                ->where('reca_dep_met_pago', 'EFECTIVO')
+                ->exists();
+
+            if (!$yaExiste) {
+                RecaudacionDepositar::create([
+                    'apertura_cierre_caja_id' => $acc->id,
+                    'reca_dep_met_pago'       => 'EFECTIVO',
+                    'reca_dep_estado'         => 'PENDIENTE',
+                    'reca_dep_fecha'          => now(),
+                ]);
+            }
+        }
+
         DB::commit();
 
         return response()->json([
@@ -219,9 +239,9 @@ public function buscarAbiertasArqueo()
         ->join('funcionario as f', 'f.id', '=', 'acc.funcionario_id')
         ->select(
             'acc.id as apertura_cierre_caja_id',
-            'acc.id as empresa_id',
+            'acc.empresa_id',
             'e.emp_razon_social',
-            'acc.sucursal_id as sucursal_id',
+            'acc.sucursal_id',
             's.suc_razon_social',
             'c.caja_descripcion',
             DB::raw("TO_CHAR(acc.fecha_apertura, 'DD/MM/YYYY HH24:MI:SS') as fecha_apertura"),

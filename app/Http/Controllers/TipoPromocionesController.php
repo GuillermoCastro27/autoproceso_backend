@@ -37,7 +37,7 @@ class TipoPromocionesController extends Controller
                     }
                 },
             ],
-            'tipo_prom_descrip'      => 'required|string|max:255|not_regex:/[*<>{}|]/',
+            'tipo_prom_descrip'      => ['required', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
             'tipo_prom_fechaInicio'  => 'required|date_format:d/m/Y H:i:s',
             'tipo_prom_fechaFin'     => 'required|date_format:d/m/Y H:i:s|after_or_equal:tipo_prom_fechaInicio',
             'tipo_prom_modo'         => 'required|string|max:50',
@@ -91,7 +91,7 @@ class TipoPromocionesController extends Controller
                     }
                 },
             ],
-            'tipo_prom_descrip'      => 'required|string|max:255|not_regex:/[*<>{}|]/',
+            'tipo_prom_descrip'      => ['required', 'string', 'max:255', 'not_regex:/[*<>{}|]/'],
             'tipo_prom_fechaInicio'  => 'required|date_format:d/m/Y H:i:s',
             'tipo_prom_fechaFin'     => 'required|date_format:d/m/Y H:i:s|after_or_equal:tipo_prom_fechaInicio',
             'tipo_prom_modo'         => 'required|string|max:50',

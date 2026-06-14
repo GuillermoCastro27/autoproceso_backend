@@ -16,7 +16,7 @@ class CajaController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'caja_descripcion' => 'required|string|max:100|unique:cajas,caja_descripcion|not_regex:/[*<>{}|]/',
+            'caja_descripcion' => ['required', 'string', 'max:100', 'unique:cajas,caja_descripcion', 'not_regex:/[*<>{}|]/'],
         ], [
             'caja_descripcion.required'  => 'La descripción de la caja es obligatoria.',
             'caja_descripcion.max'       => 'La descripción no puede superar los 100 caracteres.',

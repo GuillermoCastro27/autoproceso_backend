@@ -18,40 +18,46 @@ class NotasVentCabController extends Controller
      * 📌 READ
      * =============================== */
     public function read()
-{
-    return DB::select("
-        SELECT 
-            nvc.id,
-            nvc.empresa_id,
-            nvc.sucursal_id,
-            nvc.ventas_cab_id,
-            nvc.clientes_id,          -- 👈 CLAVE
-            COALESCE('VENTA NRO: ' || to_char(vc.id, '0000000'), 'SIN VENTA') AS venta,
-            to_char(nvc.nota_vent_fecha, 'YYYY-MM-DD HH24:MI:SS') AS nota_vent_fecha,
-            COALESCE(to_char(nvc.nota_vent_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS'), 'N/A') AS vencimiento,
-            nvc.nota_vent_estado,
-            nvc.nota_vent_tipo,
-            nvc.nota_vent_observaciones,
-            nvc.nota_vene_condicion_pago,
-            COALESCE(nvc.nota_vent_cant_cuota::varchar, '0') AS cuotas,
-            c.cli_nombre,
-            c.cli_apellido,
-            c.cli_ruc,
-            c.cli_direccion,
-            c.cli_telefono,
-            c.cli_correo,
-            f.fun_nom || ' ' || f.fun_apellido AS funcionario,
-            s.suc_razon_social,
-            e.emp_razon_social,
-            nvc.created_at
-        FROM notas_vent_cab nvc
-        JOIN funcionario f ON f.id = nvc.funcionario_id
-        JOIN clientes c ON c.id = nvc.clientes_id
-        JOIN sucursal s ON s.id = nvc.sucursal_id
-        JOIN empresa e ON e.id = nvc.empresa_id
-        LEFT JOIN ventas_cab vc ON vc.id = nvc.ventas_cab_id
-    ");
-}
+    {
+        return DB::select("
+            SELECT
+                nvc.id,
+                nvc.empresa_id,
+                nvc.sucursal_id,
+                nvc.ventas_cab_id,
+                nvc.clientes_id,
+                nvc.timbrado_id,
+                COALESCE(nvc.nota_vent_nro_comprobante::text, '') AS nota_vent_nro_comprobante,
+                COALESCE(t.tim_numero::varchar, '')          AS tim_numero,
+                COALESCE(TO_CHAR(t.tim_fecha_fin, 'YYYY-MM-DD'), '') AS tim_fecha_fin,
+                COALESCE('VENTA NRO: ' || to_char(vc.id, '0000000'), 'SIN VENTA') AS venta,
+                to_char(nvc.nota_vent_fecha, 'YYYY-MM-DD HH24:MI:SS') AS nota_vent_fecha,
+                COALESCE(to_char(nvc.nota_vent_intervalo_fecha_vence, 'YYYY-MM-DD HH24:MI:SS'), 'N/A') AS vencimiento,
+                nvc.nota_vent_estado,
+                nvc.nota_vent_tipo,
+                nvc.nota_vent_afecta_stock,
+                nvc.nota_vent_observaciones,
+                nvc.nota_vene_condicion_pago,
+                COALESCE(nvc.nota_vent_cant_cuota::varchar, '0') AS cuotas,
+                c.cli_nombre,
+                c.cli_apellido,
+                c.cli_ruc,
+                c.cli_direccion,
+                c.cli_telefono,
+                c.cli_correo,
+                f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+                s.suc_razon_social,
+                e.emp_razon_social,
+                nvc.created_at
+            FROM notas_vent_cab nvc
+            JOIN funcionario f  ON f.id  = nvc.funcionario_id
+            JOIN clientes c     ON c.id  = nvc.clientes_id
+            JOIN sucursal s     ON s.id  = nvc.sucursal_id
+            JOIN empresa e      ON e.id  = nvc.empresa_id
+            LEFT JOIN ventas_cab vc ON vc.id = nvc.ventas_cab_id
+            LEFT JOIN timbrado t    ON t.id  = nvc.timbrado_id
+        ");
+    }
 
 
     /* ===============================
@@ -68,18 +74,32 @@ class NotasVentCabController extends Controller
 
         $datos = $r->validate([
             'nota_vent_intervalo_fecha_vence' => 'nullable',
-            'nota_vent_fecha' => 'required',
-            'nota_vent_estado' => 'required|string',
-            'nota_vent_cant_cuota' => 'nullable|integer',
-            'nota_vent_tipo' => 'required|string',
-            'nota_vent_observaciones' => 'required|string',
-            'nota_vene_condicion_pago' => 'required|string',
-            'clientes_id' => 'required|integer',
-            'ventas_cab_id' => 'required|integer',
-            'funcionario_id' => 'nullable',
-            'empresa_id' => 'required|integer',
-            'sucursal_id' => 'required|integer'
+            'nota_vent_fecha'                 => 'required',
+            'nota_vent_estado'                => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
+            'nota_vent_cant_cuota'            => 'nullable|integer',
+            'nota_vent_tipo'                  => 'required|in:Crédito,Débito',
+            'nota_vent_afecta_stock'          => 'nullable|boolean',
+            'nota_vent_observaciones'         => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
+            'nota_vene_condicion_pago'        => 'required|in:CONTADO,CRÉDITO',
+            'clientes_id'                     => 'required|integer|exists:clientes,id',
+            'ventas_cab_id'                   => 'required|integer|exists:ventas_cab,id',
+            'funcionario_id'                  => 'nullable',
+            'empresa_id'                      => 'required|integer|exists:empresa,id',
+            'sucursal_id'                     => 'required|integer|exists:sucursal,id',
+            'timbrado_id'                     => 'nullable|integer|exists:timbrado,id',
+            'nota_vent_nro_comprobante'       => 'nullable|integer',
+        ], [
+            'nota_vent_estado.in'              => 'El estado no es válido.',
+            'nota_vent_tipo.in'                => 'El tipo debe ser Crédito o Débito.',
+            'nota_vent_observaciones.not_regex'=> 'Las observaciones contienen caracteres no permitidos.',
+            'nota_vent_observaciones.max'      => 'Las observaciones no pueden superar 500 caracteres.',
+            'nota_vene_condicion_pago.in'      => 'La condición de pago debe ser CONTADO o CRÉDITO.',
+            'clientes_id.exists'               => 'El cliente seleccionado no es válido.',
+            'ventas_cab_id.exists'             => 'La venta seleccionada no es válida.',
+            'empresa_id.exists'                => 'La empresa seleccionada no es válida.',
+            'sucursal_id.exists'               => 'La sucursal seleccionada no es válida.',
         ]);
+        $datos['nota_vent_afecta_stock'] = filter_var($r->nota_vent_afecta_stock ?? true, FILTER_VALIDATE_BOOLEAN);
 
         DB::beginTransaction();
 
@@ -191,22 +211,24 @@ class NotasVentCabController extends Controller
             }
 
             // ===============================
-            // AJUSTE DE STOCK
+            // AJUSTE DE STOCK (solo si afecta stock)
             // ===============================
-            if ($nota->nota_vent_tipo === 'Crédito') {
-                // DEVOLUCIÓN: suma stock
-                $this->agregarAlStock(
-                    $detalle->deposito_id,
-                    $detalle->item_id,
-                    $detalle->notas_vent_det_cantidad
-                );
-            } else {
-                // DÉBITO: resta stock
-                $this->restarDeStock(
-                    $detalle->deposito_id,
-                    $detalle->item_id,
-                    $detalle->notas_vent_det_cantidad
-                );
+            if ($nota->nota_vent_afecta_stock) {
+                if ($nota->nota_vent_tipo === 'Crédito') {
+                    // DEVOLUCIÓN: suma stock
+                    $this->agregarAlStock(
+                        $detalle->deposito_id,
+                        $detalle->item_id,
+                        $detalle->notas_vent_det_cantidad
+                    );
+                } else {
+                    // DÉBITO: resta stock
+                    $this->restarDeStock(
+                        $detalle->deposito_id,
+                        $detalle->item_id,
+                        $detalle->notas_vent_det_cantidad
+                    );
+                }
             }
         }
 
@@ -345,17 +367,31 @@ public function update(Request $r, $id)
 
     $datos = $r->validate([
         'nota_vent_intervalo_fecha_vence' => 'nullable|date',
-        'nota_vent_fecha' => 'required|date',
-        'nota_vent_estado' => 'required|string',
-        'nota_vent_cant_cuota' => 'nullable|integer',
-        'nota_vent_tipo' => 'required|string',
-        'nota_vent_observaciones' => 'required|string',
-        'nota_vene_condicion_pago' => 'required|string|max:20',
-        'clientes_id' => 'required|integer',
-        'ventas_cab_id' => 'required|integer',
-        'empresa_id' => 'required|integer',
-        'sucursal_id' => 'required|integer'
+        'nota_vent_fecha'                 => 'required|date',
+        'nota_vent_estado'                => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
+        'nota_vent_cant_cuota'            => 'nullable|integer',
+        'nota_vent_tipo'                  => 'required|in:Crédito,Débito',
+        'nota_vent_afecta_stock'          => 'nullable|boolean',
+        'nota_vent_observaciones'         => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
+        'nota_vene_condicion_pago'        => 'required|in:CONTADO,CRÉDITO',
+        'clientes_id'                     => 'required|integer|exists:clientes,id',
+        'ventas_cab_id'                   => 'required|integer|exists:ventas_cab,id',
+        'empresa_id'                      => 'required|integer|exists:empresa,id',
+        'sucursal_id'                     => 'required|integer|exists:sucursal,id',
+        'timbrado_id'                     => 'nullable|integer|exists:timbrado,id',
+        'nota_vent_nro_comprobante'       => 'nullable|string|max:30',
+    ], [
+        'nota_vent_estado.in'              => 'El estado no es válido.',
+        'nota_vent_tipo.in'                => 'El tipo debe ser Crédito o Débito.',
+        'nota_vent_observaciones.not_regex'=> 'Las observaciones contienen caracteres no permitidos.',
+        'nota_vent_observaciones.max'      => 'Las observaciones no pueden superar 500 caracteres.',
+        'nota_vene_condicion_pago.in'      => 'La condición de pago debe ser CONTADO o CRÉDITO.',
+        'clientes_id.exists'               => 'El cliente seleccionado no es válido.',
+        'ventas_cab_id.exists'             => 'La venta seleccionada no es válida.',
+        'empresa_id.exists'                => 'La empresa seleccionada no es válida.',
+        'sucursal_id.exists'               => 'La sucursal seleccionada no es válida.',
     ]);
+    $datos['nota_vent_afecta_stock'] = filter_var($r->nota_vent_afecta_stock ?? true, FILTER_VALIDATE_BOOLEAN);
 
     $nota->update($datos);
 
@@ -374,6 +410,10 @@ public function anular(Request $r, $id)
             'mensaje' => 'Nota de venta no encontrada',
             'tipo' => 'error'
         ], 404);
+    }
+
+    if ($nota->nota_vent_estado === 'ANULADO') {
+        return response()->json(['mensaje' => 'La nota de venta ya está anulada.', 'tipo' => 'warning'], 409);
     }
 
     $estadoAnterior = $nota->nota_vent_estado;
@@ -413,22 +453,24 @@ public function anular(Request $r, $id)
                 }
 
                 // ===============================
-                // 🔹 STOCK (INVERSO A CONFIRMAR)
+                // 🔹 STOCK INVERSO (solo si afectó stock)
                 // ===============================
-                if ($tipoNota === 'Débito') {
-                    // En confirmar restó → al anular suma
-                    $this->agregarAlStock(
-                        $det->deposito_id,
-                        $det->item_id,
-                        $det->notas_vent_det_cantidad
-                    );
-                } elseif ($tipoNota === 'Crédito') {
-                    // En confirmar sumó → al anular resta
-                    $this->restarDeStock(
-                        $det->deposito_id,
-                        $det->item_id,
-                        $det->notas_vent_det_cantidad
-                    );
+                if ($nota->nota_vent_afecta_stock) {
+                    if ($tipoNota === 'Débito') {
+                        // En confirmar restó → al anular suma
+                        $this->agregarAlStock(
+                            $det->deposito_id,
+                            $det->item_id,
+                            $det->notas_vent_det_cantidad
+                        );
+                    } elseif ($tipoNota === 'Crédito') {
+                        // En confirmar sumó → al anular resta
+                        $this->restarDeStock(
+                            $det->deposito_id,
+                            $det->item_id,
+                            $det->notas_vent_det_cantidad
+                        );
+                    }
                 }
             }
 

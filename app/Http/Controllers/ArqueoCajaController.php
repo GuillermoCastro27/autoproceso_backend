@@ -10,78 +10,76 @@ use Illuminate\Support\Facades\DB;
 
 class ArqueoCajaController extends Controller
 {
-   public function read()
-{
-    return DB::table('arqueo_caja as a')
+    public function read()
+    {
+        return DB::select("
+            SELECT
+                a.id,
+                TO_CHAR(a.arqueo_fecha, 'DD/MM/YYYY HH24:MI:SS') AS arqueo_fecha,
+                a.tipo_arqueo,
+                a.estado,
 
-        // 🔗 Apertura / Cierre
-        ->join('apertura_cierre_caja as acc', 'acc.id', '=', 'a.apertura_cierre_caja_id')
+                e.emp_razon_social,
+                s.suc_razon_social,
+                c.caja_descripcion,
+                f.fun_nom || ' ' || f.fun_apellido AS usuario,
 
-        // 🔗 Empresa y Sucursal (DESDE apertura)
-        ->join('empresa as e', 'e.id', '=', 'acc.empresa_id')
-        ->join('sucursal as s', 's.id', '=', 'acc.sucursal_id')
+                -- Totales calculados con subqueries para evitar producto cartesiano
+                COALESCE((
+                    SELECT SUM(ce.monto_efectivo)
+                    FROM cobro_efectivo ce
+                    JOIN cobros_cab cc ON cc.id = ce.cobros_cab_id
+                    WHERE cc.apertura_cierre_caja_id = a.apertura_cierre_caja_id
+                      AND cc.cobro_estado = 'CONFIRMADO'
+                ), 0) AS total_efectivo,
 
-        // 🔗 Caja
-        ->join('caja as c', 'c.id', '=', 'acc.caja_id')
+                COALESCE((
+                    SELECT SUM(ch.monto_cheque)
+                    FROM cobros_cheque ch
+                    JOIN cobros_cab cc ON cc.id = ch.cobros_cab_id
+                    WHERE cc.apertura_cierre_caja_id = a.apertura_cierre_caja_id
+                      AND cc.cobro_estado = 'CONFIRMADO'
+                ), 0) AS total_cheque,
 
-        // 🔗 Funcionario que genera el arqueo
-        ->join('funcionario as f2', 'f2.id', '=', 'a.funcionario_id')
+                COALESCE((
+                    SELECT SUM(ct.monto_tarjeta)
+                    FROM cobros_tarjeta ct
+                    JOIN cobros_cab cc ON cc.id = ct.cobros_cab_id
+                    WHERE cc.apertura_cierre_caja_id = a.apertura_cierre_caja_id
+                      AND cc.cobro_estado = 'CONFIRMADO'
+                ), 0) AS total_tarjeta,
 
-        // 🔗 Cobros confirmados de esa apertura
-        ->leftJoin('cobros_cab as cc', function ($join) {
-            $join->on('cc.apertura_cierre_caja_id', '=', 'a.apertura_cierre_caja_id')
-                 ->where('cc.cobro_estado', 'CONFIRMADO');
-        })
+                COALESCE((
+                    SELECT SUM(ce.monto_efectivo)
+                    FROM cobro_efectivo ce
+                    JOIN cobros_cab cc ON cc.id = ce.cobros_cab_id
+                    WHERE cc.apertura_cierre_caja_id = a.apertura_cierre_caja_id
+                      AND cc.cobro_estado = 'CONFIRMADO'
+                ), 0)
+                + COALESCE((
+                    SELECT SUM(ch.monto_cheque)
+                    FROM cobros_cheque ch
+                    JOIN cobros_cab cc ON cc.id = ch.cobros_cab_id
+                    WHERE cc.apertura_cierre_caja_id = a.apertura_cierre_caja_id
+                      AND cc.cobro_estado = 'CONFIRMADO'
+                ), 0)
+                + COALESCE((
+                    SELECT SUM(ct.monto_tarjeta)
+                    FROM cobros_tarjeta ct
+                    JOIN cobros_cab cc ON cc.id = ct.cobros_cab_id
+                    WHERE cc.apertura_cierre_caja_id = a.apertura_cierre_caja_id
+                      AND cc.cobro_estado = 'CONFIRMADO'
+                ), 0) AS total_general
 
-        // 🔗 Detalles reales de cobro
-        ->leftJoin('cobro_efectivo as ce', 'ce.cobros_cab_id', '=', 'cc.id')
-        ->leftJoin('cobros_cheque as ch', 'ch.cobros_cab_id', '=', 'cc.id')
-        ->leftJoin('cobros_tarjeta as ct', 'ct.cobros_cab_id', '=', 'cc.id')
-
-        ->select(
-            'a.id',
-
-            // 📅 Fecha de arqueo
-            DB::raw("TO_CHAR(a.arqueo_fecha, 'DD/MM/YYYY HH24:MI:SS') as arqueo_fecha"),
-
-            // Estado y tipo
-            'a.tipo_arqueo',
-            'a.estado',
-
-            // 💰 TOTALES REALES (CORRECTOS)
-            DB::raw("COALESCE(SUM(ce.monto_efectivo), 0) as total_efectivo"),
-            DB::raw("COALESCE(SUM(ch.monto_cheque), 0) as total_cheque"),
-            DB::raw("COALESCE(SUM(ct.monto_tarjeta), 0) as total_tarjeta"),
-
-            DB::raw("
-                COALESCE(SUM(ce.monto_efectivo), 0)
-              + COALESCE(SUM(ch.monto_cheque), 0)
-              + COALESCE(SUM(ct.monto_tarjeta), 0)
-              as total_general
-            "),
-
-            // 📌 Datos generales
-            'e.emp_razon_social as emp_razon_social',
-            's.suc_razon_social as suc_razon_social',
-            'c.caja_descripcion as caja_descripcion',
-            DB::raw("f2.fun_nom || ' ' || f2.fun_apellido as usuario")
-        )
-
-        ->groupBy(
-            'a.id',
-            'a.arqueo_fecha',
-            'a.tipo_arqueo',
-            'a.estado',
-            'e.emp_razon_social',
-            's.suc_razon_social',
-            'c.caja_descripcion',
-            'f2.fun_nom',
-            'f2.fun_apellido'
-        )
-
-        ->orderBy('a.id', 'desc')
-        ->get();
-}
+            FROM arqueo_caja a
+            JOIN apertura_cierre_caja acc ON acc.id = a.apertura_cierre_caja_id
+            JOIN empresa e   ON e.id  = acc.empresa_id
+            JOIN sucursal s  ON s.id  = acc.sucursal_id
+            JOIN caja c      ON c.id  = acc.caja_id
+            JOIN funcionario f ON f.id = a.funcionario_id
+            ORDER BY a.id DESC
+        ");
+    }
 
     public function store(Request $r)
 {
@@ -182,7 +180,7 @@ public function anular($id)
 
         if ($arqueo->estado !== 'PENDIENTE') {
             return response()->json([
-                'mensaje' => 'El arqueo ya fue confirmado',
+                'mensaje' => 'Solo se puede confirmar un arqueo en estado PENDIENTE. Estado actual: ' . $arqueo->estado,
                 'tipo'    => 'warning'
             ], 400);
         }

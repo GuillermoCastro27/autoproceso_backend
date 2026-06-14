@@ -37,15 +37,28 @@ class NotaRemiCompController extends Controller
                 e.emp_razon_social,
                 nrc.funcionario_id,
                 f.fun_nom || ' ' || f.fun_apellido AS funcionario,
+                nrc.conductor_id,
+                COALESCE(cond.fun_nom || ' ' || cond.fun_apellido, '') AS conductor_nombre,
+                nrc.tipo_vehiculo_det_id,
+                COALESCE(tvd.tv_det_placa,       '') AS tv_det_placa,
+                COALESCE(tvd.tv_det_num_chasis,  '') AS tv_det_num_chasis,
+                COALESCE(tvd.tv_det_num_motor,   '') AS tv_det_num_motor,
+                COALESCE(mtvd.marc_nom,          '') AS tv_marc_nom,
+                COALESCE(motvd.modelo_nom,       '') AS tv_modelo_nom,
                 nrc.created_at,
                 nrc.updated_at
             FROM nota_remi_comp nrc
-            JOIN sucursal s   ON s.id  = nrc.sucursal_id
-            JOIN empresa e    ON e.id  = nrc.empresa_id
-            JOIN funcionario f ON f.id = nrc.funcionario_id
-            LEFT JOIN sucursal sd     ON sd.id   = nrc.sucursal_destino_id
-            LEFT JOIN proveedores prov ON prov.id = nrc.proveedor_id
-            LEFT JOIN timbrado t       ON t.id    = nrc.timbrado_id
+            JOIN sucursal s        ON s.id    = nrc.sucursal_id
+            JOIN empresa e         ON e.id    = nrc.empresa_id
+            JOIN funcionario f     ON f.id    = nrc.funcionario_id
+            LEFT JOIN sucursal sd          ON sd.id    = nrc.sucursal_destino_id
+            LEFT JOIN proveedores prov     ON prov.id  = nrc.proveedor_id
+            LEFT JOIN timbrado t           ON t.id     = nrc.timbrado_id
+            LEFT JOIN funcionario cond     ON cond.id  = nrc.conductor_id
+            LEFT JOIN tipo_vehiculo_det tvd ON tvd.id  = nrc.tipo_vehiculo_det_id
+            LEFT JOIN tipo_vehiculo tv_v   ON tv_v.id  = tvd.tipo_vehiculo_id
+            LEFT JOIN marca mtvd           ON mtvd.id  = tv_v.marca_id
+            LEFT JOIN modelo motvd         ON motvd.id = tv_v.modelo_id
             ORDER BY nrc.id DESC
         ");
     }
@@ -75,16 +88,18 @@ class NotaRemiCompController extends Controller
 
         $rules = [
             'nota_remi_fecha'        => 'required',
-            'nota_remi_observaciones'=> 'required',
-            'nota_remi_estado'       => 'required',
+            'nota_remi_observaciones'=> ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
+            'nota_remi_estado'       => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
             'tipo'                   => 'required|in:PROVEEDOR,TRANSFERENCIA',
             'funcionario_id'         => 'nullable',
-            'empresa_id'             => 'required',
-            'sucursal_id'            => 'required',
+            'empresa_id'             => 'required|integer|exists:empresa,id',
+            'sucursal_id'            => 'required|integer|exists:sucursal,id',
             'proveedor_id'           => $esProveedor ? 'required|exists:proveedores,id' : 'nullable',
             'nota_remi_nro'          => $esProveedor ? ['required','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'] : 'nullable',
             'nota_remi_fecha_emision'=> $esProveedor ? 'required|date' : 'nullable|date',
             'sucursal_destino_id'    => $tipo === 'TRANSFERENCIA' ? 'required|exists:sucursal,id' : 'nullable',
+            'conductor_id'           => $tipo === 'TRANSFERENCIA' ? 'required|exists:funcionario,id' : 'nullable',
+            'tipo_vehiculo_det_id'   => $tipo === 'TRANSFERENCIA' ? 'required|exists:tipo_vehiculo_det,id' : 'nullable',
             'tipo_vehiculo'          => $esProveedor ? 'required|in:AUTOMOVIL,MOTOCICLETA' : 'nullable',
             'chofer_nombre'          => $esProveedor ? 'required|string|max:200' : 'nullable|string|max:200',
             'chofer_documento'       => $esProveedor ? ['required','regex:/^\d{6,8}$/'] : 'nullable',
@@ -97,6 +112,10 @@ class NotaRemiCompController extends Controller
         ];
 
         $messages = [
+            'conductor_id.required'   => 'El conductor es obligatorio para transferencias.',
+            'conductor_id.exists'     => 'El conductor seleccionado no existe.',
+            'tipo_vehiculo_det_id.required' => 'El vehículo es obligatorio para transferencias.',
+            'tipo_vehiculo_det_id.exists'   => 'El vehículo seleccionado no existe.',
             'chofer_documento.regex'  => 'La cédula debe tener entre 6 y 8 dígitos numéricos.',
             'chofer_telefono.regex'   => 'El teléfono debe tener el formato 09XXXXXXXX (10 dígitos).',
             'vehiculo_anio.between'   => "El año del vehículo debe estar entre 1900 y {$anioActual}.",
@@ -181,6 +200,10 @@ class NotaRemiCompController extends Controller
             return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
+        if ($notaremicomp->nota_remi_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede modificar una remisión en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
+
         if ($err = $this->validarFecha($r->nota_remi_fecha)) {
             return response()->json(['mensaje' => $err[0], 'tipo' => 'error'], $err[1]);
         }
@@ -191,16 +214,18 @@ class NotaRemiCompController extends Controller
 
         $datosValidados = $r->validate([
             'nota_remi_fecha'        => 'required',
-            'nota_remi_observaciones'=> 'required',
-            'nota_remi_estado'       => 'required',
+            'nota_remi_observaciones'=> ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
+            'nota_remi_estado'       => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
             'tipo'                   => 'required|in:PROVEEDOR,TRANSFERENCIA',
             'funcionario_id'         => 'nullable',
-            'empresa_id'             => 'required',
-            'sucursal_id'            => 'required',
+            'empresa_id'             => 'required|integer|exists:empresa,id',
+            'sucursal_id'            => 'required|integer|exists:sucursal,id',
             'proveedor_id'           => $esProveedor ? 'required|exists:proveedores,id' : 'nullable',
             'nota_remi_nro'          => $esProveedor ? ['required','string','max:15','regex:/^\d{3}-\d{3}-\d{7}$/'] : 'nullable',
             'nota_remi_fecha_emision'=> $esProveedor ? 'required|date' : 'nullable|date',
             'sucursal_destino_id'    => $tipo === 'TRANSFERENCIA' ? 'required|exists:sucursal,id' : 'nullable',
+            'conductor_id'           => $tipo === 'TRANSFERENCIA' ? 'required|exists:funcionario,id' : 'nullable',
+            'tipo_vehiculo_det_id'   => $tipo === 'TRANSFERENCIA' ? 'required|exists:tipo_vehiculo_det,id' : 'nullable',
             'tipo_vehiculo'          => $esProveedor ? 'required|in:AUTOMOVIL,MOTOCICLETA' : 'nullable',
             'chofer_nombre'          => $esProveedor ? 'required|string|max:200' : 'nullable|string|max:200',
             'chofer_documento'       => $esProveedor ? ['required','regex:/^\d{6,8}$/'] : 'nullable',
@@ -211,6 +236,10 @@ class NotaRemiCompController extends Controller
             'vehiculo_anio'          => ['nullable','digits:4','numeric',"between:1900,{$anioActual}"],
             'vehiculo_nro'           => 'nullable|string|max:50',
         ], [
+            'conductor_id.required'        => 'El conductor es obligatorio para transferencias.',
+            'conductor_id.exists'          => 'El conductor seleccionado no existe.',
+            'tipo_vehiculo_det_id.required' => 'El vehículo es obligatorio para transferencias.',
+            'tipo_vehiculo_det_id.exists'   => 'El vehículo seleccionado no existe.',
             'chofer_documento.regex' => 'La cédula debe tener entre 6 y 8 dígitos numéricos.',
             'chofer_telefono.regex'  => 'El teléfono debe tener el formato 09XXXXXXXX (10 dígitos).',
             'vehiculo_anio.between'  => "El año del vehículo debe estar entre 1900 y {$anioActual}.",

@@ -35,13 +35,17 @@ class PedidoController extends Controller
     private function validarPedido(Request $r)
     {
         return $r->validate([
-            'ped_vence'        => 'required',
-            'ped_fecha'        => 'required',
-            'ped_pbservaciones'=> 'required',
-            'ped_estado'       => 'required',
-            'funcionario_id'   => 'nullable',
-            'empresa_id'       => 'required',
-            'sucursal_id'      => 'required',
+            'ped_vence'         => 'required',
+            'ped_fecha'         => 'required',
+            'ped_pbservaciones' => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
+            'ped_estado'        => 'required|in:PENDIENTE,CONFIRMADO,ANULADO,PROCESADO',
+            'funcionario_id'    => 'nullable',
+            'empresa_id'        => 'required|integer|exists:empresa,id',
+            'sucursal_id'       => 'required|integer|exists:sucursal,id',
+        ], [
+            'ped_pbservaciones.not_regex' => 'Las observaciones contienen caracteres no permitidos.',
+            'ped_pbservaciones.max'       => 'Las observaciones no pueden superar 500 caracteres.',
+            'ped_estado.in'               => 'El estado no es válido.',
         ]);
     }
 
@@ -109,6 +113,10 @@ class PedidoController extends Controller
     $pedido = $this->buscarPedido($id);
     if (!$pedido instanceof Pedido) return $pedido;
 
+    if ($pedido->ped_estado !== 'PENDIENTE') {
+        return response()->json(['mensaje' => 'Solo se puede modificar un pedido en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+    }
+
     if ($err = $this->validarFechas($r))
         return response()->json(['mensaje' => $err[0], 'tipo' => 'error'], $err[1]);
 
@@ -125,7 +133,16 @@ class PedidoController extends Controller
         $pedido = $this->buscarPedido($id);
         if (!$pedido instanceof Pedido) return $pedido;
 
-        $pedido->update($this->validarPedido($r));
+        if ($pedido->ped_estado === 'ANULADO') {
+            return response()->json(['mensaje' => 'El pedido ya está anulado.', 'tipo' => 'warning'], 409);
+        }
+
+        if ($pedido->ped_estado === 'PROCESADO') {
+            return response()->json(['mensaje' => 'No se puede anular un pedido PROCESADO. Anule el presupuesto asociado primero.', 'tipo' => 'warning'], 409);
+        }
+
+        $pedido->ped_estado = 'ANULADO';
+        $pedido->save();
 
         return response()->json([
             'mensaje'  => 'Registro anulado con éxito',
@@ -139,7 +156,12 @@ class PedidoController extends Controller
         $pedido = $this->buscarPedido($id);
         if (!$pedido instanceof Pedido) return $pedido;
 
-        $pedido->update($this->validarPedido($r));
+        if ($pedido->ped_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede confirmar un pedido en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
+
+        $pedido->ped_estado = 'CONFIRMADO';
+        $pedido->save();
 
         return response()->json([
             'mensaje'  => 'Registro confirmado con éxito',

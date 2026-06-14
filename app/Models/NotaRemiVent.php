@@ -12,14 +12,18 @@ class NotaRemiVent extends Model implements Auditable
     use HasFactory;
     use AuditableTrait;
     protected $table = 'nota_remi_vent';
-    protected $fillable =[
+    protected $fillable = [
         'nota_remi_vent_fecha',
         'nota_remi_vent_observaciones',
         'nota_remi_vent_estado',
         'funcionario_id',
+        'funcionario_entrega_id',
+        'tipo_vehiculo_det_id',
+        'timbrado_id',
+        'nota_remi_vent_nro_comprobante',
         'empresa_id',
         'sucursal_id',
         'ventas_cab_id',
-        'clientes_id'
+        'clientes_id',
     ];
 }

@@ -48,14 +48,19 @@ class PresupuestoController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'pre_observaciones' => 'required',
-            'pre_estado'        => 'required',
+            'pre_observaciones' => ['required', 'string', 'max:500', 'not_regex:/[*<>{}|]/'],
+            'pre_estado'        => 'required|in:PENDIENTE,CONFIRMADO,ANULADO,PROCESADO',
             'pre_fecha'         => 'required',
             'pre_vence'         => 'required',
-            'proveedor_id'      => 'required',
+            'proveedor_id'      => 'required|integer|exists:proveedores,id',
             'pedidos_ids'       => 'required',
-            'empresa_id'        => 'required',
-            'sucursal_id'       => 'required',
+            'empresa_id'        => 'required|integer|exists:empresa,id',
+            'sucursal_id'       => 'required|integer|exists:sucursal,id',
+        ], [
+            'pre_observaciones.not_regex' => 'Las observaciones contienen caracteres no permitidos.',
+            'pre_observaciones.max'       => 'Las observaciones no pueden superar 500 caracteres.',
+            'pre_estado.in'               => 'El estado no es válido.',
+            'proveedor_id.exists'         => 'El proveedor seleccionado no es válido.',
         ]);
 
         $pedidoIds = json_decode($r->pedidos_ids, true);
@@ -146,6 +151,10 @@ class PresupuestoController extends Controller
             ], 404);
         }
 
+        if ($presupuesto->pre_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede modificar un presupuesto en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
+
         $r->validate([
             'pre_observaciones' => 'required',
             'pre_estado'        => 'required',
@@ -176,6 +185,14 @@ class PresupuestoController extends Controller
                 'mensaje' => 'Registro no encontrado',
                 'tipo'    => 'error'
             ], 404);
+        }
+
+        if ($presupuesto->pre_estado === 'ANULADO') {
+            return response()->json(['mensaje' => 'El presupuesto ya está anulado.', 'tipo' => 'warning'], 409);
+        }
+
+        if ($presupuesto->pre_estado === 'PROCESADO') {
+            return response()->json(['mensaje' => 'No se puede anular un presupuesto PROCESADO. Anule la orden de compra asociada primero.', 'tipo' => 'warning'], 409);
         }
 
         $r->validate(['pre_observaciones' => 'required']);
@@ -211,20 +228,12 @@ class PresupuestoController extends Controller
             ], 404);
         }
 
-        $r->validate([
-            'pre_observaciones' => 'required',
-            'pre_estado'        => 'required',
-            'pre_fecha'         => 'required',
-            'pre_vence'         => 'required',
-            'proveedor_id'      => 'required',
-            'empresa_id'        => 'required',
-            'sucursal_id'       => 'required',
-        ]);
+        if ($presupuesto->pre_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede confirmar un presupuesto en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
 
-        $presupuesto->update($r->only([
-            'pre_observaciones', 'pre_estado', 'pre_fecha',
-            'pre_vence', 'proveedor_id', 'empresa_id', 'sucursal_id'
-        ]));
+        $presupuesto->pre_estado = 'CONFIRMADO';
+        $presupuesto->save();
 
         return response()->json([
             'mensaje'  => 'Registro confirmado con éxito',

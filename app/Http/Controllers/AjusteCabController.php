@@ -53,12 +53,15 @@ class AjusteCabController extends Controller
 
         $datosValidados = $r->validate([
             'ajus_cab_fecha'   => 'required',
-            'ajus_cab_estado'  => 'required',
-            'tipo_ajuste'      => 'required',
+            'ajus_cab_estado'  => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
+            'tipo_ajuste'      => 'required|in:Entrada,Salida',
             'funcionario_id'   => 'nullable',
-            'empresa_id'       => 'required',
-            'sucursal_id'      => 'required',
-            'motivo_ajuste_id' => 'required'
+            'empresa_id'       => 'required|integer|exists:empresa,id',
+            'sucursal_id'      => 'required|integer|exists:sucursal,id',
+            'motivo_ajuste_id' => 'required|integer|exists:motivo_ajuste,id',
+        ], [
+            'ajus_cab_estado.in' => 'El estado debe ser PENDIENTE, CONFIRMADO o ANULADO.',
+            'tipo_ajuste.in'     => 'El tipo de ajuste debe ser Entrada o Salida.',
         ]);
 
         $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
@@ -77,19 +80,23 @@ class AjusteCabController extends Controller
         }
         $ajustecab = AjusteCab::find($id);
         if (!$ajustecab) {
-            return response()->json([
-                'mensaje' => 'Registro no encontrado',
-                'tipo' => 'error'
-            ], 404);
+            return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
+        }
+
+        if ($ajustecab->ajus_cab_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede modificar un ajuste en estado PENDIENTE.', 'tipo' => 'warning'], 409);
         }
 
         $datosValidados = $r->validate([
-            'ajus_cab_fecha' => 'required',
-            'ajus_cab_estado' => 'required',
-            'tipo_ajuste' => 'required',
-            'empresa_id' => 'required',
-            'sucursal_id' => 'required',
-            'motivo_ajuste_id' => 'required'
+            'ajus_cab_fecha'   => 'required',
+            'ajus_cab_estado'  => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
+            'tipo_ajuste'      => 'required|in:Entrada,Salida',
+            'empresa_id'       => 'required|integer|exists:empresa,id',
+            'sucursal_id'      => 'required|integer|exists:sucursal,id',
+            'motivo_ajuste_id' => 'required|integer|exists:motivo_ajuste,id',
+        ], [
+            'ajus_cab_estado.in' => 'El estado debe ser PENDIENTE, CONFIRMADO o ANULADO.',
+            'tipo_ajuste.in'     => 'El tipo de ajuste debe ser Entrada o Salida.',
         ]);
 
         $ajustecab->update($datosValidados);
@@ -111,22 +118,11 @@ class AjusteCabController extends Controller
         ], 404);
     }
 
-    $datosValidados = $r->validate([
-        'ajus_cab_fecha' => 'required',
-        'ajus_cab_estado' => 'required',
-        'tipo_ajuste' => 'required',
-        'empresa_id' => 'required',
-        'sucursal_id' => 'required',
-        'motivo_ajuste_id' => 'required'
-    ]);
+    if ($ajustecab->ajus_cab_estado === 'ANULADO') {
+        return response()->json(['mensaje' => 'El ajuste ya está anulado.', 'tipo' => 'warning'], 409);
+    }
 
-    // Guardar estado anterior
     $estadoAnterior = $ajustecab->ajus_cab_estado;
-
-    // Actualizamos el registro con los datos
-    $ajustecab->update($datosValidados);
-
-    // Marcamos como ANULADO
     $ajustecab->ajus_cab_estado = 'ANULADO';
     $ajustecab->save();
 
@@ -183,28 +179,14 @@ class AjusteCabController extends Controller
             ], 404);
         }
 
-        // Validar entrada (igual que antes)
-        $datosValidados = $r->validate([
-            'ajus_cab_fecha'     => 'required',
-            'ajus_cab_estado'    => 'required',
-            'tipo_ajuste'        => 'required', // valores esperados: 'Entrada' o 'Salida'
-            'empresa_id'         => 'required',
-            'sucursal_id'        => 'required',
-            'motivo_ajuste_id'   => 'required'
-        ]);
-
-        // Si ya está confirmado, no hacer nada
-        if ($ajustecab->ajus_cab_estado === 'CONFIRMADO') {
+        if ($ajustecab->ajus_cab_estado !== 'PENDIENTE') {
             return response()->json([
-                'mensaje' => 'El ajuste ya fue confirmado anteriormente.',
+                'mensaje' => 'Solo se puede confirmar un ajuste en estado PENDIENTE.',
                 'tipo'    => 'warning'
-            ], 400);
+            ], 409);
         }
 
-        // Actualizamos la cabecera con los datos enviados (opcional)
-        $ajustecab->update($datosValidados);
-
-        // Obtener los detalles del ajuste (si no definiste relación, usamos el modelo)
+        // Obtener los detalles del ajuste
         $ajusteDetalles = AjusteDet::where('ajuste_cab_id', $ajustecab->id)->get();
 
         if ($ajusteDetalles->isEmpty()) {

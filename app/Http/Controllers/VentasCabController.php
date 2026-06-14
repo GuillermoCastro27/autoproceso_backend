@@ -78,14 +78,18 @@ public function store(Request $r)
 
     $datosValidados = $r->validate([
         'vent_intervalo_fecha_vence' => 'nullable|date',
-        'vent_fecha'                 => 'nullable|date',
-        'vent_estado'                => 'required',
+        'vent_fecha'                 => 'required|date',
+        'vent_estado'                => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
         'vent_cant_cuota'            => 'nullable|integer',
-        'condicion_pago'             => 'required',
+        'condicion_pago'             => 'required|in:CONTADO,CREDITO',
         'funcionario_id'             => 'nullable',
-        'clientes_id'                => 'required',
-        'empresa_id'                 => 'required',
-        'sucursal_id'                => 'required',
+        'clientes_id'                => 'required|integer|exists:clientes,id',
+        'empresa_id'                 => 'required|integer|exists:empresa,id',
+        'sucursal_id'                => 'required|integer|exists:sucursal,id',
+    ], [
+        'vent_estado.in'    => 'El estado no es válido.',
+        'condicion_pago.in' => 'La condición de pago debe ser CONTADO o CREDITO.',
+        'clientes_id.exists'=> 'El cliente seleccionado no es válido.',
     ]);
 
     $datosValidados['funcionario_id'] = auth()->user()->funcionario_id;
@@ -188,17 +192,24 @@ public function update(Request $r, $id)
         ]);
     }
 
+    if ($ventacab->vent_estado !== 'PENDIENTE') {
+        return response()->json(['mensaje' => 'Solo se puede modificar una venta en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+    }
+
     // Validación
     $datosValidados = $r->validate([
         'vent_intervalo_fecha_vence' => 'nullable|date',
-        'vent_fecha' => 'nullable|date',
-        'vent_estado' => 'required',
-        'vent_cant_cuota' => 'nullable|integer',
-        'condicion_pago' => 'required',
+        'vent_fecha'        => 'required|date',
+        'vent_estado'       => 'required|in:PENDIENTE,CONFIRMADO,ANULADO',
+        'vent_cant_cuota'   => 'nullable|integer',
+        'condicion_pago'    => 'required|in:CONTADO,CREDITO',
         'pedidos_ventas_id' => 'nullable|integer',
-        'clientes_id' => 'required',
-        'empresa_id' => 'required',
-        'sucursal_id' => 'required'
+        'clientes_id'       => 'required|integer|exists:clientes,id',
+        'empresa_id'        => 'required|integer|exists:empresa,id',
+        'sucursal_id'       => 'required|integer|exists:sucursal,id',
+    ], [
+        'vent_estado.in'    => 'El estado no es válido.',
+        'condicion_pago.in' => 'La condición de pago debe ser CONTADO o CREDITO.',
     ]);
 
     // Asegurar null en contado
@@ -226,6 +237,14 @@ public function anular(Request $r, $id)
             'mensaje' => 'Venta no encontrada',
             'tipo'    => 'error'
         ], 404);
+    }
+
+    if ($ventacab->vent_estado === 'ANULADO') {
+        return response()->json(['mensaje' => 'La venta ya está anulada.', 'tipo' => 'warning'], 409);
+    }
+
+    if ($ventacab->vent_estado === 'PROCESADO') {
+        return response()->json(['mensaje' => 'No se puede anular una venta PROCESADA. Anule la nota de venta asociada primero.', 'tipo' => 'warning'], 409);
     }
 
     // Guardar estado anterior
@@ -713,6 +732,102 @@ public function imprimir($id)
         'cab'     => $cab,
         'detalles' => $detalles,
         'cuotas'   => $cuotas,
+    ]);
+}
+
+public function detalle($id)
+{
+    $detalles = DB::select("
+        SELECT
+            vd.ventas_cab_id,
+            vd.item_id,
+            vd.deposito_id,
+            i.item_decripcion,
+            vd.vent_det_cantidad,
+            vd.vent_det_precio,
+            ti.tip_imp_nom,
+            d.dep_nombre,
+            (vd.vent_det_cantidad * vd.vent_det_precio) AS subtotal,
+            CASE
+                WHEN ti.tip_imp_nom = 'IVA10' THEN (vd.vent_det_cantidad * vd.vent_det_precio) / 11
+                WHEN ti.tip_imp_nom = 'IVA5'  THEN (vd.vent_det_cantidad * vd.vent_det_precio) / 21
+                ELSE 0
+            END AS iva
+        FROM ventas_det vd
+        JOIN items i         ON i.id  = vd.item_id
+        JOIN tipo_impuesto ti ON ti.id = vd.tipo_impuesto_id
+        LEFT JOIN deposito d  ON d.id  = vd.deposito_id
+        WHERE vd.ventas_cab_id = ?
+    ", [$id]);
+
+    $pedidos = DB::select("
+        SELECT
+            vp.id,
+            vp.ventas_cab_id,
+            vp.pedidos_ventas_id,
+            'PED NRO: ' || TO_CHAR(pv.id, '0000000') AS pedido_descripcion,
+            pv.ped_ven_estado,
+            pv.ped_ven_fecha,
+            c.cli_nombre,
+            c.cli_apellido
+        FROM ventas_pedidos vp
+        JOIN pedidos_ventas pv ON pv.id = vp.pedidos_ventas_id
+        JOIN clientes c        ON c.id  = pv.clientes_id
+        WHERE vp.ventas_cab_id = ?
+
+        UNION ALL
+
+        SELECT
+            0 AS id,
+            vc.id AS ventas_cab_id,
+            vc.pedidos_ventas_id,
+            'PED NRO: ' || TO_CHAR(pv.id, '0000000') AS pedido_descripcion,
+            pv.ped_ven_estado,
+            pv.ped_ven_fecha,
+            c.cli_nombre,
+            c.cli_apellido
+        FROM ventas_cab vc
+        JOIN pedidos_ventas pv ON pv.id = vc.pedidos_ventas_id
+        JOIN clientes c        ON c.id  = pv.clientes_id
+        WHERE vc.id = ?
+          AND vc.pedidos_ventas_id IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM ventas_pedidos WHERE ventas_cab_id = vc.id
+          )
+
+        ORDER BY id ASC
+    ", [$id, $id]);
+
+    $ordenes = DB::select("
+        SELECT
+            osv.id,
+            osv.ventas_cab_id,
+            osv.orden_serv_cab_id,
+            'ORDEN NRO: ' || TO_CHAR(osc.id, '0000000')
+                || ' (' || COALESCE(osc.ord_serv_observaciones, 'S/N') || ')' AS orden_descripcion,
+            osc.ord_serv_estado,
+            osc.ord_serv_tipo,
+            c.id   AS clientes_id,
+            c.cli_nombre,
+            c.cli_apellido,
+            c.cli_ruc,
+            osv.contrato_serv_cab_id,
+            CASE
+                WHEN osv.contrato_serv_cab_id IS NULL THEN 'Sin contrato'
+                ELSE 'CONTRATO NRO: ' || TO_CHAR(csc.id, '0000000')
+            END AS contrato_descripcion
+        FROM orden_serv_venta osv
+        JOIN orden_serv_cab osc   ON osc.id = osv.orden_serv_cab_id
+        JOIN clientes c           ON c.id   = osc.clientes_id
+        LEFT JOIN contrato_serv_cab csc ON csc.id = osv.contrato_serv_cab_id
+        WHERE osv.ventas_cab_id = ?
+        ORDER BY osv.id ASC
+    ", [$id]);
+
+    return response()->json([
+        'detalles' => $detalles,
+        'pedidos'  => $pedidos,
+        'ordenes'  => $ordenes,
     ]);
 }
 

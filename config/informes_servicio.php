@@ -131,6 +131,41 @@ return [
         'totales' => [],
     ],
 
+    'insumos' => [
+        'titulo'    => 'Listado de Insumos Utilizados',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',       'label' => 'Código'],
+            ['key' => 'fecha',    'label' => 'Fecha Registro'],
+            ['key' => 'cliente',  'label' => 'Cliente'],
+            ['key' => 'vehiculo', 'label' => 'Vehículo'],
+            ['key' => 'equipo',   'label' => 'Equipo de Trabajo'],
+            ['key' => 'empresa',  'label' => 'Empresa'],
+            ['key' => 'sucursal', 'label' => 'Sucursal'],
+            ['key' => 'estado',   'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
+    'solicitud_servicio' => [
+        'titulo'    => 'Listado de Solicitudes de Servicio',
+        'cache_ttl' => 300,
+        'columnas'  => [
+            ['key' => 'id',              'label' => 'Código'],
+            ['key' => 'fecha',           'label' => 'Fecha Solicitud'],
+            ['key' => 'fecha_estimada',  'label' => 'Fecha Estimada'],
+            ['key' => 'cliente',         'label' => 'Cliente'],
+            ['key' => 'tipo_servicio',   'label' => 'Tipo Servicio'],
+            ['key' => 'prioridad',       'label' => 'Prioridad'],
+            ['key' => 'observaciones',   'label' => 'Observaciones'],
+            ['key' => 'funcionario',     'label' => 'Encargado'],
+            ['key' => 'empresa',         'label' => 'Empresa'],
+            ['key' => 'sucursal',        'label' => 'Sucursal'],
+            ['key' => 'estado',          'label' => 'Estado'],
+        ],
+        'totales' => [],
+    ],
+
     'descuentos' => [
         'titulo'    => 'Listado de Descuentos',
         'cache_ttl' => 300,

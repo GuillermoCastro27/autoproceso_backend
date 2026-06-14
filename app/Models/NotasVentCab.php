@@ -19,6 +19,7 @@ class NotasVentCab extends Model implements Auditable
         'nota_vent_estado',
         'nota_vent_cant_cuota',
         'nota_vent_tipo',
+        'nota_vent_afecta_stock',
         'nota_vent_observaciones',
         'nota_vene_condicion_pago',
         'clientes_id',

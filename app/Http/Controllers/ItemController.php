@@ -151,13 +151,20 @@ class ItemController extends Controller
 
     public function buscar(Request $r)
     {
-        $depositoId = $r->input('deposito_id');
+        $depositoId      = $r->input('deposito_id');
+        $tipoDescripcion = $r->input('tipo_descripcion'); // filtro opcional: INSUMO, PRODUCTO, etc.
+
+        $tipoFiltro      = $tipoDescripcion ? "AND UPPER(t.tipo_descripcion) = UPPER(?)" : "";
 
         if ($depositoId) {
-            // Solo ítems con stock > 0 en el depósito específico
+            $params = $tipoDescripcion
+                ? [$depositoId, '%' . $r->item_decripcion . '%', $tipoDescripcion]
+                : [$depositoId, '%' . $r->item_decripcion . '%'];
+
             $productos = DB::select("
                 SELECT
                     i.*,
+                    t.tipo_descripcion,
                     ti.tip_imp_nom,
                     ti.tipo_imp_tasa,
                     i.item_costo,
@@ -170,12 +177,18 @@ class ItemController extends Controller
                 WHERE i.deleted_at IS NULL
                   AND i.item_decripcion ILIKE ?
                   AND s.cantidad > 0
-                GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion, s.cantidad
-            ", [$depositoId, '%' . $r->item_decripcion . '%']);
+                  $tipoFiltro
+                GROUP BY i.id, t.tipo_descripcion, ti.tip_imp_nom, ti.tipo_imp_tasa, s.cantidad
+            ", $params);
         } else {
+            $params = $tipoDescripcion
+                ? ['%' . $r->item_decripcion . '%', $tipoDescripcion]
+                : ['%' . $r->item_decripcion . '%'];
+
             $productos = DB::select("
                 SELECT
                     i.*,
+                    t.tipo_descripcion,
                     ti.tip_imp_nom,
                     ti.tipo_imp_tasa,
                     i.item_costo,
@@ -185,9 +198,11 @@ class ItemController extends Controller
                 JOIN tipos t ON t.id = i.tipo_id
                 LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
                 LEFT JOIN stock s ON s.item_id = i.id
-                WHERE i.deleted_at IS NULL AND i.item_decripcion ILIKE ?
-                GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
-            ", ['%' . $r->item_decripcion . '%']);
+                WHERE i.deleted_at IS NULL
+                  AND i.item_decripcion ILIKE ?
+                  $tipoFiltro
+                GROUP BY i.id, t.tipo_descripcion, ti.tip_imp_nom, ti.tipo_imp_tasa
+            ", $params);
         }
 
         return response()->json($productos);
@@ -195,9 +210,17 @@ class ItemController extends Controller
 
     public function buscarItem(Request $r)
     {
+        $tipoDescripcion = $r->input('tipo_descripcion');
+        $tipoFiltro      = $tipoDescripcion ? "AND UPPER(t.tipo_descripcion) = UPPER(?)" : "";
+
+        $params = $tipoDescripcion
+            ? ['%' . $r->item_decripcion . '%', $tipoDescripcion]
+            : ['%' . $r->item_decripcion . '%'];
+
         $productos = DB::select("
             SELECT
                 i.*,
+                t.tipo_descripcion,
                 ti.tip_imp_nom,
                 ti.tipo_imp_tasa,
                 i.item_precio AS item_costo,
@@ -207,9 +230,11 @@ class ItemController extends Controller
             JOIN tipos t ON t.id = i.tipo_id
             LEFT JOIN tipo_impuesto ti ON ti.id = i.tipo_impuesto_id
             LEFT JOIN stock s ON s.item_id = i.id
-            WHERE i.deleted_at IS NULL AND i.item_decripcion ILIKE ?
-            GROUP BY i.id, ti.tip_imp_nom, ti.tipo_imp_tasa, t.tipo_descripcion
-        ", ['%' . $r->item_decripcion . '%']);
+            WHERE i.deleted_at IS NULL
+              AND i.item_decripcion ILIKE ?
+              $tipoFiltro
+            GROUP BY i.id, t.tipo_descripcion, ti.tip_imp_nom, ti.tipo_imp_tasa
+        ", $params);
 
         return response()->json($productos);
     }

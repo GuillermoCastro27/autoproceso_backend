@@ -184,7 +184,7 @@ class InformeServicioService
                        TO_CHAR(csc.contrato_fecha, 'dd/mm/yyyy')                             AS fecha,
                        cli.cli_nombre || ' ' || COALESCE(cli.cli_apellido, '')               AS cliente,
                        ts.tipo_serv_nombre                                                   AS tipo_servicio,
-                       tc.tipo_cont_nombre                                                   AS tipo_contrato,
+                       COALESCE(tc.tip_con_nombre, 'Sin tipo')                               AS tipo_contrato,
                        csc.contrato_condicion_pago                                           AS condicion_pago,
                        COALESCE(csc.contrato_cuotas::varchar, '0')                           AS cuotas,
                        f.fun_nom || ' ' || f.fun_apellido                                    AS funcionario,
@@ -192,12 +192,12 @@ class InformeServicioService
                        s.suc_razon_social                                                    AS sucursal,
                        csc.contrato_estado                                                   AS estado
                 FROM contrato_serv_cab csc
-                JOIN funcionario   f   ON f.id   = csc.funcionario_id
-                JOIN empresa       e   ON e.id   = csc.empresa_id
-                JOIN sucursal      s   ON s.id   = csc.sucursal_id
-                JOIN clientes      cli ON cli.id = csc.clientes_id
-                JOIN tipo_servicio ts  ON ts.id  = csc.tipo_servicio_id
-                JOIN tipo_contrato tc  ON tc.id  = csc.tipo_contrato_id
+                JOIN funcionario        f   ON f.id   = csc.funcionario_id
+                JOIN empresa            e   ON e.id   = csc.empresa_id
+                JOIN sucursal           s   ON s.id   = csc.sucursal_id
+                JOIN clientes           cli ON cli.id = csc.clientes_id
+                JOIN tipo_servicio      ts  ON ts.id  = csc.tipo_servicio_id
+                LEFT JOIN tipo_contrato tc  ON tc.id  = csc.tipo_contrato_id
                 WHERE csc.contrato_estado = 'CONFIRMADO'
                   AND csc.contrato_fecha BETWEEN :desde AND :hasta
                 ORDER BY csc.contrato_fecha ASC
@@ -270,6 +270,52 @@ class InformeServicioService
                 {$pg}
             ",
 
+            'insumos' => "
+                SELECT ic.id,
+                       TO_CHAR(ic.ins_cab_fecha_registro, 'dd/mm/yyyy')             AS fecha,
+                       c.cli_nombre || ' ' || COALESCE(c.cli_apellido, '')           AS cliente,
+                       m.marc_nom || ' ' || mo.modelo_nom                            AS vehiculo,
+                       et.equipo_nombre                                              AS equipo,
+                       e.emp_razon_social                                            AS empresa,
+                       s.suc_razon_social                                            AS sucursal,
+                       ic.ins_cab_estado                                             AS estado
+                FROM insumos_cab ic
+                JOIN orden_serv_cab osc ON osc.id = ic.orden_serv_cab_id
+                JOIN empresa        e   ON e.id   = osc.empresa_id
+                JOIN sucursal       s   ON s.id   = osc.sucursal_id
+                JOIN clientes       c   ON c.id   = osc.clientes_id
+                JOIN equipo_trabajo et  ON et.id  = osc.equipo_trabajo_id
+                JOIN tipo_vehiculo  tv  ON tv.id  = osc.tipo_vehiculo_id
+                JOIN marca          m   ON m.id   = tv.marca_id
+                JOIN modelo         mo  ON mo.id  = tv.modelo_id
+                WHERE ic.ins_cab_fecha_registro BETWEEN :desde AND :hasta
+                ORDER BY ic.ins_cab_fecha_registro ASC
+                {$pg}
+            ",
+
+            'solicitud_servicio' => "
+                SELECT sc.id,
+                       TO_CHAR(sc.soli_cab_fecha,           'dd/mm/yyyy') AS fecha,
+                       TO_CHAR(sc.soli_cab_fecha_estimada,  'dd/mm/yyyy') AS fecha_estimada,
+                       c.cli_nombre || ' ' || COALESCE(c.cli_apellido, '') AS cliente,
+                       COALESCE(ts.tipo_serv_nombre, 'N/A')               AS tipo_servicio,
+                       sc.soli_cab_prioridad                               AS prioridad,
+                       sc.soli_cab_observaciones                           AS observaciones,
+                       f.fun_nom || ' ' || f.fun_apellido                  AS funcionario,
+                       e.emp_razon_social                                  AS empresa,
+                       s.suc_razon_social                                  AS sucursal,
+                       sc.soli_cab_estado                                  AS estado
+                FROM solicitudes_cab sc
+                JOIN sucursal      s  ON s.id  = sc.sucursal_id
+                JOIN empresa       e  ON e.id  = sc.empresa_id
+                JOIN clientes      c  ON c.id  = sc.clientes_id
+                JOIN funcionario   f  ON f.id  = sc.funcionario_id
+                JOIN tipo_servicio ts ON ts.id = sc.tipo_servicio_id
+                WHERE sc.soli_cab_fecha BETWEEN :desde AND :hasta
+                ORDER BY sc.soli_cab_fecha ASC
+                {$pg}
+            ",
+
             default => throw new \InvalidArgumentException("SQL no definido para: {$tipo}"),
         };
     }
@@ -310,6 +356,12 @@ class InformeServicioService
             'descuentos'       => "SELECT COUNT(*) AS total FROM descuentos_cab
                                    WHERE desc_cab_estado = 'CONFIRMADO'
                                      AND desc_cab_fecha_registro BETWEEN :desde AND :hasta",
+
+            'insumos'            => "SELECT COUNT(*) AS total FROM insumos_cab
+                                     WHERE ins_cab_fecha_registro BETWEEN :desde AND :hasta",
+
+            'solicitud_servicio' => "SELECT COUNT(*) AS total FROM solicitudes_cab
+                                     WHERE soli_cab_fecha BETWEEN :desde AND :hasta",
 
             default => throw new \InvalidArgumentException("SQL COUNT no definido para: {$tipo}"),
         };

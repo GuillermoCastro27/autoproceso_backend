@@ -67,15 +67,19 @@ class OrdenCompraCabController extends Controller
         $datosValidados = $r->validate([
             'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
             'ord_comp_fecha'                 => 'required|date',
-            'ord_comp_estado'                => 'required',
+            'ord_comp_estado'                => 'required|in:PENDIENTE,CONFIRMADO,ANULADO,PROCESADO',
             'ord_comp_cant_cuota'            => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
             'funcionario_id'                 => 'nullable',
-            'presupuesto_id'                 => 'nullable|integer',
-            'pedido_id'                      => 'nullable|integer',
-            'proveedor_id'                   => 'required|integer',
-            'empresa_id'                     => 'required|integer',
-            'sucursal_id'                    => 'required|integer',
-            'condicion_pago'                 => 'required|string|max:20',
+            'presupuesto_id'                 => 'nullable|integer|exists:presupuestos,id',
+            'pedido_id'                      => 'nullable|integer|exists:pedidos,id',
+            'proveedor_id'                   => 'required|integer|exists:proveedores,id',
+            'empresa_id'                     => 'required|integer|exists:empresa,id',
+            'sucursal_id'                    => 'required|integer|exists:sucursal,id',
+            'condicion_pago'                 => 'required|in:CONTADO,CREDITO',
+        ], [
+            'ord_comp_estado.in'   => 'El estado no es válido.',
+            'condicion_pago.in'    => 'La condición de pago debe ser CONTADO o CREDITO.',
+            'proveedor_id.exists'  => 'El proveedor seleccionado no es válido.',
         ]);
 
         if ($r->condicion_pago === 'CONTADO') {
@@ -102,8 +106,8 @@ class OrdenCompraCabController extends Controller
                     i.tipo_impuesto_id
                 FROM presupuestos_detalles pd
                 JOIN items i ON i.id = pd.item_id
-                WHERE pd.presupuesto_id = {$presupuesto->id}
-            ");
+                WHERE pd.presupuesto_id = ?
+            ", [$presupuesto->id]);
 
             foreach ($detalles as $ocd) {
                 $det = new OrdenCompraDet();
@@ -132,8 +136,8 @@ class OrdenCompraCabController extends Controller
                     i.tipo_impuesto_id
                 FROM pedidos_detalles pd
                 JOIN items i ON i.id = pd.item_id
-                WHERE pd.pedidos_id = {$pedido->id}
-            ");
+                WHERE pd.pedidos_id = ?
+            ", [$pedido->id]);
 
             foreach ($detalles as $ocd) {
                 $det = new OrdenCompraDet();
@@ -163,6 +167,10 @@ class OrdenCompraCabController extends Controller
             return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
+        if ($ordencompracab->ord_comp_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede modificar una orden en estado PENDIENTE.', 'tipo' => 'warning'], 409);
+        }
+
         if ($r->ord_comp_intervalo_fecha_vence === '') {
             $r->merge(['ord_comp_intervalo_fecha_vence' => null]);
         }
@@ -173,14 +181,17 @@ class OrdenCompraCabController extends Controller
         $datosValidados = $r->validate([
             'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
             'ord_comp_fecha'                 => 'required|date',
-            'ord_comp_estado'                => 'required',
+            'ord_comp_estado'                => 'required|in:PENDIENTE,CONFIRMADO,ANULADO,PROCESADO',
             'ord_comp_cant_cuota'            => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
-            'presupuesto_id'                 => 'nullable|integer',
-            'pedido_id'                      => 'nullable|integer',
-            'proveedor_id'                   => 'required|integer',
-            'empresa_id'                     => 'required|integer',
-            'sucursal_id'                    => 'required|integer',
-            'condicion_pago'                 => 'required|string|max:20',
+            'presupuesto_id'                 => 'nullable|integer|exists:presupuestos,id',
+            'pedido_id'                      => 'nullable|integer|exists:pedidos,id',
+            'proveedor_id'                   => 'required|integer|exists:proveedores,id',
+            'empresa_id'                     => 'required|integer|exists:empresa,id',
+            'sucursal_id'                    => 'required|integer|exists:sucursal,id',
+            'condicion_pago'                 => 'required|in:CONTADO,CREDITO',
+        ], [
+            'ord_comp_estado.in'  => 'El estado no es válido.',
+            'condicion_pago.in'   => 'La condición de pago debe ser CONTADO o CREDITO.',
         ]);
 
         if ($r->condicion_pago === 'CONTADO') {
@@ -204,33 +215,12 @@ class OrdenCompraCabController extends Controller
             return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
-        if ($r->ord_comp_intervalo_fecha_vence === '') {
-            $r->merge(['ord_comp_intervalo_fecha_vence' => null]);
-        }
-        if ($r->condicion_pago === 'CONTADO') {
-            $r->merge(['ord_comp_cant_cuota' => null]);
+        if ($ordencompracab->ord_comp_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede anular una orden en estado PENDIENTE.', 'tipo' => 'warning'], 409);
         }
 
-        $datosValidados = $r->validate([
-            'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
-            'ord_comp_fecha'                 => 'required|date',
-            'ord_comp_estado'                => 'required',
-            'ord_comp_cant_cuota'            => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
-            'presupuesto_id'                 => 'nullable|integer',
-            'pedido_id'                      => 'nullable|integer',
-            'proveedor_id'                   => 'required|integer',
-            'empresa_id'                     => 'required|integer',
-            'sucursal_id'                    => 'required|integer',
-            'condicion_pago'                 => 'required|string|max:20',
-        ]);
-
-        if ($r->condicion_pago === 'CONTADO') {
-            $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
-            $datosValidados['ord_comp_cant_cuota']            = null;
-        }
-
-        $datosValidados['ord_comp_estado'] = 'ANULADO';
-        $ordencompracab->update($datosValidados);
+        $ordencompracab->ord_comp_estado = 'ANULADO';
+        $ordencompracab->save();
 
         if ($ordencompracab->presupuesto_id) {
             $presupuesto = Presupuesto::find($ordencompracab->presupuesto_id);
@@ -262,32 +252,12 @@ class OrdenCompraCabController extends Controller
             return response()->json(['mensaje' => 'Registro no encontrado', 'tipo' => 'error'], 404);
         }
 
-        if ($r->ord_comp_intervalo_fecha_vence === '') {
-            $r->merge(['ord_comp_intervalo_fecha_vence' => null]);
-        }
-        if ($r->condicion_pago === 'CONTADO') {
-            $r->merge(['ord_comp_cant_cuota' => null]);
+        if ($ordencompracab->ord_comp_estado !== 'PENDIENTE') {
+            return response()->json(['mensaje' => 'Solo se puede confirmar una orden en estado PENDIENTE.', 'tipo' => 'warning'], 409);
         }
 
-        $datosValidados = $r->validate([
-            'ord_comp_intervalo_fecha_vence' => 'required_if:condicion_pago,CREDITO|nullable|date',
-            'ord_comp_fecha'                 => 'required|date',
-            'ord_comp_estado'                => 'required',
-            'ord_comp_cant_cuota'            => 'required_if:condicion_pago,CREDITO|nullable|integer|min:1',
-            'presupuesto_id'                 => 'nullable|integer',
-            'pedido_id'                      => 'nullable|integer',
-            'proveedor_id'                   => 'required|integer',
-            'empresa_id'                     => 'required|integer',
-            'sucursal_id'                    => 'required|integer',
-            'condicion_pago'                 => 'required|string|max:20',
-        ]);
-
-        if ($r->condicion_pago === 'CONTADO') {
-            $datosValidados['ord_comp_intervalo_fecha_vence'] = null;
-            $datosValidados['ord_comp_cant_cuota']            = null;
-        }
-
-        $ordencompracab->update($datosValidados);
+        $ordencompracab->ord_comp_estado = 'CONFIRMADO';
+        $ordencompracab->save();
 
         return response()->json([
             'mensaje'  => 'Orden confirmada con éxito',

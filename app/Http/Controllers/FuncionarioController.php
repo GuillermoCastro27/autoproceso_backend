@@ -17,8 +17,8 @@ class FuncionarioController extends Controller
     public function store(Request $r)
     {
         $r->validate([
-            'fun_nom'         => 'required|string|max:100|not_regex:/[*<>{}|]/',
-            'fun_apellido'    => 'required|string|max:100|not_regex:/[*<>{}|]/',
+            'fun_nom'         => ['required', 'string', 'max:100', 'not_regex:/[*<>{}|]/'],
+            'fun_apellido'    => ['required', 'string', 'max:100', 'not_regex:/[*<>{}|]/'],
             'fun_ci'          => ['required', 'string', 'max:30', Rule::unique('funcionario', 'fun_ci')->whereNull('deleted_at')],
             'fun_direccion'   => 'required|string|max:200',
             'fun_telefono'    => 'required|string|max:30',
@@ -69,8 +69,8 @@ class FuncionarioController extends Controller
         }
 
         $r->validate([
-            'fun_nom'         => 'required|string|max:100|not_regex:/[*<>{}|]/',
-            'fun_apellido'    => 'required|string|max:100|not_regex:/[*<>{}|]/',
+            'fun_nom'         => ['required', 'string', 'max:100', 'not_regex:/[*<>{}|]/'],
+            'fun_apellido'    => ['required', 'string', 'max:100', 'not_regex:/[*<>{}|]/'],
             'fun_ci'          => ['required', 'string', 'max:30', Rule::unique('funcionario', 'fun_ci')->ignore($id)->whereNull('deleted_at')],
             'fun_direccion'   => 'required|string|max:200',
             'fun_telefono'    => 'required|string|max:30',

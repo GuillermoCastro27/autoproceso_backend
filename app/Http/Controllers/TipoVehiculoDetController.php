@@ -4,9 +4,38 @@ namespace App\Http\Controllers;
 
 use App\Models\TipoVehiculoDet;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TipoVehiculoDetController extends Controller
 {
+    public function buscar(Request $r)
+    {
+        $q = $r->q ?? '';
+        $like = "%{$q}%";
+        return DB::select("
+            SELECT
+                d.id,
+                d.tipo_vehiculo_id,
+                d.tv_det_placa,
+                d.tv_det_num_chasis,
+                d.tv_det_num_motor,
+                t.tip_veh_nombre,
+                COALESCE(m.marc_nom,  '') AS marc_nom,
+                COALESCE(mo.modelo_nom,'') AS modelo_nom,
+                t.tv_anio,
+                t.tv_color
+            FROM tipo_vehiculo_det d
+            JOIN tipo_vehiculo t   ON t.id  = d.tipo_vehiculo_id
+            LEFT JOIN marca m     ON m.id  = t.marca_id
+            LEFT JOIN modelo mo   ON mo.id = t.modelo_id
+            WHERE d.tv_det_placa ILIKE ?
+               OR t.tip_veh_nombre ILIKE ?
+               OR m.marc_nom ILIKE ?
+            ORDER BY d.tv_det_placa
+            LIMIT 15
+        ", [$like, $like, $like]);
+    }
+
     public function read($tipo_vehiculo_id)
     {
         return response()->json(

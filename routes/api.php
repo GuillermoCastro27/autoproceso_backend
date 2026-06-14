@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InformeComprasController;
+use App\Http\Controllers\InformeGerencialComprasController;
+use App\Http\Controllers\InformeGerencialServicioController;
+use App\Http\Controllers\InformeGerencialVentasController;
+use App\Http\Controllers\InformeGerencialReferencialController;
 use App\Http\Controllers\InformeServicioController;
 use App\Http\Controllers\InformeVentasController;
 use App\Http\Controllers\ForgotPasswordController;
@@ -78,6 +82,8 @@ use App\Http\Controllers\DiagnosticoDetController;
 use App\Http\Controllers\PresupuestoServCabController;
 use App\Http\Controllers\PresupuestoServDetController;
 use App\Http\Controllers\OrdenServCabController;
+use App\Http\Controllers\InsumosCabController;
+use App\Http\Controllers\InsumosDetController;
 use App\Http\Controllers\OrdenServDetController;
 use App\Http\Controllers\ContratoServCabController;
 use App\Http\Controllers\ContratoServDetController;
@@ -96,6 +102,7 @@ use App\Http\Controllers\CobrosTarjetaController;
 use App\Http\Controllers\CobrosChequeController;
 use App\Http\Controllers\AperturaCierreCajaController;
 use App\Http\Controllers\ArqueoCajaController;
+use App\Http\Controllers\RecaudacionDepositarController;
 use App\Http\Controllers\TipoComprobanteController;
 use App\Http\Controllers\TimbradoController;
 
@@ -470,6 +477,7 @@ Route::middleware(['auth:sanctum', 'permiso:ventas'])->group(function () {
     Route::get('ventas_cab/buscar',                 [VentasCabController::class, 'buscarVentas']);
     Route::get('ventas_cab/buscarVentasNota',       [VentasCabController::class, 'buscarVentasNota']);
     Route::get('ventas_cab/imprimir/{id}',          [VentasCabController::class, 'imprimir']);
+    Route::get('ventas_cab/detalle/{id}',           [VentasCabController::class, 'detalle']);
 
     Route::get('ventas_det/read/{ventas_cab_id}',   [VentasDetController::class, 'read']);
 
@@ -478,8 +486,10 @@ Route::middleware(['auth:sanctum', 'permiso:ventas'])->group(function () {
     Route::put('notaremivent/update/{id}',      [NotaRemiVentController::class, 'update']);
     Route::put('notaremivent/anular/{id}',      [NotaRemiVentController::class, 'anular']);
     Route::put('notaremivent/confirmar/{id}',   [NotaRemiVentController::class, 'confirmar']);
+    Route::get('notaremivent/imprimir/{id}',    [NotaRemiVentController::class, 'imprimir']);
 
     Route::get('notaremiventdet/read/{nota_remi_vent_id}', [NotaRemiVentDetController::class, 'read']);
+    Route::get('tipo_vehiculo_det/buscar',                 [TipoVehiculoDetController::class, 'buscar']);
 
     Route::post('notaventcab/create',           [NotasVentCabController::class, 'store']);
     Route::get('notaventcab/read',              [NotasVentCabController::class, 'read']);
@@ -565,6 +575,21 @@ Route::middleware(['auth:sanctum', 'permiso:servicios'])->group(function () {
     Route::put('ordenserviciodet/update/{orden_serv_cab_id}',            [OrdenServDetController::class, 'update']);
     Route::delete('ordenserviciodet/delete/{orden_serv_cab_id}/{item_id}', [OrdenServDetController::class, 'destroy']);
 
+    // Insumos Utilizados — Cabecera
+    Route::get('insumos-cab/read',              [InsumosCabController::class, 'read']);
+    Route::get('insumos-cab/read/{id}',         [InsumosCabController::class, 'readById']);
+    Route::get('insumos-cab/buscar-os',         [InsumosCabController::class, 'buscarOS']);
+    Route::post('insumos-cab/create',           [InsumosCabController::class, 'store']);
+    Route::put('insumos-cab/update/{id}',       [InsumosCabController::class, 'update']);
+    Route::put('insumos-cab/confirmar/{id}',    [InsumosCabController::class, 'confirmar']);
+    Route::put('insumos-cab/anular/{id}',       [InsumosCabController::class, 'anular']);
+
+    // Insumos Utilizados — Detalle
+    Route::get('insumos-det/read/{cab_id}',     [InsumosDetController::class, 'readByCab']);
+    Route::post('insumos-det/create',           [InsumosDetController::class, 'store']);
+    Route::put('insumos-det/update/{id}',       [InsumosDetController::class, 'update']);
+    Route::delete('insumos-det/delete/{id}',    [InsumosDetController::class, 'destroy']);
+
     Route::post('contratoservcab/create',           [ContratoServCabController::class, 'store']);
     Route::get('contratoservcab/read',              [ContratoServCabController::class, 'read']);
     Route::put('contratoservcab/update/{id}',       [ContratoServCabController::class, 'update']);
@@ -633,6 +658,23 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('informes/compras',   [InformeComprasController::class,  'buscar']);
     Route::get('informes/servicio',  [InformeServicioController::class, 'buscar']);
     Route::get('informes/ventas',    [InformeVentasController::class,   'buscar']);
+
+    Route::get('informes/gerencial/compras/catalogos',              [InformeGerencialComprasController::class, 'catalogos']);
+    Route::get('informes/gerencial/compras/estadisticas/seccion',  [InformeGerencialComprasController::class, 'seccion']);
+    Route::get('informes/gerencial/compras/estadisticas',          [InformeGerencialComprasController::class, 'estadisticas']);
+    Route::get('informes/gerencial/compras/cuentas-pagar',        [InformeGerencialComprasController::class, 'cuentasAPagar']);
+    Route::get('informes/gerencial/compras/items-comprados',       [InformeGerencialComprasController::class, 'itemsMasComprados']);
+    Route::get('informes/gerencial/compras/items-transferidos',    [InformeGerencialComprasController::class, 'itemsMasTransferidos']);
+    Route::get('informes/gerencial/compras/libro-impuesto',        [InformeGerencialComprasController::class, 'libroComprasPorImpuesto']);
+    Route::get('informes/gerencial/compras/presupuestos-mes',      [InformeGerencialComprasController::class, 'presupuestosPorMes']);
+    Route::get('informes/gerencial/compras/proveedor-presupuesto', [InformeGerencialComprasController::class, 'proveedorMasPresupuesto']);
+    Route::get('informes/gerencial/compras/ajustes',               [InformeGerencialComprasController::class, 'ajustesInventario']);
+    Route::get('informes/gerencial/servicio/estadisticas/seccion', [InformeGerencialServicioController::class, 'seccion']);
+    Route::get('informes/gerencial/servicio/estadisticas',         [InformeGerencialServicioController::class, 'estadisticas']);
+    Route::get('informes/gerencial/ventas/estadisticas/seccion',        [InformeGerencialVentasController::class, 'seccion']);
+    Route::get('informes/gerencial/ventas/estadisticas',               [InformeGerencialVentasController::class, 'estadisticas']);
+    Route::get('informes/gerencial/referencial/estadisticas',          [InformeGerencialReferencialController::class, 'estadisticas']);
+    Route::get('informes/referencial',                                 [InformeGerencialReferencialController::class, 'index']);
     Route::get('dashboard/resumen',             [DashboardController::class, 'resumen']);
     Route::get('dashboard/ventas-por-mes',      [DashboardController::class, 'ventasPorMes']);
     Route::get('dashboard/top-productos',       [DashboardController::class, 'topProductos']);
@@ -666,6 +708,10 @@ Route::middleware(['auth:sanctum', 'permiso:cobros'])->group(function () {
     Route::put('apertura_cierre_caja/cerrarCaja',       [AperturaCierreCajaController::class, 'cerrarCaja']);
     Route::get('apertura_cierre_caja/abiertas',         [AperturaCierreCajaController::class, 'buscarAbiertas']);
     Route::get('apertura_cierre_caja/abiertas_arqueo',  [AperturaCierreCajaController::class, 'buscarAbiertasArqueo']);
+
+    Route::get('recaudaciones_depositar/read',           [RecaudacionDepositarController::class, 'read']);
+    Route::put('recaudaciones_depositar/depositar/{id}', [RecaudacionDepositarController::class, 'depositar']);
+    Route::put('recaudaciones_depositar/anular/{id}',    [RecaudacionDepositarController::class, 'anular']);
 
     Route::get('arqueo_caja/read',           [ArqueoCajaController::class, 'read']);
     Route::post('arqueo_caja/create',        [ArqueoCajaController::class, 'store']);
